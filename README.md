@@ -30,7 +30,7 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 1. En la app móvil individual, pulsa **Exportar** y descarga el archivo de copia `.csv`.
 2. En el servidor autoalojado, inicia sesión con tu usuario familiar (ej. *"Carmen"*).
 3. Abre **Exportar / Imprimir** &rarr; pestaña **Importar** y selecciona el archivo `.csv`.
-4. El servidor asociará automáticamente todas tus tomas históricas a tu perfil de forma privada e inmune a duplicados en SQLite.
+4. El servidor asociará automáticamente todas tus tomas históricas a tu perfil en SQLite.
 
 ---
 
