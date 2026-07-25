@@ -67,11 +67,19 @@ git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git .
 
 ### Paso 2: Crear el directorio de datos y ajustar permisos de volumen
 > ⚠️ **Importante**: El contenedor se ejecuta con un usuario seguro sin privilegios (`USER node`, UID `1000`). Se debe crear la carpeta `./data` previamente y asignarle la propiedad al UID `1000` para evitar errores `EACCES: permission denied`.
+> 
+> 💡 *Nota*: Si tu sesión de terminal ya es el usuario `root` (`root@servidor`), omite la palabra `sudo` en los siguientes comandos.
 
 ```bash
 mkdir -p ./data
+
+# Si usas usuario estándar con sudo:
 sudo chown -R 1000:1000 ./data
 sudo chmod -R 775 ./data
+
+# O si estás directamente autenticado como root (sin sudo):
+# chown -R 1000:1000 ./data
+# chmod -R 775 ./data
 ```
 
 ### Paso 3: Crear o verificar el archivo `docker-compose.yml`
