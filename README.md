@@ -64,9 +64,8 @@ mkdir -p ./data && chown -R 1000:1000 ./data && chmod -R 775 ./data
 
 ### 2. Desplegar la aplicación
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
-*(💡 Nota: La bandera `--build` fuerza la compilación inicial en tu máquina. En arranques futuros o si únicamente usas el archivo `docker-compose.yml` sin modificar código, puedes omitir `--build` y ejecutar simplemente `docker compose up -d`).*
 
 ### 3. Acceso e Inicialización
 Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa el registro del **Primer Usuario Administrador**.

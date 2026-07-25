@@ -1,9 +1,6 @@
 services:
   control-tension-server:
     image: ghcr.io/el-rocho/cta-elrocho-selfhosted:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: control-tension-server
     restart: unless-stopped
     ports:
