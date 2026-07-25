@@ -50,94 +50,33 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 
 ---
 
-## 🐳 Despliegue con Docker Compose (Paso a Paso desde Cero)
+## 🐳 Instalación Rápida con Docker Compose
 
-Sigue estos pasos para instalar la aplicación en un servidor Linux limpio de forma segura y sin problemas de permisos.
+Sigue estos sencillos pasos para realizar una instalación limpia y funcional desde cero en tu servidor o NAS:
 
-### Paso 1: Crear o preparar la carpeta de instalación
+### 1. Clonar el repositorio y preparar permisos
 ```bash
-mkdir -p /opt/control-tension-arterial
+git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git /opt/control-tension-arterial
 cd /opt/control-tension-arterial
+mkdir -p ./data && chown -R 1000:1000 ./data && chmod -R 775 ./data
 ```
+*(💡 Nota: Si tu usuario de terminal no es `root`, antepone `sudo` a los comandos `chown` y `chmod`).*
 
-*(Si instalas mediante git clone)*:
-```bash
-git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git .
-```
-
-### Paso 2: Crear el directorio de datos y ajustar permisos de volumen
-> ⚠️ **Importante**: El contenedor se ejecuta con un usuario seguro sin privilegios (`USER node`, UID `1000`). Se debe crear la carpeta `./data` previamente y asignarle la propiedad al UID `1000` para evitar errores `EACCES: permission denied`.
-> 
-> 💡 *Nota*: Si tu sesión de terminal ya es el usuario `root` (`root@servidor`), omite la palabra `sudo` en los siguientes comandos.
-
-```bash
-mkdir -p ./data
-
-# Si usas usuario estándar con sudo:
-sudo chown -R 1000:1000 ./data
-sudo chmod -R 775 ./data
-
-# O si estás directamente autenticado como root (sin sudo):
-# chown -R 1000:1000 ./data
-# chmod -R 775 ./data
-```
-
-### Paso 3: Crear o verificar el archivo `docker-compose.yml`
-
-Crea o edita el archivo `docker-compose.yml`:
-
-```yaml
-services:
-  control-tension-server:
-    image: ghcr.io/el-rocho/cta-elrocho-selfhosted:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: control-tension-server
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/app/data
-    environment:
-      - PORT=3000
-      - NODE_ENV=production
-      - DATA_DIR=/app/data
-      - TZ=Europe/Madrid
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/status"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-```
-
-### Paso 4: Arrancar la aplicación
-
-Para construir (si estás usando el código fuente) o desplegar el contenedor en segundo plano:
-
+### 2. Desplegar la aplicación
 ```bash
 docker compose up -d --build
 ```
 
-### Paso 5: Verificar la instalación
+### 3. Acceso e Inicialización
+Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa el registro del **Primer Usuario Administrador**.
 
-Verifica el estado del contenedor:
-```bash
-docker compose ps
-```
-*(Debe mostrar estado `Up (healthy)` en pocos segundos).*
+---
 
-Para consultar los registros de arranque y comprobar que SQLite se ha inicializado correctamente:
-```bash
-docker logs control-tension-server
-```
+### 📋 Comprobación de Estado (Opcional)
 
-### Paso 6: Primer Acceso y Registro del Administrador
-
-1. Abre tu navegador web e ingresa a: `http://<IP_DE_TU_SERVIDOR>:3000`.
-2. Al detectar que es una instalación desde cero sin usuarios, la aplicación te guiará para crear la cuenta del **Primer Usuario Administrador**.
-3. Una vez registrado, podrás activar **2FA (TOTP)** opcionalmente y dar de alta a otros usuarios familiares desde el **Panel de Administración**.
+- **Verificar que el contenedor está activo**: `docker compose ps`
+- **Consultar los registros de la base de datos**: `docker logs control-tension-server`
+- **Detener el servidor**: `docker compose down`
 
 ---
 
