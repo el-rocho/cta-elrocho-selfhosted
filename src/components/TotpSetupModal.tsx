@@ -35,11 +35,11 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
     setLoading(true);
     setErrorMsg(null);
     const data = await setupTotp();
-    if (data) {
+    if (data && data.qrCodeDataUrl && data.secret) {
       setQrCodeDataUrl(data.qrCodeDataUrl);
       setSecret(data.secret);
     } else {
-      setErrorMsg('No se pudo generar la clave 2FA. Revisa la conexión con el servidor.');
+      setErrorMsg(data?.error || 'No se pudo generar la clave 2FA. Revisa la conexión con el servidor.');
     }
     setLoading(false);
   }

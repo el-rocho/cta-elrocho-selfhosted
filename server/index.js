@@ -108,7 +108,7 @@ app.post('/api/auth/setup-admin', async (req, res) => {
       [userId]
     );
 
-    res.status(201).json({ success: true, user });
+    res.status(201).json({ success: true, user, token: sessionId });
   } catch (error) {
     console.error('Error al crear administrador inicial:', error);
     res.status(500).json({ error: 'Error al registrar administrador inicial' });
@@ -156,6 +156,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.json({
       success: true,
+      token: sessionId,
       user: {
         id: user.id,
         username: user.username,
@@ -225,6 +226,7 @@ app.post('/api/auth/login/totp', async (req, res) => {
 
     res.json({
       success: true,
+      token: sessionId,
       user: {
         id: user.id,
         username: user.username,
