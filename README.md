@@ -57,19 +57,22 @@ Sigue estos sencillos pasos para realizar una instalación limpia y funcional de
 ### 1. Crear el directorio y clonar el repositorio
 ```bash
 # Crear la carpeta de la aplicación y acceder a ella
-mkdir -p /opt/control-tension-arterial
+sudo mkdir -p /opt/control-tension-arterial
 cd /opt/control-tension-arterial
 
 # Clonar el proyecto y preparar la carpeta de datos con permisos
-git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git .
-mkdir -p ./data && chown -R 1000:1000 ./data && chmod -R 775 ./data
+sudo git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git .
+sudo mkdir -p ./data
+sudo chown -R 1000:1000 ./data
+sudo chmod -R 775 ./data
 ```
-*(💡 Nota: Si tu usuario de terminal no es `root`, antepone `sudo` a los comandos que lo requieran).*
 
 ### 2. Desplegar la aplicación
 ```bash
-docker compose up -d
+sudo docker compose up -d
 ```
+
+*(💡 Nota: Si tu usuario es `root`, elimina `sudo` en los comandos anteriores).*
 
 ### 3. Acceso e Inicialización
 Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa el registro del **Primer Usuario Administrador**.
@@ -78,9 +81,9 @@ Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa 
 
 ### 📋 Comprobación de Estado (Opcional)
 
-- **Verificar que el contenedor está activo**: `docker compose ps`
-- **Consultar los registros de la base de datos**: `docker logs control-tension-server`
-- **Detener el servidor**: `docker compose down`
+- **Verificar que el contenedor está activo**: `sudo docker compose ps`
+- **Consultar los registros de la base de datos**: `sudo docker logs control-tension-server`
+- **Detener el servidor**: `sudo docker compose down`
 
 ---
 
