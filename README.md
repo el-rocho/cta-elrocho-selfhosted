@@ -2,7 +2,7 @@
   <img src="public/logo-day.png" alt="Logo Control Tensión Arterial - Modo Día" width="160" height="160" />
 </p>
 
-# Control Tensión Arterial & Pulsaciones (Autoalojada Multi-usuario) 🩺🐳
+# Control Tensión Arterial (Autoalojada Multi-usuario) 🩺🐳
 
 ![Docker Ready](https://img.shields.io/badge/Docker-Autoalojado%20NAS-2496ED?style=for-the-badge&logo=docker)
 ![SQLite Database](https://img.shields.io/badge/Base%20de%20Datos-SQLite-003B57?style=for-the-badge&logo=sqlite)
