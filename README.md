@@ -87,6 +87,18 @@ Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa 
 
 ---
 
+## 🔒 Recomendación de Seguridad y HTTPS (Proxy Inverso)
+
+Para entornos de producción o acceso remoto fuera de tu red local, **se recomienda encarecidamente configurar un Proxy Inverso con SSL/HTTPS** (como **Nginx Proxy Manager**, **Traefik**, **Caddy** o **Cloudflare Tunnels**).
+
+### 💡 Beneficios de usar acceso HTTPS:
+1. **Seguridad y Cifrado**: Cifrado SSL/TLS para proteger contraseñas y datos de tensión arterial en tránsito.
+2. **Cookies de Máxima Seguridad**: Habilita la directiva `Secure` en las cookies de sesión de los navegadores.
+3. **PWA Instalable en Móviles**: Permite que navegadores en iOS/Android ofrezcan la opción *"Añadir a la pantalla de inicio"* como PWA nativa.
+4. **Acceso a la API Nativa del Portapapeles**: Garantiza acceso completo a las funciones avanzadas del navegador (`navigator.clipboard`).
+
+---
+
 ## 🛡️ Filtro de Síndrome de Bata Blanca
 
 El **Filtro de Síndrome de Bata Blanca** mitiga la distorsión generada por el sesgo de alerta o ansiedad inicial del paciente al colocarse el manguito de tensión.
