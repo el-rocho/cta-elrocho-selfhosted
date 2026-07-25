@@ -74,7 +74,7 @@ services:
 
 Inicia el contenedor:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 Accede desde tu navegador o móvil en tu red local: `http://<IP_DE_TU_SERVIDOR>:3000`.
