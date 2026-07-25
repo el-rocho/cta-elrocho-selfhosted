@@ -54,13 +54,17 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 
 Sigue estos sencillos pasos para realizar una instalación limpia y funcional desde cero en tu servidor o NAS:
 
-### 1. Clonar el repositorio y preparar permisos
+### 1. Crear el directorio y clonar el repositorio
 ```bash
-git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git /opt/control-tension-arterial
+# Crear la carpeta de la aplicación y acceder a ella
+mkdir -p /opt/control-tension-arterial
 cd /opt/control-tension-arterial
+
+# Clonar el proyecto y preparar la carpeta de datos con permisos
+git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git .
 mkdir -p ./data && chown -R 1000:1000 ./data && chmod -R 775 ./data
 ```
-*(💡 Nota: Si tu usuario de terminal no es `root`, antepone `sudo` a los comandos `chown` y `chmod`).*
+*(💡 Nota: Si tu usuario de terminal no es `root`, antepone `sudo` a los comandos que lo requieran).*
 
 ### 2. Desplegar la aplicación
 ```bash
