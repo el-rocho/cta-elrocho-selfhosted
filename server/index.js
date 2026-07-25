@@ -34,11 +34,13 @@ app.use(express.json({ limit: '10mb' }));
 const pendingTotpLogins = new Map();
 
 // Helper para guardar cookie de sesión
-function setSessionCookie(res, sessionId) {
+function setSessionCookie(res, req, sessionId) {
+  const isHttps = req ? (req.secure || req.headers['x-forwarded-proto'] === 'https') : false;
+  const isSecure = process.env.COOKIE_SECURE === 'true' || isHttps;
   res.cookie(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: isSecure,
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 días
   });
 }
@@ -99,7 +101,7 @@ app.post('/api/auth/setup-admin', async (req, res) => {
 
     // Iniciar sesión automáticamente
     const { sessionId } = await createSession(userId);
-    setSessionCookie(res, sessionId);
+    setSessionCookie(res, req, sessionId);
 
     const user = await db.get(
       'SELECT id, username, name, role, totp_enabled, created_at FROM users WHERE id = ?',
@@ -150,7 +152,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Sin 2FA: Iniciar sesión directamente
     const { sessionId } = await createSession(user.id);
-    setSessionCookie(res, sessionId);
+    setSessionCookie(res, req, sessionId);
 
     res.json({
       success: true,
@@ -219,7 +221,7 @@ app.post('/api/auth/login/totp', async (req, res) => {
     // Éxito: Limpiar tempToken e iniciar sesión
     pendingTotpLogins.delete(tempToken);
     const { sessionId } = await createSession(user.id);
-    setSessionCookie(res, sessionId);
+    setSessionCookie(res, req, sessionId);
 
     res.json({
       success: true,
