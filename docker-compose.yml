@@ -1,6 +1,6 @@
 services:
   control-tension-server:
-    image: ghcr.io/el-rocho/ata-elrocho-selhosted:latest
+    image: ghcr.io/el-rocho/cta-elrocho-selfhosted:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,11 +12,14 @@ services:
       - ./data:/app/data
     environment:
       - PORT=3000
+      - NODE_ENV=production
       - DATA_DIR=/app/data
       - TZ=Europe/Madrid
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/settings"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/status"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 5s
+
+

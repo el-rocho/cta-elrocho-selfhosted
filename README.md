@@ -10,7 +10,7 @@
 ![Built with Vibe Coding](https://img.shields.io/badge/Built%20with-Vibe%20Coding%20%26%20AI-7c3aed?style=for-the-badge&logo=sparkles)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-blue?style=for-the-badge)
 
-Versión **autoalojada en servidor / NAS (Synology, Unraid, Docker Compose)** diseñada para el seguimiento y gestión privada de la tensión arterial y pulsaciones en el **entorno familiar (hasta 10 usuarios)**.
+Versión **autoalojada en servidor / NAS (Synology, Unraid, Linux, Docker Compose)** diseñada para el seguimiento y gestión privada de la tensión arterial y pulsaciones en el **entorno familiar (hasta 10 usuarios)**.
 
 > ✨ **Metodología de Desarrollo**: Este proyecto ha sido conceptualizado, diseñado y guiado mediante **Vibe Coding**, utilizando asistencia avanzada de Inteligencia Artificial para la generación de código y arquitectura.
 
@@ -50,34 +50,86 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 
 ---
 
-## 🐳 Despliegue con Docker Compose (Recomendado)
+## 🐳 Despliegue con Docker Compose (Paso a Paso desde Cero)
 
-Crea un archivo `docker-compose.yml` en tu servidor o NAS:
+Sigue estos pasos para instalar la aplicación en un servidor Linux limpio de forma segura y sin problemas de permisos.
+
+### Paso 1: Crear o preparar la carpeta de instalación
+```bash
+mkdir -p /opt/control-tension-arterial
+cd /opt/control-tension-arterial
+```
+
+*(Si instalas mediante git clone)*:
+```bash
+git clone https://github.com/el-rocho/cta-elrocho-selfhosted.git .
+```
+
+### Paso 2: Crear el directorio de datos y ajustar permisos de volumen
+> ⚠️ **Importante**: El contenedor se ejecuta con un usuario seguro sin privilegios (`USER node`, UID `1000`). Se debe crear la carpeta `./data` previamente y asignarle la propiedad al UID `1000` para evitar errores `EACCES: permission denied`.
+
+```bash
+mkdir -p ./data
+sudo chown -R 1000:1000 ./data
+sudo chmod -R 775 ./data
+```
+
+### Paso 3: Crear o verificar el archivo `docker-compose.yml`
+
+Crea o edita el archivo `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
-
 services:
-  cta-elrocho-server:
-    image: ghcr.io/el-rocho/cta-elrocho-selhosted:latest
-    container_name: cta-tension-arterial
+  control-tension-server:
+    image: ghcr.io/el-rocho/cta-elrocho-selfhosted:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: control-tension-server
     restart: unless-stopped
     ports:
       - "3000:3000"
+    volumes:
+      - ./data:/app/data
     environment:
       - PORT=3000
       - NODE_ENV=production
       - DATA_DIR=/app/data
-    volumes:
-      - ./data:/app/data
+      - TZ=Europe/Madrid
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/auth/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 ```
 
-Inicia el contenedor:
+### Paso 4: Arrancar la aplicación
+
+Para construir (si estás usando el código fuente) o desplegar el contenedor en segundo plano:
+
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-Accede desde tu navegador o móvil en tu red local: `http://<IP_DE_TU_SERVIDOR>:3000`.
+### Paso 5: Verificar la instalación
+
+Verifica el estado del contenedor:
+```bash
+docker compose ps
+```
+*(Debe mostrar estado `Up (healthy)` en pocos segundos).*
+
+Para consultar los registros de arranque y comprobar que SQLite se ha inicializado correctamente:
+```bash
+docker logs control-tension-server
+```
+
+### Paso 6: Primer Acceso y Registro del Administrador
+
+1. Abre tu navegador web e ingresa a: `http://<IP_DE_TU_SERVIDOR>:3000`.
+2. Al detectar que es una instalación desde cero sin usuarios, la aplicación te guiará para crear la cuenta del **Primer Usuario Administrador**.
+3. Una vez registrado, podrás activar **2FA (TOTP)** opcionalmente y dar de alta a otros usuarios familiares desde el **Panel de Administración**.
 
 ---
 
@@ -95,14 +147,17 @@ El **Filtro de Síndrome de Bata Blanca** mitiga la distorsión generada por el 
 
 ## 🛠️ Desarrollo Local
 
+Si deseas ejecutar el proyecto localmente sin Docker para desarrollo:
+
 ```bash
 # Instalar dependencias
 npm install
 
-# Iniciar en modo desarrollo
+# Iniciar frontend + backend en modo desarrollo
 npm run dev
 
 # Compilar producción y ejecutar servidor
 npm run build
 npm run server
 ```
+

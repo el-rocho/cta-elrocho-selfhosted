@@ -11,11 +11,16 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
 const DB_PATH = path.join(DATA_DIR, 'cta_database.sqlite');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-if (!fs.existsSync(BACKUPS_DIR)) {
-  fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(BACKUPS_DIR)) {
+    fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+  }
+} catch (err) {
+  console.error('❌ Error de permisos al crear carpetas de datos:', err.message);
+  console.error(`Asegúrate de que la carpeta '${DATA_DIR}' tenga permisos de escritura para el usuario de Node.`);
 }
 
 let dbInstance = null;
@@ -23,18 +28,24 @@ let dbInstance = null;
 export async function getDB() {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database,
-  });
+  try {
+    dbInstance = await open({
+      filename: DB_PATH,
+      driver: sqlite3.Database,
+    });
 
-  // Activar soporte de claves foráneas y WAL mode para alto rendimiento
-  await dbInstance.exec('PRAGMA foreign_keys = ON;');
-  await dbInstance.exec('PRAGMA journal_mode = WAL;');
+    // Activar soporte de claves foráneas y WAL mode para alto rendimiento
+    await dbInstance.exec('PRAGMA foreign_keys = ON;');
+    await dbInstance.exec('PRAGMA journal_mode = WAL;');
 
-  await initSchema(dbInstance);
+    await initSchema(dbInstance);
 
-  return dbInstance;
+    return dbInstance;
+  } catch (error) {
+    console.error('❌ Error crítico al abrir/inicializar la base de datos SQLite en:', DB_PATH);
+    console.error(error);
+    throw error;
+  }
 }
 
 async function initSchema(db) {
