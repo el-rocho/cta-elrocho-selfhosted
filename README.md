@@ -10,7 +10,9 @@
 ![Built with Vibe Coding](https://img.shields.io/badge/Built%20with-Vibe%20Coding%20%26%20AI-7c3aed?style=for-the-badge&logo=sparkles)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-blue?style=for-the-badge)
 
-Versión **autoalojada en servidor / NAS (Synology, Unraid, Linux, Docker Compose)** diseñada para el seguimiento y gestión privada de la tensión arterial y pulsaciones en el **entorno familiar (hasta 10 usuarios)**.
+Versión autoalojada y multiusuario (Docker Compose) de la Aplicación Android "[Control Tensión Arterial](https://github.com/el-rocho/cta-elrocho)" para el registro, seguimiento y análisis de la tensión arterial. Diseñada para ofrecer máxima privacidad para toda la familia.
+
+100% control de tus datos: privados y sin comunicación con servidores de terceros.
 
 > ✨ **Metodología de Desarrollo**: Este proyecto ha sido conceptualizado, diseñado y guiado mediante **Vibe Coding**, utilizando asistencia avanzada de Inteligencia Artificial para la generación de código y arquitectura.
 
