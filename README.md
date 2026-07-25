@@ -46,7 +46,7 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 - **Panel de Administración Familiar**: La primera persona registrada se convierte en Administrador, pudiendo dar de alta a familiares, restablecer claves o administrar permisos.
 - **Misma Experiencia de Diseño Cuidada**:
   - **Filtro de Síndrome de Bata Blanca**: Algoritmo médico inteligente que descarta tomas iniciales elevadas producidas por la ansiedad del momento.
-  - **Informes PDF Médicos Bilingües**: Gráfico temporal con doble eje Y (tensión arterial + línea de pulsaciones) y tabla de registros.
+  - **Informes PDF Médicos**: Gráfico temporal con doble eje Y (tensión arterial + línea de pulsaciones) y tabla de registros.
   - **Exportación e Importación CSV**: Copias de seguridad automáticas con metadatos.
   - **Interfaz Bilingüe (Español / Inglés)**: Adaptable a móviles, tabletas y ordenadores.
 
