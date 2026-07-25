@@ -78,9 +78,31 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
     }
   }
 
+  function copyToClipboardFallback(text: string) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+      console.error('Error al copiar al portapapeles:', err);
+    }
+    document.body.removeChild(textarea);
+  }
+
   function handleCopyCodes() {
     if (recoveryCodes) {
-      navigator.clipboard.writeText(recoveryCodes.join('\n'));
+      const textToCopy = recoveryCodes.join('\n');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).catch(() => copyToClipboardFallback(textToCopy));
+      } else {
+        copyToClipboardFallback(textToCopy);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
