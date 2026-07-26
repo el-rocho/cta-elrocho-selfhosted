@@ -10,7 +10,7 @@
 ![Built with Vibe Coding](https://img.shields.io/badge/Built%20with-Vibe%20Coding%20%26%20AI-7c3aed?style=for-the-badge&logo=sparkles)
 ![Licencia](https://img.shields.io/badge/Licencia-MIT-blue?style=for-the-badge)
 
-Versión autoalojada y multiusuario (Docker Compose) de la Aplicación Android "[Control Tensión Arterial](https://github.com/el-rocho/cta-elrocho)" para el registro, seguimiento y análisis de la tensión arterial. Diseñada para ofrecer máxima privacidad para toda la familia.
+Versión autoalojada y multiusuario (Docker Compose) de la suite "[Control Tensión Arterial](https://github.com/el-rocho/cta-elrocho)" para el registro, seguimiento y análisis de la tensión arterial. Diseñada para ofrecer máxima privacidad para toda la familia.
 
 100% control de tus datos: privados y sin comunicación con servidores de terceros.
 
@@ -18,16 +18,19 @@ Versión autoalojada y multiusuario (Docker Compose) de la Aplicación Android "
 
 ---
 
-## 💡 ¿Qué versión elegir? (Autoalojada vs. Individual)
+## 💡 Ecosistema de Aplicaciones: ¿Qué versión elegir?
 
-Este repositorio corresponde a la **Versión Autoalojada Multi-usuario (Docker & SQLite)**.
+Este repositorio corresponde a la **Versión Autoalojada Multi-usuario (Docker & SQLite)**. El proyecto cuenta con tres aplicaciones interconectadas:
 
-- 🐳 **Versión Autoalojada**: Diseñada para instalar en tu propio servidor doméstico o NAS y permitir a **varios miembros de la familia (hasta 10 usuarios)** controlar su tensión arterial de forma centralizada con base de datos SQLite y **autenticación 2FA TOTP**.
-- 📱 **[Versión Individual / Móvil Android (APK / PWA)](https://github.com/el-rocho/cta-elrocho)**: Si prefieres una aplicación móvil **100% offline, nativa Android (APK)** y sin necesidad de instalar un servidor ni crear cuentas de usuario, te recomendamos utilizar la versión individual para un único dispositivo.
+| Aplicación | Repositorio GitHub | Descripción y Uso |
+| :--- | :--- | :--- |
+| 🐳 **Servidor Autoalojado (Docker)** | **[cta-elrocho-selfhosted](https://github.com/el-rocho/cta-elrocho-selfhosted)** *(Este repo)* | Servidor para instalar en NAS/Docker. Permite a **varios miembros de la familia (~10 usuarios)** gestionar su tensión arterial de forma centralizada con base de datos SQLite y **2FA TOTP**. |
+| 🚀 **Cliente Servidor (Android & PWA)** | [**cta-elrocho-client-app**](https://github.com/el-rocho/cta-elrocho-client-app) | **Aplicación móvil cliente (APK y PWA)** diseñada para conectar directamente con este servidor introduciendo su dirección IP (`http://192.168.1.x:3000`). Ofrece interfaz nativa Android y exportación PDF/CSV. |
+| 📱 **Versión Individual Móvil (Offline)** | [**cta-elrocho**](https://github.com/el-rocho/cta-elrocho) | Aplicación móvil **100% offline y nativa Android (APK)** para uso personal en un único teléfono, sin necesidad de servidor ni registro. |
 
 ### 🔄 Migración e Importación desde la Versión Individual (Móvil/APK):
-Si tú o algún familiar habéis estado utilizando la versión móvil individual y queréis migrar vuestro historial al servidor autoalojado:
-1. En la app móvil individual, pulsa **Exportar** y descarga el archivo de copia `.csv`.
+Si tú o algún familiar habéis estado utilizando la versión móvil individual y queréis migrar vuestro historial a este servidor autoalojado:
+1. En la app móvil individual, pulsa **Exportar** &rarr; Descargar copia `.csv`.
 2. En el servidor autoalojado, inicia sesión con tu usuario familiar (ej. *"Carmen"*).
 3. Abre **Exportar / Imprimir** &rarr; pestaña **Importar** y selecciona el archivo `.csv`.
 4. El servidor asociará automáticamente todas tus tomas históricas a tu perfil en SQLite.
@@ -40,7 +43,7 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 - **Base de Datos SQLite Persistente**: Almacenamiento ágil y ligero en un único archivo (`/data/cta_database.sqlite`). Copias de seguridad ultrasimples respaldando la carpeta `/data`.
 - **Autenticación Segura & Doble Factor (2FA / TOTP)**:
   - Cifrado de contraseñas con **bcrypt**.
-  - Sesiones cifradas en cookies seguras `HttpOnly`.
+  - Sesiones cifradas en cookies seguras `HttpOnly` y soporte de token por cabecera `X-Session-Token` para la app móvil cliente.
   - **Soporte 2FA TOTP (RFC 6238)** con Código QR compatible con Google Authenticator, Aegis, Authy, Bitwarden, 1Password, etc.
   - **8 Códigos de rescate de emergencia** de un solo uso.
 - **Panel de Administración Familiar**: La primera persona registrada se convierte en Administrador, pudiendo dar de alta a familiares, restablecer claves o administrar permisos.
@@ -89,6 +92,14 @@ Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa 
 
 ---
 
+## 📱 Cliente Móvil Android Dedicado (Recomendado)
+
+Para acceder de forma cómoda y nativa desde tu teléfono o tablet Android sin necesidad de abrir el navegador web:
+- Descarga la aplicación cliente [**cta-elrocho-client-app**](https://github.com/el-rocho/cta-elrocho-client-app) (compatible con **Obtainium**).
+- Introduce la IP de tu servidor (ej. `http://192.168.1.50:3000`) en la app para conectar de forma permanente.
+
+---
+
 ## 🔒 Recomendación de Seguridad y HTTPS (Proxy Inverso)
 
 Para entornos de producción o acceso remoto fuera de tu red local, **se recomienda encarecidamente configurar un Proxy Inverso con SSL/HTTPS** (como **Nginx Proxy Manager**, **Traefik**, **Caddy** o **Cloudflare Tunnels**).
@@ -128,4 +139,3 @@ npm run dev
 npm run build
 npm run server
 ```
-
