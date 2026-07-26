@@ -35,6 +35,15 @@ Si tú o algún familiar habéis estado utilizando la versión móvil individual
 3. Abre **Exportar / Imprimir** &rarr; pestaña **Importar** y selecciona el archivo `.csv`.
 4. El servidor asociará automáticamente todas tus tomas históricas a tu perfil en SQLite.
 
+### 📲 Acceso Rápido al Repositorio:
+Escanea este código QR desde tu teléfono o tablet para acceder directamente al repositorio (`https://github.com/el-rocho/cta-elrocho-selfhosted`):
+
+<p align="center">
+  <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://github.com/el-rocho/cta-elrocho-selfhosted" alt="Código QR Repositorio Selfhosted" width="160" height="160" />
+  <br />
+  <sub><b>Escanea para acceder al repositorio en GitHub</b></sub>
+</p>
+
 ---
 
 ## 🚀 Características Principales de la Versión Autoalojada
