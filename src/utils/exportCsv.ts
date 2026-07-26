@@ -120,7 +120,7 @@ export function exportToCSV(
     ].join(';');
   });
 
-  const csvContent = '\uFEFF' + metadataHeader + headers.join(';') + '\n' + rows.join('\n');
+  const csvContent = '\uFEFFsep=;\n' + metadataHeader + headers.join(';') + '\n' + rows.join('\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

@@ -11,8 +11,7 @@ export function parseCSVData(csvText: string): Omit<BloodPressureReading, 'id'>[
   if (lines.length === 0) return [];
 
   // Detectar delimitador (; o ,)
-  const firstLine = lines[0];
-  const delimiter = firstLine.includes(';') ? ';' : ',';
+  const delimiter = cleanText.includes(';') ? ';' : ',';
 
   // Separar columnas respetando comillas simples/dobles
   const splitLine = (line: string): string[] => {
