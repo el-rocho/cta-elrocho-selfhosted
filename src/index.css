@@ -1830,6 +1830,201 @@ input:checked + .toggle-slider:before {
     min-height: 24px;
   }
 }
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Responsivo para Pantallas Pequeñas Móviles y Tablets */
+@media (max-width: 900px) {
+  .app-container { padding: 12px 12px 40px 12px; }
+  .wheel-picker-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .form-secondary-row { flex-direction: column; align-items: stretch; }
+
+  .session-main-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .form-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .form-title-group {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .form-controls-wrapper {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .arm-selector-container {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .arm-chips {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .arm-chip {
+    flex: 1;
+    text-align: center;
+  }
+
+  .input-mode-toggle {
+    width: 100%;
+  }
+
+  .btn-mode-chip {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .metrics-inputs-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .metrics-inputs-grid .input-group:nth-child(3) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 70%;
+    max-width: 220px;
+  }
+
+  .metrics-inputs-grid .input-group:nth-child(3) label {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .edit-fields-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .edit-fields-grid .edit-field-group:nth-child(3) {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 70%;
+    max-width: 220px;
+  }
+
+  .edit-fields-grid .edit-field-group:nth-child(3) label {
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Ruleta Tactil Compacta en Moviles */
+  .card.form-card {
+    padding: 16px 10px;
+  }
+
+  .wheel-picker-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    width: 100%;
+  }
+
+  .wheel-column-card {
+    padding: 6px 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  .wheel-column-header {
+    flex-direction: column;
+    gap: 1px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .wheel-unit {
+    font-size: 10px;
+  }
+
+  .wheel-item {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .wheel-item.selected {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .btn-wheel-step {
+    padding: 2px 0;
+  }
+
+  .input-wrapper-notes {
+    padding: 12px 14px;
+    min-height: 48px;
+  }
+
+  .input-notes {
+    font-size: 15px;
+  }
+
+  .icon-chart {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+  }
+
+  .legal-icon-main {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  .legal-icon-block {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+  }
+
+  .export-patient-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .settings-field-icon {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
 
 /* ==========================================
    ESTILOS PARA EDICIÓN DE TOMAS (SENIOR FRIENDLY)
@@ -1992,7 +2187,7 @@ input:checked + .toggle-slider:before {
   background: var(--bg-card, #ffffff);
   color: var(--text-primary, #111827);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   box-sizing: border-box;
   transition: border-color 0.2s;
 }
@@ -2058,7 +2253,7 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-secondary-large:hover {
-  background-color: var(--border-color, #d1d5db);
+  background-color: #d1d5db;
 }
 
 /* Autenticación & Multiusuario */

@@ -216,7 +216,7 @@ export function App() {
   if (authChecking) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
-        <p>Cargando servidor familiar...</p>
+        <p>Cargando servidor...</p>
       </div>
     );
   }

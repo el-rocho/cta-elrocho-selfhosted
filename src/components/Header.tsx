@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="button"
             onClick={onOpenUserMgmtModal}
             className="btn-icon"
-            title="Gestión de usuarios familiares"
+            title="Gestión de usuarios"
           >
             <Users size={22} />
           </button>

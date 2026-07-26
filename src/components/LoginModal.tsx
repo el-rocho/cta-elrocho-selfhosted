@@ -98,10 +98,10 @@ export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess
           </h2>
           <p className="auth-subtitle">
             {isInitialSetup
-              ? 'Crea la cuenta de Administrador de tu servidor familiar.'
+              ? 'Crea la cuenta de Administrador de tu servidor.'
               : step2FA
               ? 'Introduce el código de 6 dígitos de tu aplicación de autenticación (o código de recuperación).'
-              : 'Accede a tus mediciones de tensión arterial en tu servidor privado.'}
+              : 'Accede a tus datos de salud.'}
           </p>
         </div>
 

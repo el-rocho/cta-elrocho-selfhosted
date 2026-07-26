@@ -3,6 +3,7 @@ import type { AppSettings, BackupFrequency, PatientSex, LanguageOption } from '.
 import { Settings, X, ShieldAlert, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { calculateAge } from '../utils/pdfGenerator';
+import { FlagES, FlagGB } from './FlagIcons';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -119,17 +120,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 type="button"
                 className={`chip-select ${settings.language === 'es' ? 'active' : ''}`}
                 onClick={() => handleLanguageChange('es')}
-                style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                <span>🇪🇸</span> {t('settings.langSpanish')}
+                <FlagES size={18} /> {t('settings.langSpanish')}
               </button>
               <button
                 type="button"
                 className={`chip-select ${settings.language === 'en' ? 'active' : ''}`}
                 onClick={() => handleLanguageChange('en')}
-                style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{ padding: '6px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                <span>🇬🇧</span> {t('settings.langEnglish')}
+                <FlagGB size={18} /> {t('settings.langEnglish')}
               </button>
             </div>
           </div>

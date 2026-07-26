@@ -71,7 +71,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   }
 
   async function handleDeleteUser(user: AuthUser) {
-    if (confirm(`¿Seguro que deseas eliminar la cuenta del familiar "${user.name}"? Se borrarán todas sus mediciones.`)) {
+    if (confirm(`¿Seguro que deseas eliminar la cuenta del usuario "${user.name}"? Se borrarán todas sus mediciones.`)) {
       setLoading(true);
       const ok = await deleteUser(user.id);
       setLoading(false);
@@ -108,7 +108,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         <div className="modal-header">
           <div className="modal-title-row">
             <Users size={24} className="modal-header-icon" />
-            <h2>Gestión de Usuarios de la Familia</h2>
+            <h2>Gestión de Usuarios</h2>
           </div>
           <button type="button" className="btn-icon-close" onClick={onClose}>
             <X size={24} />
@@ -131,7 +131,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <p className="text-sm text-muted" style={{ margin: 0 }}>
-              Administra quién tiene acceso a este servidor familiar.
+              Administra quién tiene acceso al servidor.
             </p>
             <button
               type="button"
@@ -143,14 +143,14 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               style={{ fontSize: '13px', padding: '6px 12px' }}
             >
               <UserPlus size={16} />
-              <span>{showAddForm ? 'Cancelar' : 'Añadir Familiar'}</span>
+              <span>{showAddForm ? 'Cancelar' : 'Añadir Usuario'}</span>
             </button>
           </div>
 
-          {/* Formulario para añadir nuevo familiar */}
+          {/* Formulario para añadir nuevo usuario */}
           {showAddForm && (
             <form onSubmit={handleAddUserSubmit} className="add-user-card" style={{ background: 'var(--bg-input)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
-              <h4 style={{ margin: '0 0 12px 0' }}>Añadir Nuevo Familiar</h4>
+              <h4 style={{ margin: '0 0 12px 0' }}>Añadir Nuevo Usuario</h4>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 600 }}>Nombre Completo</label>
@@ -195,7 +195,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                     onChange={(e) => setNewRole(e.target.value as 'admin' | 'user')}
                     className="edit-input"
                   >
-                    <option value="user">Usuario Familiar</option>
+                    <option value="user">Usuario</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
@@ -207,7 +207,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                 </button>
                 <button type="submit" className="btn-primary-large" style={{ padding: '6px 14px' }} disabled={loading}>
                   <PlusCircle size={16} />
-                  <span>Guardar Familiar</span>
+                  <span>Guardar Usuario</span>
                 </button>
               </div>
             </form>
@@ -216,7 +216,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           {/* Formulario de reseteo de contraseña */}
           {resetUserId && (
             <form onSubmit={handleResetPasswordSubmit} className="reset-pwd-card" style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-              <h4 style={{ margin: '0 0 8px 0', color: '#ef4444' }}>Cambiar Contraseña de Familiar</h4>
+              <h4 style={{ margin: '0 0 8px 0', color: '#ef4444' }}>Cambiar Contraseña de Usuario</h4>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <input
                   type="password"
@@ -236,12 +236,12 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             </form>
           )}
 
-          {/* Lista de Usuarios de la Familia */}
+          {/* Lista de Usuarios */}
           <div className="users-list-table-container">
             <table className="expanded-readings-table" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th>Familiar / Usuario</th>
+                  <th>Usuario</th>
                   <th>Rol</th>
                   <th>2FA TOTP</th>
                   <th>Acciones</th>

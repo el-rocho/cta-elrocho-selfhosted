@@ -62,19 +62,13 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               <strong>{isEn ? '100% Private:' : '100% Privado:'}</strong>{' '}
               {isEn
-                ? 'All entered data (readings, patient profile, and notes) is stored and processed exclusively on the user device.'
-                : 'Todos los datos introducidos (lecturas, perfil del paciente y notas) se procesan y almacenan exclusivamente en el dispositivo del usuario.'}
-            </p>
-            <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              <strong>{isEn ? '100% Offline:' : '100% Offline:'}</strong>{' '}
-              {isEn
-                ? 'The app does not collect, transmit, or share data with external servers. It uses no cookies, analytics, or tracking.'
-                : 'La aplicación no recopila, transmite ni comparte datos con servidores externos. Tampoco utiliza cookies, servicios de análisis, publicidad ni herramientas de seguimiento.'}
+                ? 'All entered data (readings, patient profile, and notes) is processed and stored exclusively on the self-hosted private server. The application does not collect, transmit, or share data with third-party servers. It uses no cookies, analytics, advertising, or tracking tools.'
+                : 'Todos los datos introducidos (lecturas, perfil del paciente y notas) se procesan y almacenan exclusivamente en el servidor privado autoalojado. La aplicación no recopila, transmite ni comparte datos con servidores de terceros. Tampoco utiliza cookies, servicios de análisis, publicidad ni herramientas de seguimiento.'}
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               <strong>{isEn ? '100% Control:' : '100% Control:'}</strong>{' '}
               {isEn
-                ? 'The user can inspect, export, and erase data at any time. Exported files remain under user responsibility.'
+                ? 'The user can consult, export, and erase data at any time. Exported files remain under user control and responsibility.'
                 : 'El usuario puede consultar, exportar y eliminar sus datos en cualquier momento. Los archivos exportados quedan bajo su control y responsabilidad.'}
             </p>
             <p style={{ margin: '12px 0 0 0', fontStyle: 'italic', fontSize: '12px', lineHeight: '1.4' }}>
