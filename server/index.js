@@ -554,6 +554,77 @@ app.delete('/api/readings/all/confirm', requireAuth, async (req, res) => {
   }
 });
 
+app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
+  try {
+    const db = await getDB();
+    await db.run('DELETE FROM readings WHERE user_id = ?', [req.user.id]);
+
+    const nowMs = Date.now();
+    const demoItems = [
+      {
+        id: `demo-100-${req.user.id}`,
+        user_id: req.user.id,
+        timestamp: new Date(nowMs).toISOString(),
+        systolic: 120,
+        diastolic: 80,
+        heart_rate: 72,
+        arm: 'left',
+        notes: 'Medición habitual de control',
+        created_at: new Date(nowMs).toISOString(),
+      },
+      {
+        id: `demo-5-${req.user.id}`,
+        user_id: req.user.id,
+        timestamp: new Date(nowMs - 1000 * 60 * 60 * 24 * 1).toISOString(),
+        systolic: 124,
+        diastolic: 81,
+        heart_rate: 70,
+        arm: 'left',
+        notes: 'Mañana en ayunas',
+        created_at: new Date(nowMs - 1000 * 60 * 60 * 24 * 1).toISOString(),
+      },
+      {
+        id: `demo-4-${req.user.id}`,
+        user_id: req.user.id,
+        timestamp: new Date(nowMs - 1000 * 60 * 60 * 24 * 2).toISOString(),
+        systolic: 118,
+        diastolic: 78,
+        heart_rate: 69,
+        arm: 'left',
+        notes: 'Tras reposo',
+        created_at: new Date(nowMs - 1000 * 60 * 60 * 24 * 2).toISOString(),
+      },
+    ];
+
+    for (const item of demoItems) {
+      await db.run(
+        'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          item.id,
+          item.user_id,
+          item.timestamp,
+          item.systolic,
+          item.diastolic,
+          item.heart_rate,
+          item.arm,
+          item.notes,
+          item.created_at,
+        ]
+      );
+    }
+
+    const updatedRows = await db.all(
+      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
+      [req.user.id]
+    );
+
+    res.json(updatedRows);
+  } catch (error) {
+    console.error('Error al restaurar datos de demostración:', error);
+    res.status(500).json({ error: 'Error al restaurar datos demo' });
+  }
+});
+
 app.post('/api/readings/import', requireAuth, async (req, res) => {
   try {
     const importedItems = req.body;

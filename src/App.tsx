@@ -7,6 +7,7 @@ import {
   deleteReadingFromServer,
   deleteSessionFromServer,
   clearAllReadingsOnServer,
+  resetDemoDataOnServer,
   importReadingsToServer,
   fetchSettingsFromServer,
   saveSettingsToServer,
@@ -137,8 +138,8 @@ export function App() {
 
   const handleResetDemoData = async () => {
     if (window.confirm(getTranslation(settings.language, 'toast.resetDemoConfirm'))) {
-      await clearAllReadingsOnServer();
-      setReadings([]);
+      const demoReadings = await resetDemoDataOnServer();
+      setReadings(demoReadings);
       setIsSettingsModalOpen(false);
       setNotificationMsg(getTranslation(settings.language, 'toast.resetDemoSuccess'));
       setTimeout(() => setNotificationMsg(null), 4000);
