@@ -1,4 +1,4 @@
-import type { AuthStatusResponse, AuthUser } from '../types/bloodPressure';
+import type { AuthStatusResponse, AuthUser, PatientSex } from '../types/bloodPressure';
 
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = { ...extraHeaders };
@@ -29,7 +29,13 @@ export async function getAuthStatus(): Promise<AuthStatusResponse> {
   }
 }
 
-export async function setupAdmin(payload: { username: string; name: string; password: string }): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+export async function setupAdmin(payload: {
+  username: string;
+  name: string;
+  password: string;
+  sex?: PatientSex;
+  birthDate?: string;
+}): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
   try {
     const res = await fetch('/api/auth/setup-admin', {
       method: 'POST',
@@ -170,7 +176,14 @@ export async function listUsers(): Promise<AuthUser[]> {
   }
 }
 
-export async function createUser(payload: { username: string; name: string; password: string; role: 'admin' | 'user' }): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+export async function createUser(payload: {
+  username: string;
+  name: string;
+  password: string;
+  role: 'admin' | 'user';
+  sex?: PatientSex;
+  birthDate?: string;
+}): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
   try {
     const res = await fetch('/api/users', {
       method: 'POST',
@@ -214,4 +227,3 @@ export async function resetUserPassword(id: string, newPassword: string): Promis
     return { success: false, error: 'Error de conexión' };
   }
 }
-

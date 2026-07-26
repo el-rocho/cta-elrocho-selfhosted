@@ -159,6 +159,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div>
                 <label className="settings-desc" style={{ display: 'block', marginBottom: '4px' }}>
+                  {t('settings.patientSex')}
+                </label>
+                <select
+                  className="modal-input"
+                  value={settings.patientSex || ''}
+                  onChange={(e) => handlePatientSexChange(e.target.value as PatientSex)}
+                  style={{ padding: '8px 10px', fontSize: '13px', width: '100%' }}
+                >
+                  <option value="">{t('settings.patientSexSelect')}</option>
+                  <option value="masculino">{t('settings.sexMale')}</option>
+                  <option value="femenino">{t('settings.sexFemale')}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="settings-desc" style={{ display: 'block', marginBottom: '4px' }}>
                   {t('settings.birthDate')}
                 </label>
                 <input

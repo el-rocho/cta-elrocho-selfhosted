@@ -3,7 +3,7 @@
  */
 
 export type ArmPosition = 'left' | 'right';
-export type PatientSex = 'masculino' | 'femenino' | 'otro' | '';
+export type PatientSex = 'masculino' | 'femenino' | '';
 export type InputMode = 'keyboard' | 'wheel';
 
 export interface BloodPressureReading {
@@ -86,6 +86,8 @@ export interface AuthUser {
   username: string;
   name: string;
   role: UserRole;
+  sex?: PatientSex;
+  birth_date?: string;
   totp_enabled: boolean;
   created_at: string;
 }

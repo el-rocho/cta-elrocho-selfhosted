@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, X, UserPlus, Trash2, Key, Shield, ShieldCheck, AlertCircle, PlusCircle } from 'lucide-react';
-import type { AuthUser } from '../types/bloodPressure';
+import type { AuthUser, PatientSex } from '../types/bloodPressure';
 import { listUsers, createUser, deleteUser, resetUserPassword } from '../services/authService';
 
 interface UserManagementModalProps {
@@ -20,6 +20,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
   const [newName, setNewName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
+  const [newSex, setNewSex] = useState<PatientSex>('');
+  const [newBirthDate, setNewBirthDate] = useState('');
 
   const [resetUserId, setResetUserId] = useState<string | null>(null);
   const [resetPasswordVal, setResetPasswordVal] = useState('');
@@ -54,6 +56,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
       name: newName,
       password: newPassword,
       role: newRole,
+      sex: newSex,
+      birthDate: newBirthDate,
     });
     setLoading(false);
 
@@ -66,6 +70,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
     setNewUsername('');
     setNewName('');
     setNewPassword('');
+    setNewSex('');
+    setNewBirthDate('');
     setShowAddForm(false);
     loadUserList();
   }
@@ -172,6 +178,30 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
                     placeholder="Ej. carmen"
                     className="edit-input"
                     required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Género</label>
+                  <select
+                    value={newSex}
+                    onChange={(e) => setNewSex(e.target.value as PatientSex)}
+                    className="edit-input"
+                  >
+                    <option value="">Sin especificar</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="femenino">Femenino</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 600 }}>Fecha de Nacimiento</label>
+                  <input
+                    type="date"
+                    value={newBirthDate}
+                    onChange={(e) => setNewBirthDate(e.target.value)}
+                    className="edit-input"
                   />
                 </div>
               </div>

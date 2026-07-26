@@ -49,7 +49,7 @@ function setSessionCookie(res, req, sessionId) {
 // ENDPOINTS DE AUTENTICACIÓN
 // -----------------------------------------------------------------------------
 
-// Verificar estado del sistema (Si no hay usuarios, requiere registro de Admin inicial)
+// Verificar estado del sistema
 app.get('/api/auth/status', async (req, res) => {
   try {
     const db = await getDB();
@@ -79,7 +79,7 @@ app.post('/api/auth/setup-admin', async (req, res) => {
       return res.status(400).json({ error: 'El administrador inicial ya ha sido configurado.' });
     }
 
-    const { username, name, password } = req.body;
+    const { username, name, password, sex, birthDate } = req.body;
     if (!username || !password || !name) {
       return res.status(400).json({ error: 'Todos los campos (usuario, nombre, contraseña) son obligatorios.' });
     }
@@ -87,16 +87,18 @@ app.post('/api/auth/setup-admin', async (req, res) => {
     const userId = `usr-admin-${Date.now()}`;
     const passwordHash = await hashPassword(password);
     const now = new Date().toISOString();
+    const cleanSex = sex || '';
+    const cleanBirthDate = birthDate || '';
 
     await db.run(
-      'INSERT INTO users (id, username, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, username.trim().toLowerCase(), name.trim(), passwordHash, 'admin', now]
+      'INSERT INTO users (id, username, name, password_hash, role, sex, birth_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, username.trim().toLowerCase(), name.trim(), passwordHash, 'admin', cleanSex, cleanBirthDate, now]
     );
 
     // Ajustes iniciales
     await db.run(
-      'INSERT INTO settings (user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, 'es', 0, 5, 'left', 'keyboard']
+      'INSERT INTO settings (user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode, patient_name, patient_sex, patient_birth_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, 'es', 0, 5, 'left', 'keyboard', name.trim(), cleanSex, cleanBirthDate]
     );
 
     // Iniciar sesión automáticamente
@@ -104,7 +106,7 @@ app.post('/api/auth/setup-admin', async (req, res) => {
     setSessionCookie(res, req, sessionId);
 
     const user = await db.get(
-      'SELECT id, username, name, role, totp_enabled, created_at FROM users WHERE id = ?',
+      'SELECT id, username, name, role, sex, birth_date, totp_enabled, created_at FROM users WHERE id = ?',
       [userId]
     );
 
@@ -162,6 +164,8 @@ app.post('/api/auth/login', async (req, res) => {
         username: user.username,
         name: user.name,
         role: user.role,
+        sex: user.sex || '',
+        birth_date: user.birth_date || '',
         totp_enabled: Boolean(user.totp_enabled),
         created_at: user.created_at,
       },
@@ -172,7 +176,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Inicio de Sesión (Paso 2: Código TOTP de 6 dígitos o Código de Recuperación)
+// Inicio de Sesión (Paso 2: Código TOTP)
 app.post('/api/auth/login/totp', async (req, res) => {
   try {
     const { tempToken, code } = req.body;
@@ -196,14 +200,12 @@ app.post('/api/auth/login/totp', async (req, res) => {
     const cleanCode = String(code).trim();
     let isValidCode = verifyTotpToken(cleanCode, user.totp_secret);
 
-    // Verificar si es un código de recuperación de emergencia
     if (!isValidCode && user.recovery_codes_json) {
       try {
         const recoveryCodes = JSON.parse(user.recovery_codes_json);
         const codeIndex = recoveryCodes.findIndex((c) => c.toUpperCase() === cleanCode.toUpperCase());
         if (codeIndex !== -1) {
           isValidCode = true;
-          // Quemar/eliminar el código de recuperación usado
           recoveryCodes.splice(codeIndex, 1);
           await db.run('UPDATE users SET recovery_codes_json = ? WHERE id = ?', [
             JSON.stringify(recoveryCodes),
@@ -219,7 +221,6 @@ app.post('/api/auth/login/totp', async (req, res) => {
       return res.status(401).json({ error: 'Código de verificación o de recuperación no válido.' });
     }
 
-    // Éxito: Limpiar tempToken e iniciar sesión
     pendingTotpLogins.delete(tempToken);
     const { sessionId } = await createSession(user.id);
     setSessionCookie(res, req, sessionId);
@@ -232,6 +233,8 @@ app.post('/api/auth/login/totp', async (req, res) => {
         username: user.username,
         name: user.name,
         role: user.role,
+        sex: user.sex || '',
+        birth_date: user.birth_date || '',
         totp_enabled: Boolean(user.totp_enabled),
         created_at: user.created_at,
       },
@@ -261,15 +264,11 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 // ENDPOINTS DE CONFIGURACIÓN TOTP (2FA)
 // -----------------------------------------------------------------------------
 
-// Iniciar configuración 2FA (Generar QR)
 app.post('/api/auth/totp/setup', requireAuth, async (req, res) => {
   try {
     const { secret, qrCodeDataUrl } = await generateTotpSetup(req.user.username);
     const db = await getDB();
-
-    // Guardar secreto temporalmente hasta confirmación
     await db.run('UPDATE users SET totp_secret = ? WHERE id = ?', [secret, req.user.id]);
-
     res.json({ secret, qrCodeDataUrl });
   } catch (error) {
     console.error('Error al generar TOTP setup:', error);
@@ -277,7 +276,6 @@ app.post('/api/auth/totp/setup', requireAuth, async (req, res) => {
   }
 });
 
-// Confirmar y activar 2FA TOTP con código de 6 dígitos
 app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
   try {
     const { code } = req.body;
@@ -295,7 +293,6 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Código incorrecto. Verifica la hora de tu teléfono.' });
     }
 
-    // Generar 8 códigos de recuperación
     const recoveryCodes = generateRecoveryCodes(8);
 
     await db.run(
@@ -313,7 +310,6 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
   }
 });
 
-// Desactivar 2FA TOTP
 app.post('/api/auth/totp/disable', requireAuth, async (req, res) => {
   try {
     const db = await getDB();
@@ -336,7 +332,7 @@ app.get('/api/users', requireAdmin, async (req, res) => {
   try {
     const db = await getDB();
     const users = await db.all(
-      'SELECT id, username, name, role, totp_enabled, created_at FROM users ORDER BY created_at ASC'
+      'SELECT id, username, name, role, sex, birth_date, totp_enabled, created_at FROM users ORDER BY created_at ASC'
     );
     res.json(users);
   } catch (error) {
@@ -346,9 +342,9 @@ app.get('/api/users', requireAdmin, async (req, res) => {
 
 app.post('/api/users', requireAdmin, async (req, res) => {
   try {
-    const { username, name, password, role } = req.body;
+    const { username, name, password, role, sex, birthDate } = req.body;
     if (!username || !password || !name) {
-      return res.status(400).json({ error: 'Todos los campos son obligatorios.' });
+      return res.status(400).json({ error: 'Los campos usuario, nombre y contraseña son obligatorios.' });
     }
 
     const db = await getDB();
@@ -361,24 +357,27 @@ app.post('/api/users', requireAdmin, async (req, res) => {
     const passwordHash = await hashPassword(password);
     const userRole = role === 'admin' ? 'admin' : 'user';
     const now = new Date().toISOString();
+    const cleanSex = sex || '';
+    const cleanBirthDate = birthDate || '';
 
     await db.run(
-      'INSERT INTO users (id, username, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, username.trim().toLowerCase(), name.trim(), passwordHash, userRole, now]
+      'INSERT INTO users (id, username, name, password_hash, role, sex, birth_date, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, username.trim().toLowerCase(), name.trim(), passwordHash, userRole, cleanSex, cleanBirthDate, now]
     );
 
     await db.run(
-      'INSERT INTO settings (user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode) VALUES (?, ?, ?, ?, ?, ?)',
-      [userId, 'es', 0, 5, 'left', 'keyboard']
+      'INSERT INTO settings (user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode, patient_name, patient_sex, patient_birth_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, 'es', 0, 5, 'left', 'keyboard', name.trim(), cleanSex, cleanBirthDate]
     );
 
     const created = await db.get(
-      'SELECT id, username, name, role, totp_enabled, created_at FROM users WHERE id = ?',
+      'SELECT id, username, name, role, sex, birth_date, totp_enabled, created_at FROM users WHERE id = ?',
       [userId]
     );
 
     res.status(201).json(created);
   } catch (error) {
+    console.error('Error al crear usuario:', error);
     res.status(500).json({ error: 'Error al crear usuario' });
   }
 });
@@ -609,28 +608,20 @@ app.get('/api/settings', requireAuth, async (req, res) => {
   try {
     const db = await getDB();
     const row = await db.get('SELECT * FROM settings WHERE user_id = ?', [req.user.id]);
-    if (!row) {
-      return res.json({
-        language: 'es',
-        enableWhiteCoatFilter: false,
-        whiteCoatIntervalMinutes: 5,
-        defaultArm: 'left',
-        preferredInputMode: 'keyboard',
-      });
-    }
 
     res.json({
-      language: row.language || 'es',
-      enableWhiteCoatFilter: Boolean(row.enable_white_coat),
-      whiteCoatIntervalMinutes: row.white_coat_minutes || 5,
-      defaultArm: row.default_arm || 'left',
-      preferredInputMode: row.preferred_input_mode || 'keyboard',
-      patientName: row.patient_name || '',
-      patientSex: row.patient_sex || '',
-      patientAge: row.patient_age || '',
-      backupFrequency: row.backup_frequency || 'disabled',
-      backupFolder: row.backup_folder || 'Descargas/Copias_Tension_Arterial',
-      lastBackupTimestamp: row.last_backup_timestamp || undefined,
+      language: row?.language || 'es',
+      enableWhiteCoatFilter: Boolean(row?.enable_white_coat),
+      whiteCoatIntervalMinutes: row?.white_coat_minutes || 5,
+      defaultArm: row?.default_arm || 'left',
+      preferredInputMode: row?.preferred_input_mode || 'keyboard',
+      patientName: row?.patient_name || req.user.name || '',
+      patientSex: row?.patient_sex || req.user.sex || '',
+      patientAge: row?.patient_age || '',
+      patientBirthDate: row?.patient_birth_date || req.user.birth_date || '',
+      backupFrequency: row?.backup_frequency || 'disabled',
+      backupFolder: row?.backup_folder || 'Descargas/Copias_Tension_Arterial',
+      lastBackupTimestamp: row?.last_backup_timestamp || undefined,
     });
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener ajustes' });
@@ -645,8 +636,8 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     await db.run(
       `INSERT INTO settings (
         user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode,
-        patient_name, patient_sex, patient_age, backup_frequency, backup_folder, last_backup_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        patient_name, patient_sex, patient_age, patient_birth_date, backup_frequency, backup_folder, last_backup_timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         language = excluded.language,
         enable_white_coat = excluded.enable_white_coat,
@@ -656,6 +647,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         patient_name = excluded.patient_name,
         patient_sex = excluded.patient_sex,
         patient_age = excluded.patient_age,
+        patient_birth_date = excluded.patient_birth_date,
         backup_frequency = excluded.backup_frequency,
         backup_folder = excluded.backup_folder,
         last_backup_timestamp = excluded.last_backup_timestamp;`,
@@ -666,14 +658,23 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         s.whiteCoatIntervalMinutes || 5,
         s.defaultArm || 'left',
         s.preferredInputMode || 'keyboard',
-        s.patientName || '',
-        s.patientSex || '',
+        s.patientName || req.user.name || '',
+        s.patientSex || req.user.sex || '',
         s.patientAge || '',
+        s.patientBirthDate || req.user.birth_date || '',
         s.backupFrequency || 'disabled',
         s.backupFolder || 'Descargas/Copias_Tension_Arterial',
         s.lastBackupTimestamp || null,
       ]
     );
+
+    // Mantener sincronizada la tabla users si se cambia el nombre, género o fecha de nacimiento
+    if (s.patientName || s.patientSex || s.patientBirthDate) {
+      await db.run(
+        'UPDATE users SET name = COALESCE(?, name), sex = COALESCE(?, sex), birth_date = COALESCE(?, birth_date) WHERE id = ?',
+        [s.patientName || null, s.patientSex || null, s.patientBirthDate || null, req.user.id]
+      );
+    }
 
     res.json({ success: true, settings: s });
   } catch (error) {

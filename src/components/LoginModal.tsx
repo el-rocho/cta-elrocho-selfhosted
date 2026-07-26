@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserCheck, Key, Lock, AlertCircle, LogIn, Sparkles } from 'lucide-react';
-import type { AuthUser } from '../types/bloodPressure';
+import { ShieldCheck, UserCheck, Key, Lock, AlertCircle, LogIn, Sparkles, Calendar, User } from 'lucide-react';
+import type { AuthUser, PatientSex } from '../types/bloodPressure';
 import { login, setupAdmin, verifyLoginTotp } from '../services/authService';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -20,6 +20,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [sex, setSex] = useState<PatientSex>('');
+  const [birthDate, setBirthDate] = useState('');
+
   const [totpCode, setTotpCode] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,7 +39,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess
     try {
       if (isInitialSetup) {
         // Registro del primer Administrador
-        const res = await setupAdmin({ username, name, password });
+        const res = await setupAdmin({ username, name, password, sex, birthDate });
         if (!res.success || !res.user) {
           setErrorMsg(res.error || 'Error al configurar administrador inicial');
           setLoading(false);
@@ -114,20 +117,52 @@ export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess
 
         <form onSubmit={handleLoginSubmit} className="auth-form">
           {isInitialSetup && (
-            <div className="edit-field-group">
-              <label htmlFor="setup-name">
-                <UserCheck size={16} /> Nombre Completo
-              </label>
-              <input
-                id="setup-name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej. Javier / Mamá / Papá"
-                className="edit-input"
-                required
-              />
-            </div>
+            <>
+              <div className="edit-field-group">
+                <label htmlFor="setup-name">
+                  <UserCheck size={16} /> Nombre Completo
+                </label>
+                <input
+                  id="setup-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ej. Javier / Mamá / Papá"
+                  className="edit-input"
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="edit-field-group">
+                  <label htmlFor="setup-sex">
+                    <User size={16} /> Género
+                  </label>
+                  <select
+                    id="setup-sex"
+                    value={sex}
+                    onChange={(e) => setSex(e.target.value as PatientSex)}
+                    className="edit-input"
+                  >
+                    <option value="">Sin especificar</option>
+                    <option value="masculino">Masculino</option>
+                    <option value="femenino">Femenino</option>
+                  </select>
+                </div>
+                <div className="edit-field-group">
+                  <label htmlFor="setup-birthdate">
+                    <Calendar size={16} /> Fecha Nacimiento
+                  </label>
+                  <input
+                    id="setup-birthdate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className="edit-input"
+                  />
+                </div>
+              </div>
+            </>
           )}
 
           {!step2FA ? (

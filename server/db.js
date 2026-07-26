@@ -57,6 +57,8 @@ async function initSchema(db) {
       name TEXT NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user', -- 'admin' | 'user'
+      sex TEXT,
+      birth_date TEXT,
       pin_code TEXT,
       totp_secret TEXT,
       totp_enabled INTEGER NOT NULL DEFAULT 0,
@@ -64,6 +66,18 @@ async function initSchema(db) {
       created_at TEXT NOT NULL
     );
   `);
+
+  // Migraciones seguras para columnas añadidas
+  try {
+    await db.exec('ALTER TABLE users ADD COLUMN sex TEXT;');
+  } catch (e) {
+    // La columna ya existe
+  }
+  try {
+    await db.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;');
+  } catch (e) {
+    // La columna ya existe
+  }
 
   // Tabla de Sesiones de Inicio de Sesión
   await db.exec(`
@@ -104,12 +118,19 @@ async function initSchema(db) {
       patient_name TEXT,
       patient_sex TEXT,
       patient_age TEXT,
+      patient_birth_date TEXT,
       backup_frequency TEXT DEFAULT 'disabled',
       backup_folder TEXT DEFAULT 'Descargas/Copias_Tension_Arterial',
       last_backup_timestamp TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  try {
+    await db.exec('ALTER TABLE settings ADD COLUMN patient_birth_date TEXT;');
+  } catch (e) {
+    // La columna ya existe
+  }
 
   console.log('✓ Base de datos SQLite y tablas inicializadas correctamente en:', DB_PATH);
 }

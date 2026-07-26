@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { BloodPressureSession, DateFilterPreset, DateRange, BloodPressureReading, AppSettings, ExportReportOptions } from '../types/bloodPressure';
+import type { BloodPressureSession, DateFilterPreset, DateRange, BloodPressureReading, AppSettings, ExportReportOptions, AuthUser } from '../types/bloodPressure';
 import { exportToCSV } from '../utils/exportCsv';
-import { downloadPDFReport } from '../utils/pdfGenerator';
+import { downloadPDFReport, calculateAge } from '../utils/pdfGenerator';
 import { parseCSVData } from '../utils/importCsv';
 import { FileSpreadsheet, Printer, X, Calendar, User, Upload, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -19,6 +19,7 @@ interface ExportModalProps {
   onClose: () => void;
   sessions: BloodPressureSession[];
   settings: AppSettings;
+  currentUser?: AuthUser | null;
   onImportReadings: (readings: Omit<BloodPressureReading, 'id'>[]) => void;
   onNotify?: (toast: string | ToastNotification) => void;
 }
@@ -28,6 +29,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   sessions,
   settings,
+  currentUser,
   onImportReadings,
   onNotify,
 }) => {
@@ -46,14 +48,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     preset,
   });
 
-  const getExportOptions = (): ExportReportOptions => ({
-    patientName: settings.patientName,
-    patientSex: settings.patientSex,
-    patientAge: settings.patientAge,
-    patientBirthDate: settings.patientBirthDate,
-    reportNotes: reportNotes.trim() ? reportNotes.trim() : undefined,
-    hidePatientData,
-  });
+  const getExportOptions = (): ExportReportOptions => {
+    const nameVal = currentUser?.name || settings.patientName;
+    const sexVal = currentUser?.sex || settings.patientSex;
+    const birthDateVal = currentUser?.birth_date || settings.patientBirthDate;
+    const ageVal = birthDateVal ? calculateAge(birthDateVal) : (settings.patientAge || '');
+
+    return {
+      patientName: nameVal,
+      patientSex: sexVal,
+      patientAge: ageVal,
+      patientBirthDate: birthDateVal,
+      reportNotes: reportNotes.trim() ? reportNotes.trim() : undefined,
+      hidePatientData,
+    };
+  };
 
   const handleExportCSV = () => {
     exportToCSV(sessions, getCurrentRange(), 'tension_arterial', getExportOptions(), language);
@@ -118,6 +127,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     reader.readAsText(file, 'UTF-8');
   };
 
+  const currentOpts = getExportOptions();
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -157,15 +168,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <div className="field-label" style={{ margin: 0 }}>
                   <User size={20} className="export-field-icon" />
                   <span>
-                    {language === 'en' ? 'Patient: ' : 'Paciente: '}
-                    <span style={{ fontWeight: 400 }}>
-                      {settings.patientName || (language === 'en' ? 'Unnamed' : 'Sin nombre')}
+                    {language === 'en' ? 'Patient Profile: ' : 'Paciente (Perfil): '}
+                    <span style={{ fontWeight: 600 }}>
+                      {currentOpts.patientName || (language === 'en' ? 'Unnamed' : 'Sin nombre')}
                     </span>
+                    {currentOpts.patientSex ? ` (${currentOpts.patientSex})` : ''}
                   </span>
                 </div>
 
                 {/* Interruptor para Ocultar datos del paciente */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                <label style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                   <input
                     type="checkbox"
                     checked={hidePatientData}

@@ -50,7 +50,7 @@ export async function getUserBySession(sessionId) {
   }
 
   const user = await db.get(
-    'SELECT id, username, name, role, totp_enabled, created_at FROM users WHERE id = ?',
+    'SELECT id, username, name, role, sex, birth_date, totp_enabled, created_at FROM users WHERE id = ?',
     [session.user_id]
   );
 
