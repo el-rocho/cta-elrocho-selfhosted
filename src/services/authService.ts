@@ -102,15 +102,17 @@ export async function verifyLoginTotp(payload: { tempToken: string; code: string
 }
 
 export async function logout(): Promise<void> {
+  const headers = getAuthHeaders();
   try {
-    localStorage.removeItem('cta_session_token');
     await fetch('/api/auth/logout', {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers,
       credentials: 'include',
     });
   } catch (err) {
     console.error('Error al cerrar sesión:', err);
+  } finally {
+    localStorage.removeItem('cta_session_token');
   }
 }
 

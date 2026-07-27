@@ -61,6 +61,7 @@ async function initSchema(db) {
       birth_date TEXT,
       pin_code TEXT,
       totp_secret TEXT,
+      totp_pending_secret TEXT,
       totp_enabled INTEGER NOT NULL DEFAULT 0,
       recovery_codes_json TEXT,
       created_at TEXT NOT NULL
@@ -75,6 +76,11 @@ async function initSchema(db) {
   }
   try {
     await db.exec('ALTER TABLE users ADD COLUMN birth_date TEXT;');
+  } catch (e) {
+    // La columna ya existe
+  }
+  try {
+    await db.exec('ALTER TABLE users ADD COLUMN totp_pending_secret TEXT;');
   } catch (e) {
     // La columna ya existe
   }

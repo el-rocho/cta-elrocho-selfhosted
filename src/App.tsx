@@ -343,6 +343,7 @@ export function App() {
             setIsSettingsModalOpen(false);
             setIsTotpModalOpen(true);
           }}
+          isTotpEnabled={Boolean(currentUser?.totp_enabled)}
         />
 
         <TotpSetupModal

@@ -11,6 +11,7 @@ import {
   comparePassword,
   createSession,
   destroySession,
+  getSessionId,
   getUserBySession,
   requireAuth,
   requireAdmin,
@@ -56,7 +57,7 @@ app.get('/api/auth/status', async (req, res) => {
     const countRes = await db.get('SELECT COUNT(*) as count FROM users');
     const userCount = countRes ? countRes.count : 0;
 
-    const sessionId = req.cookies?.[SESSION_COOKIE_NAME];
+    const sessionId = getSessionId(req);
     const user = await getUserBySession(sessionId);
 
     res.json({
@@ -247,7 +248,7 @@ app.post('/api/auth/login/totp', async (req, res) => {
 
 // Cerrar Sesión
 app.post('/api/auth/logout', async (req, res) => {
-  const sessionId = req.cookies?.[SESSION_COOKIE_NAME];
+  const sessionId = getSessionId(req);
   if (sessionId) {
     await destroySession(sessionId);
   }
@@ -268,7 +269,9 @@ app.post('/api/auth/totp/setup', requireAuth, async (req, res) => {
   try {
     const { secret, qrCodeDataUrl } = await generateTotpSetup(req.user.username);
     const db = await getDB();
-    await db.run('UPDATE users SET totp_secret = ? WHERE id = ?', [secret, req.user.id]);
+    // Conservar el secreto activo hasta que el usuario valide el nuevo.
+    // Así, cancelar una reconfiguración no bloquea el siguiente inicio de sesión.
+    await db.run('UPDATE users SET totp_pending_secret = ? WHERE id = ?', [secret, req.user.id]);
     res.json({ secret, qrCodeDataUrl });
   } catch (error) {
     console.error('Error al generar TOTP setup:', error);
@@ -282,13 +285,13 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
     if (!code) return res.status(400).json({ error: 'Introduce el código de 6 dígitos.' });
 
     const db = await getDB();
-    const user = await db.get('SELECT totp_secret FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT totp_pending_secret FROM users WHERE id = ?', [req.user.id]);
 
-    if (!user || !user.totp_secret) {
+    if (!user || !user.totp_pending_secret) {
       return res.status(400).json({ error: 'Inicia la configuración de 2FA primero.' });
     }
 
-    const isValid = verifyTotpToken(code, user.totp_secret);
+    const isValid = verifyTotpToken(code, user.totp_pending_secret);
     if (!isValid) {
       return res.status(400).json({ error: 'Código incorrecto. Verifica la hora de tu teléfono.' });
     }
@@ -296,8 +299,8 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
     const recoveryCodes = generateRecoveryCodes(8);
 
     await db.run(
-      'UPDATE users SET totp_enabled = 1, recovery_codes_json = ? WHERE id = ?',
-      [JSON.stringify(recoveryCodes), req.user.id]
+      'UPDATE users SET totp_secret = ?, totp_pending_secret = NULL, totp_enabled = 1, recovery_codes_json = ? WHERE id = ?',
+      [user.totp_pending_secret, JSON.stringify(recoveryCodes), req.user.id]
     );
 
     res.json({
@@ -314,7 +317,7 @@ app.post('/api/auth/totp/disable', requireAuth, async (req, res) => {
   try {
     const db = await getDB();
     await db.run(
-      'UPDATE users SET totp_enabled = 0, totp_secret = NULL, recovery_codes_json = NULL WHERE id = ?',
+      'UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_pending_secret = NULL, recovery_codes_json = NULL WHERE id = ?',
       [req.user.id]
     );
     res.json({ success: true });

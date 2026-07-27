@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AppSettings, BackupFrequency, PatientSex, LanguageOption } from '../types/bloodPressure';
-import { Settings, X, ShieldAlert, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe } from 'lucide-react';
+import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { calculateAge } from '../utils/pdfGenerator';
 import { FlagES, FlagGB } from './FlagIcons';
@@ -14,6 +14,7 @@ interface SettingsModalProps {
   onClearAllData: () => void;
   onTriggerManualBackup: () => void;
   onOpenTotpModal?: () => void;
+  isTotpEnabled?: boolean;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -25,6 +26,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClearAllData,
   onTriggerManualBackup,
   onOpenTotpModal,
+  isTotpEnabled = false,
 }) => {
   const { t } = useLanguage();
 
@@ -359,11 +361,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {onOpenTotpModal && (
             <div className="settings-section border-top">
               <div className="field-label">
-                <ShieldAlert size={22} className="text-blue settings-field-icon" />
+                {isTotpEnabled
+                  ? <ShieldCheck size={22} className="text-green settings-field-icon" />
+                  : <ShieldAlert size={22} className="text-blue settings-field-icon" />}
                 <span>Seguridad de la Cuenta</span>
               </div>
               <p className="settings-desc" style={{ marginBottom: '10px' }}>
-                Protege tu acceso con verificación en dos pasos (Google Authenticator, Aegis, Authy, etc.).
+                {isTotpEnabled
+                  ? 'La autenticación en dos pasos está activa. Puedes desactivarla o vincular una nueva aplicación de autenticación.'
+                  : 'Protege tu acceso con verificación en dos pasos (Google Authenticator, Aegis, Authy, etc.).'}
               </p>
               <button
                 type="button"
@@ -371,8 +377,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={onOpenTotpModal}
                 style={{ width: '100%', justifyContent: 'center', padding: '10px', fontSize: '13px' }}
               >
-                <ShieldAlert size={18} />
-                <span>Configurar 2FA (TOTP)</span>
+                {isTotpEnabled ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
+                <span>{isTotpEnabled ? 'Administrar 2FA (activo)' : 'Configurar 2FA (TOTP)'}</span>
               </button>
             </div>
           )}

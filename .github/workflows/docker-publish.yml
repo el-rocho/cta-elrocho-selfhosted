@@ -37,6 +37,12 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
+          labels: |
+            org.opencontainers.image.title=Control Tensión Arterial Selfhosted
+            org.opencontainers.image.description=Servidor privado multiusuario para registrar y gestionar datos de tensión arterial
+            org.opencontainers.image.source=https://github.com/el-rocho/cta-elrocho-selfhosted
+            org.opencontainers.image.documentation=https://github.com/el-rocho/cta-elrocho-selfhosted#readme
+            org.opencontainers.image.licenses=MIT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

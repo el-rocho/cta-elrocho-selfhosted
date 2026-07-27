@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/logo-day.png" alt="Logo Control Tensión Arterial - Modo Día" width="160" height="160" />
+  <img src="public/logo-day.png" alt="Logo Control Tensión Arterial Selfhosted" width="160" height="160" />
 </p>
 
 # Control Tensión Arterial (Autoalojada Multi-usuario) 🩺🐳

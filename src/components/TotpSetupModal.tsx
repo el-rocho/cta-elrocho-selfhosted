@@ -22,6 +22,7 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isReconfiguring, setIsReconfiguring] = useState(false);
 
   useEffect(() => {
     if (isOpen && !isTotpEnabled && !recoveryCodes) {
@@ -34,6 +35,9 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
   async function loadSetup() {
     setLoading(true);
     setErrorMsg(null);
+    setQrCodeDataUrl(null);
+    setSecret(null);
+    setVerifyCode('');
     const data = await setupTotp();
     if (data && data.qrCodeDataUrl && data.secret) {
       setQrCodeDataUrl(data.qrCodeDataUrl);
@@ -42,6 +46,21 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
       setErrorMsg(data?.error || 'No se pudo generar la clave 2FA. Revisa la conexión con el servidor.');
     }
     setLoading(false);
+  }
+
+  function resetModalState() {
+    setQrCodeDataUrl(null);
+    setSecret(null);
+    setVerifyCode('');
+    setRecoveryCodes(null);
+    setErrorMsg(null);
+    setCopied(false);
+    setIsReconfiguring(false);
+  }
+
+  function handleClose() {
+    resetModalState();
+    onClose();
   }
 
   async function handleVerifySubmit(e: React.FormEvent) {
@@ -73,9 +92,23 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
       setLoading(false);
       if (ok) {
         onTotpStatusChanged(false);
-        onClose();
+        handleClose();
+      } else {
+        setErrorMsg('No se pudo desactivar 2FA. Inténtalo de nuevo.');
       }
     }
+  }
+
+  async function handleReconfigure2FA() {
+    const confirmed = confirm(
+      'Se generará una nueva clave y nuevos códigos de recuperación. '
+      + 'Tu configuración 2FA actual seguirá funcionando hasta que confirmes el nuevo código. ¿Deseas continuar?'
+    );
+    if (!confirmed) return;
+
+    setRecoveryCodes(null);
+    setIsReconfiguring(true);
+    await loadSetup();
   }
 
   function copyToClipboardFallback(text: string) {
@@ -109,20 +142,20 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-content totp-setup-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-row">
             <ShieldCheck size={24} className="modal-header-icon" />
             <h2>Autenticación en Dos Pasos (2FA TOTP)</h2>
           </div>
-          <button type="button" className="btn-icon-close" onClick={onClose}>
+          <button type="button" className="btn-icon-close" onClick={handleClose}>
             <X size={24} />
           </button>
         </div>
 
         <div className="modal-body totp-modal-body">
-          {isTotpEnabled && !recoveryCodes ? (
+          {isTotpEnabled && !isReconfiguring && !recoveryCodes ? (
             <div className="totp-status-active">
               <div className="active-badge-card">
                 <ShieldCheck size={48} style={{ color: '#10b981' }} />
@@ -130,9 +163,20 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
                 <p>Tu cuenta está protegida con verificación en dos pasos mediante aplicación de autenticación.</p>
               </div>
 
-              <div className="modal-actions-row" style={{ marginTop: '24px' }}>
-                <button type="button" className="btn-secondary-large" onClick={onClose}>
+              {errorMsg && (
+                <div className="form-error-banner" style={{ marginTop: '12px' }}>
+                  <AlertCircle size={18} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              <div className="modal-actions-row" style={{ marginTop: '24px', flexWrap: 'wrap' }}>
+                <button type="button" className="btn-secondary-large" onClick={handleClose}>
                   <span>Cerrar</span>
+                </button>
+                <button type="button" className="btn-secondary-large" onClick={handleReconfigure2FA} disabled={loading}>
+                  <RefreshCw size={18} />
+                  <span>Reconfigurar 2FA</span>
                 </button>
                 <button type="button" className="btn-danger-large" onClick={handleDisable2FA} disabled={loading}>
                   <span>Desactivar 2FA</span>
@@ -164,7 +208,7 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
                   {copied ? <Check size={18} /> : <Copy size={18} />}
                   <span>{copied ? '¡Copiados!' : 'Copiar Códigos'}</span>
                 </button>
-                <button type="button" className="btn-primary-large" onClick={onClose}>
+                <button type="button" className="btn-primary-large" onClick={handleClose}>
                   <span>Finalizar</span>
                 </button>
               </div>
@@ -172,7 +216,9 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
           ) : (
             <form onSubmit={handleVerifySubmit} className="totp-setup-form">
               <p className="text-sm text-muted">
-                Escanea el código QR con tu aplicación de autenticación (Google Authenticator, Aegis, Authy, Bitwarden, etc.) e introduce el código de 6 dígitos que aparezca.
+                {isReconfiguring
+                  ? 'Escanea el nuevo código QR e introduce su código de 6 dígitos. El 2FA anterior seguirá activo hasta completar este paso.'
+                  : 'Escanea el código QR con tu aplicación de autenticación (Google Authenticator, Aegis, Authy, Bitwarden, etc.) e introduce el código de 6 dígitos que aparezca.'}
               </p>
 
               {errorMsg && (
@@ -219,12 +265,12 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
                   </div>
 
                   <div className="modal-actions-row">
-                    <button type="button" className="btn-secondary-large" onClick={onClose}>
+                    <button type="button" className="btn-secondary-large" onClick={handleClose}>
                       <span>Cancelar</span>
                     </button>
                     <button type="submit" className="btn-primary-large" disabled={loading}>
                       <ShieldCheck size={20} />
-                      <span>Activar 2FA</span>
+                      <span>{isReconfiguring ? 'Confirmar nuevo 2FA' : 'Activar 2FA'}</span>
                     </button>
                   </div>
                 </>

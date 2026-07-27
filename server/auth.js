@@ -57,9 +57,23 @@ export async function getUserBySession(sessionId) {
   return user || null;
 }
 
+// Obtener el token enviado explícitamente por clientes nativos o, como
+// alternativa para navegador/PWA, el almacenado en la cookie HttpOnly.
+export function getSessionId(req) {
+  const headerToken = req.headers?.['x-session-token'];
+  if (typeof headerToken === 'string' && headerToken.trim()) {
+    return headerToken.trim();
+  }
+
+  const cookieToken = req.cookies?.[SESSION_COOKIE_NAME];
+  return typeof cookieToken === 'string' && cookieToken.trim()
+    ? cookieToken.trim()
+    : undefined;
+}
+
 // Middleware para proteger rutas de la API
 export async function requireAuth(req, res, next) {
-  const sessionId = req.cookies?.[SESSION_COOKIE_NAME] || req.headers['x-session-token'];
+  const sessionId = getSessionId(req);
   const user = await getUserBySession(sessionId);
 
   if (!user) {

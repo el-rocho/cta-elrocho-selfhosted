@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ShieldCheck, UserCheck, Key, Lock, AlertCircle, LogIn, Sparkles, Calendar, User } from 'lucide-react';
+import { UserCheck, Key, Lock, AlertCircle, LogIn, Sparkles, Calendar, User } from 'lucide-react';
 import type { AuthUser, PatientSex } from '../types/bloodPressure';
 import { login, setupAdmin, verifyLoginTotp } from '../services/authService';
 import { useLanguage } from '../i18n/LanguageContext';
+import { AppLogo } from './AppLogo';
 
 interface LoginModalProps {
   hasAdmin: boolean;
@@ -90,7 +91,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess
       <div className="modal-content auth-modal-card">
         <div className="auth-header">
           <div className="auth-logo-badge">
-            <ShieldCheck size={32} className="auth-icon" />
+            <AppLogo className="auth-app-logo" />
           </div>
           <h2>
             {isInitialSetup
