@@ -56,6 +56,7 @@
   --accent-dia: #3b82f6;
   --accent-pulse: var(--text-secondary);
   --logo-color: #1f2937;
+  --logo-bg: #faf6f0;
 
   --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
   --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
@@ -79,6 +80,7 @@
   --text-secondary: #cbd5e1;
   --text-muted: #64748b;
   --logo-color: #e5e7eb;
+  --logo-bg: #121a2b;
 
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
@@ -276,7 +278,7 @@ body {
   box-sizing: border-box;
   padding: 4px;
   border-radius: 14px;
-  background: #faf6f0;
+  background: var(--logo-bg);
   flex-shrink: 0;
   box-shadow: inset 0 0 0 1px rgba(31, 41, 55, 0.08);
 }
@@ -286,6 +288,7 @@ body {
   height: 100%;
   object-fit: contain;
   display: block;
+  color: var(--logo-color);
 }
 
 .brand-logo-img > svg {
@@ -1470,6 +1473,36 @@ body {
   color: var(--text-muted);
 }
 
+.patient-profile-desc {
+  margin: 4px 0 0;
+}
+
+.patient-profile-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.patient-profile-field .settings-desc {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.patient-profile-input {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.patient-sex-options {
+  margin-top: 0;
+}
+
+.patient-sex-options .chip-select {
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
 /* Switch Estilo iOS / Material */
 .toggle-switch {
   position: relative;
@@ -2322,7 +2355,7 @@ input:checked + .toggle-slider:before {
   border-radius: 18px;
   box-sizing: border-box;
   padding: 5px;
-  background: #faf6f0;
+  background: var(--logo-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2334,6 +2367,10 @@ input:checked + .toggle-slider:before {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.auth-app-logo {
+  color: var(--logo-color);
 }
 
 .auth-header h2 {

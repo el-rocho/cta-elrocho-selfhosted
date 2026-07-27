@@ -1,9 +1,10 @@
-const CACHE_NAME = 'control-tension-v1.5.5';
+const CACHE_NAME = 'control-tension-v1.5.6';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
   './favicon.svg',
+  './favicon-dark.svg',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-512.png',

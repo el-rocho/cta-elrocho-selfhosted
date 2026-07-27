@@ -9,6 +9,8 @@ interface AppLogoProps {
 const logoMarkup = logoSvgRaw
   .replace(/<\?xml[^>]*\?>/i, '')
   .replace(/<!DOCTYPE[^>]*>/i, '')
+  .replace(/stroke:#0a1510/gi, 'stroke:currentColor')
+  .replace(/stroke:#000(?:000)?/gi, 'stroke:currentColor')
   .replace('<svg ', '<svg aria-hidden="true" focusable="false" ')
   .trim();
 

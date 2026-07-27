@@ -143,10 +143,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <User size={22} className="text-blue settings-field-icon" />
               <span>{t('settings.patientProfile')}</span>
             </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-              <div>
-                <label className="settings-desc" style={{ display: 'block', marginBottom: '4px' }}>
+            <p className="settings-desc patient-profile-desc">{t('settings.patientProfileDesc')}</p>
+
+            <div className="patient-profile-fields">
+              <div className="patient-profile-field">
+                <label className="settings-desc">
                   {t('settings.fullName')}
                 </label>
                 <input
@@ -154,47 +155,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   value={settings.patientName || ''}
                   onChange={(e) => handlePatientNameChange(e.target.value)}
                   placeholder={t('settings.fullNamePlaceholder')}
-                  className="modal-input"
-                  style={{ padding: '8px 10px', fontSize: '13px' }}
+                  className="modal-input patient-profile-input"
                 />
               </div>
 
-              <div>
-                <label className="settings-desc" style={{ display: 'block', marginBottom: '4px' }}>
-                  {t('settings.patientSex')}
-                </label>
-                <select
-                  className="modal-input"
-                  value={settings.patientSex || ''}
-                  onChange={(e) => handlePatientSexChange(e.target.value as PatientSex)}
-                  style={{ padding: '8px 10px', fontSize: '13px', width: '100%' }}
-                >
-                  <option value="">{t('settings.patientSexSelect')}</option>
-                  <option value="masculino">{t('settings.sexMale')}</option>
-                  <option value="femenino">{t('settings.sexFemale')}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="settings-desc" style={{ display: 'block', marginBottom: '4px' }}>
+              <div className="patient-profile-field">
+                <label className="settings-desc">
                   {t('settings.birthDate')}
                 </label>
                 <input
                   type="date"
                   value={settings.patientBirthDate || ''}
                   onChange={(e) => handlePatientBirthDateChange(e.target.value)}
-                  className="modal-input"
-                  style={{ padding: '6px 10px', fontSize: '13px' }}
+                  className="modal-input patient-profile-input"
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                <div className="chip-options-row">
+              <div className="patient-profile-field">
+                <label className="settings-desc">{t('settings.sexLabel')}</label>
+                <div className="chip-options-row patient-sex-options">
                   <button
                     type="button"
                     className={`chip-select ${settings.patientSex === 'masculino' ? 'active' : ''}`}
                     onClick={() => handlePatientSexChange('masculino')}
-                    style={{ padding: '6px 14px', fontSize: '12px' }}
                   >
                     {t('settings.sexMale')}
                   </button>
@@ -202,7 +185,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="button"
                     className={`chip-select ${settings.patientSex === 'femenino' ? 'active' : ''}`}
                     onClick={() => handlePatientSexChange('femenino')}
-                    style={{ padding: '6px 14px', fontSize: '12px' }}
                   >
                     {t('settings.sexFemale')}
                   </button>
