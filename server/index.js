@@ -34,6 +34,60 @@ app.use(express.json({ limit: '10mb' }));
 // Tokens temporales para flujo 2FA durante el login (validez 5 minutos)
 const pendingTotpLogins = new Map();
 
+function validateReadingInput(input, requirePulsePressureConfirmation = true) {
+  const systolic = Number(input.systolic);
+  const diastolic = Number(input.diastolic);
+  const heartRate = Number(input.heartRate);
+
+  if (
+    !Number.isInteger(systolic) ||
+    !Number.isInteger(diastolic) ||
+    !Number.isInteger(heartRate) ||
+    systolic < 50 ||
+    systolic > 260 ||
+    diastolic < 30 ||
+    diastolic > 160 ||
+    heartRate < 30 ||
+    heartRate > 220
+  ) {
+    return { error: 'Valores fuera de los límites admitidos.' };
+  }
+  if (diastolic >= systolic) {
+    return { error: 'La presión diastólica debe ser menor que la sistólica.' };
+  }
+
+  const pulsePressure = systolic - diastolic;
+  const pulsePressureWarningConfirmed = input.pulsePressureWarningConfirmed === true;
+  if (
+    requirePulsePressureConfirmation &&
+    (pulsePressure < 25 || pulsePressure > 60) &&
+    !pulsePressureWarningConfirmed
+  ) {
+    return {
+      error: 'Confirma la revisión del manguito antes de guardar esta presión de pulso.',
+      code: 'PULSE_PRESSURE_CONFIRMATION_REQUIRED',
+    };
+  }
+
+  return { systolic, diastolic, heartRate, pulsePressureWarningConfirmed };
+}
+
+function serializeReadingRow(row) {
+  return {
+    ...row,
+    pulsePressureWarningConfirmed: Boolean(row.pulsePressureWarningConfirmed),
+    takesAntihypertensiveMedication: Boolean(row.takesAntihypertensiveMedication),
+  };
+}
+
+async function getCurrentMedicationContext(db, userId) {
+  const row = await db.get(
+    'SELECT takes_antihypertensive_medication FROM settings WHERE user_id = ?',
+    [userId]
+  );
+  return Boolean(row?.takes_antihypertensive_medication);
+}
+
 // Helper para guardar cookie de sesión
 function setSessionCookie(res, req, sessionId) {
   const isHttps = req ? (req.secure || req.headers['x-forwarded-proto'] === 'https') : false;
@@ -426,10 +480,10 @@ app.get('/api/readings', requireAuth, async (req, res) => {
   try {
     const db = await getDB();
     const rows = await db.all(
-      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
+      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes, pulse_pressure_confirmed as pulsePressureWarningConfirmed, takes_antihypertensive_medication as takesAntihypertensiveMedication FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
       [req.user.id]
     );
-    res.json(rows);
+    res.json(rows.map(serializeReadingRow));
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener mediciones' });
   }
@@ -437,26 +491,31 @@ app.get('/api/readings', requireAuth, async (req, res) => {
 
 app.post('/api/readings', requireAuth, async (req, res) => {
   try {
-    const { systolic, diastolic, heartRate, arm, notes } = req.body;
-    if (!systolic || !diastolic || !heartRate) {
-      return res.status(400).json({ error: 'Faltan parámetros obligatorios' });
-    }
+    const { arm, notes } = req.body;
+    const validation = validateReadingInput(req.body);
+    if (validation.error) return res.status(validation.code ? 409 : 400).json(validation);
 
     const db = await getDB();
+    const takesAntihypertensiveMedication =
+      typeof req.body.takesAntihypertensiveMedication === 'boolean'
+        ? req.body.takesAntihypertensiveMedication
+        : await getCurrentMedicationContext(db, req.user.id);
     const newReading = {
       id: `bp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       user_id: req.user.id,
       timestamp: new Date().toISOString(),
-      systolic: Number(systolic),
-      diastolic: Number(diastolic),
-      heartRate: Number(heartRate),
+      systolic: validation.systolic,
+      diastolic: validation.diastolic,
+      heartRate: validation.heartRate,
       arm: arm || 'left',
       notes: notes ? String(notes).trim() : null,
+      pulsePressureWarningConfirmed: validation.pulsePressureWarningConfirmed,
+      takesAntihypertensiveMedication,
       created_at: new Date().toISOString(),
     };
 
     await db.run(
-      'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, pulse_pressure_confirmed, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         newReading.id,
         newReading.user_id,
@@ -466,6 +525,8 @@ app.post('/api/readings', requireAuth, async (req, res) => {
         newReading.heartRate,
         newReading.arm,
         newReading.notes,
+        newReading.pulsePressureWarningConfirmed ? 1 : 0,
+        newReading.takesAntihypertensiveMedication ? 1 : 0,
         newReading.created_at,
       ]
     );
@@ -478,6 +539,8 @@ app.post('/api/readings', requireAuth, async (req, res) => {
       heartRate: newReading.heartRate,
       arm: newReading.arm,
       notes: newReading.notes || undefined,
+      pulsePressureWarningConfirmed: newReading.pulsePressureWarningConfirmed,
+      takesAntihypertensiveMedication: newReading.takesAntihypertensiveMedication,
     });
   } catch (error) {
     console.error('Error al guardar medición:', error);
@@ -485,10 +548,41 @@ app.post('/api/readings', requireAuth, async (req, res) => {
   }
 });
 
+app.put('/api/readings/medication-context', requireAuth, async (req, res) => {
+  try {
+    if (typeof req.body.takesAntihypertensiveMedication !== 'boolean') {
+      return res.status(400).json({ error: 'Contexto de medicación inválido' });
+    }
+    const db = await getDB();
+    const value = req.body.takesAntihypertensiveMedication ? 1 : 0;
+    await db.exec('BEGIN');
+    try {
+      await db.run(
+        `INSERT INTO settings (user_id, takes_antihypertensive_medication)
+         VALUES (?, ?)
+         ON CONFLICT(user_id) DO UPDATE SET
+           takes_antihypertensive_medication = excluded.takes_antihypertensive_medication`,
+        [req.user.id, value]
+      );
+      await db.run(
+        'UPDATE readings SET takes_antihypertensive_medication = ? WHERE user_id = ?',
+        [value, req.user.id]
+      );
+      await db.exec('COMMIT');
+    } catch (error) {
+      await db.exec('ROLLBACK');
+      throw error;
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar el contexto del historial' });
+  }
+});
+
 app.put('/api/readings/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { systolic, diastolic, heartRate, notes } = req.body;
+    const { notes } = req.body;
     const db = await getDB();
 
     const existing = await db.get('SELECT * FROM readings WHERE id = ? AND user_id = ?', [id, req.user.id]);
@@ -496,22 +590,27 @@ app.put('/api/readings/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Toma no encontrada' });
     }
 
-    const sysNum = Number(systolic);
-    const diaNum = Number(diastolic);
-    const hrNum = Number(heartRate);
+    const validation = validateReadingInput(req.body);
+    if (validation.error) return res.status(validation.code ? 409 : 400).json(validation);
     const cleanNotes = notes ? String(notes).trim() : null;
+    const takesAntihypertensiveMedication =
+      typeof req.body.takesAntihypertensiveMedication === 'boolean'
+        ? req.body.takesAntihypertensiveMedication
+        : Boolean(existing.takes_antihypertensive_medication);
 
     await db.run(
-      'UPDATE readings SET systolic = ?, diastolic = ?, heart_rate = ?, notes = ? WHERE id = ? AND user_id = ?',
-      [sysNum, diaNum, hrNum, cleanNotes, id, req.user.id]
+      'UPDATE readings SET systolic = ?, diastolic = ?, heart_rate = ?, notes = ?, pulse_pressure_confirmed = ?, takes_antihypertensive_medication = ? WHERE id = ? AND user_id = ?',
+      [validation.systolic, validation.diastolic, validation.heartRate, cleanNotes, validation.pulsePressureWarningConfirmed ? 1 : 0, takesAntihypertensiveMedication ? 1 : 0, id, req.user.id]
     );
 
     res.json({
       ...existing,
-      systolic: sysNum,
-      diastolic: diaNum,
-      heartRate: hrNum,
+      systolic: validation.systolic,
+      diastolic: validation.diastolic,
+      heartRate: validation.heartRate,
       notes: cleanNotes || undefined,
+      pulsePressureWarningConfirmed: validation.pulsePressureWarningConfirmed,
+      takesAntihypertensiveMedication,
     });
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar la toma' });
@@ -560,6 +659,7 @@ app.delete('/api/readings/all/confirm', requireAuth, async (req, res) => {
 app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
   try {
     const db = await getDB();
+    const takesAntihypertensiveMedication = await getCurrentMedicationContext(db, req.user.id);
     await db.run('DELETE FROM readings WHERE user_id = ?', [req.user.id]);
 
     const nowMs = Date.now();
@@ -601,7 +701,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
 
     for (const item of demoItems) {
       await db.run(
-        'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           item.id,
           item.user_id,
@@ -611,17 +711,18 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
           item.heart_rate,
           item.arm,
           item.notes,
+          takesAntihypertensiveMedication ? 1 : 0,
           item.created_at,
         ]
       );
     }
 
     const updatedRows = await db.all(
-      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
+      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes, pulse_pressure_confirmed as pulsePressureWarningConfirmed, takes_antihypertensive_medication as takesAntihypertensiveMedication FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
       [req.user.id]
     );
 
-    res.json(updatedRows);
+    res.json(updatedRows.map(serializeReadingRow));
   } catch (error) {
     console.error('Error al restaurar datos de demostración:', error);
     res.status(500).json({ error: 'Error al restaurar datos demo' });
@@ -636,6 +737,7 @@ app.post('/api/readings/import', requireAuth, async (req, res) => {
     }
 
     const db = await getDB();
+    const currentMedicationContext = await getCurrentMedicationContext(db, req.user.id);
     const current = await db.all('SELECT * FROM readings WHERE user_id = ?', [req.user.id]);
     const existingSigs = new Set(
       current.map((r) => `${new Date(r.timestamp).toISOString().slice(0, 16)}_${r.systolic}_${r.diastolic}_${r.heart_rate}`)
@@ -645,22 +747,30 @@ app.post('/api/readings/import', requireAuth, async (req, res) => {
     const now = new Date().toISOString();
 
     for (const item of importedItems) {
+      const validation = validateReadingInput(item, false);
+      if (validation.error) continue;
       const sig = `${new Date(item.timestamp).toISOString().slice(0, 16)}_${item.systolic}_${item.diastolic}_${item.heartRate}`;
       if (!existingSigs.has(sig)) {
         existingSigs.add(sig);
         addedCount++;
         const id = `imp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const takesAntihypertensiveMedication =
+          typeof item.takesAntihypertensiveMedication === 'boolean'
+            ? item.takesAntihypertensiveMedication
+            : currentMedicationContext;
         await db.run(
-          'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, pulse_pressure_confirmed, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           [
             id,
             req.user.id,
             item.timestamp,
-            Number(item.systolic),
-            Number(item.diastolic),
-            Number(item.heartRate),
+            validation.systolic,
+            validation.diastolic,
+            validation.heartRate,
             item.arm || 'left',
             item.notes ? String(item.notes).trim() : null,
+            validation.pulsePressureWarningConfirmed ? 1 : 0,
+            takesAntihypertensiveMedication ? 1 : 0,
             now,
           ]
         );
@@ -668,11 +778,12 @@ app.post('/api/readings/import', requireAuth, async (req, res) => {
     }
 
     const updatedRows = await db.all(
-      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
+      'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes, pulse_pressure_confirmed as pulsePressureWarningConfirmed, takes_antihypertensive_medication as takesAntihypertensiveMedication FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
       [req.user.id]
     );
 
-    res.json({ addedCount, total: updatedRows.length, readings: updatedRows });
+    const readings = updatedRows.map(serializeReadingRow);
+    res.json({ addedCount, total: readings.length, readings });
   } catch (error) {
     res.status(500).json({ error: 'Error al importar mediciones' });
   }
@@ -693,6 +804,7 @@ app.get('/api/settings', requireAuth, async (req, res) => {
       patientSex: row?.patient_sex || req.user.sex || '',
       patientAge: row?.patient_age || '',
       patientBirthDate: row?.patient_birth_date || req.user.birth_date || '',
+      takesAntihypertensiveMedication: Boolean(row?.takes_antihypertensive_medication),
       backupFrequency: row?.backup_frequency || 'disabled',
       backupFolder: row?.backup_folder || 'Descargas/Copias_Tension_Arterial',
       lastBackupTimestamp: row?.last_backup_timestamp || undefined,
@@ -710,8 +822,9 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     await db.run(
       `INSERT INTO settings (
         user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode,
-        patient_name, patient_sex, patient_age, patient_birth_date, backup_frequency, backup_folder, last_backup_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        patient_name, patient_sex, patient_age, patient_birth_date, takes_antihypertensive_medication,
+        backup_frequency, backup_folder, last_backup_timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         language = excluded.language,
         enable_white_coat = excluded.enable_white_coat,
@@ -722,6 +835,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         patient_sex = excluded.patient_sex,
         patient_age = excluded.patient_age,
         patient_birth_date = excluded.patient_birth_date,
+        takes_antihypertensive_medication = excluded.takes_antihypertensive_medication,
         backup_frequency = excluded.backup_frequency,
         backup_folder = excluded.backup_folder,
         last_backup_timestamp = excluded.last_backup_timestamp;`,
@@ -736,6 +850,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         s.patientSex || req.user.sex || '',
         s.patientAge || '',
         s.patientBirthDate || req.user.birth_date || '',
+        s.takesAntihypertensiveMedication ? 1 : 0,
         s.backupFrequency || 'disabled',
         s.backupFolder || 'Descargas/Copias_Tension_Arterial',
         s.lastBackupTimestamp || null,

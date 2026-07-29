@@ -107,10 +107,23 @@ async function initSchema(db) {
       heart_rate INTEGER NOT NULL,
       arm TEXT NOT NULL DEFAULT 'left',
       notes TEXT,
+      pulse_pressure_confirmed INTEGER NOT NULL DEFAULT 0,
+      takes_antihypertensive_medication INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+
+  try {
+    await db.exec('ALTER TABLE readings ADD COLUMN pulse_pressure_confirmed INTEGER NOT NULL DEFAULT 0;');
+  } catch (e) {
+    // La columna ya existe
+  }
+  try {
+    await db.exec('ALTER TABLE readings ADD COLUMN takes_antihypertensive_medication INTEGER;');
+  } catch (e) {
+    // La columna ya existe
+  }
 
   // Tabla de Ajustes por Usuario
   await db.exec(`
@@ -125,6 +138,7 @@ async function initSchema(db) {
       patient_sex TEXT,
       patient_age TEXT,
       patient_birth_date TEXT,
+      takes_antihypertensive_medication INTEGER NOT NULL DEFAULT 0,
       backup_frequency TEXT DEFAULT 'disabled',
       backup_folder TEXT DEFAULT 'Descargas/Copias_Tension_Arterial',
       last_backup_timestamp TEXT,
@@ -137,6 +151,26 @@ async function initSchema(db) {
   } catch (e) {
     // La columna ya existe
   }
+  try {
+    await db.exec('ALTER TABLE settings ADD COLUMN takes_antihypertensive_medication INTEGER NOT NULL DEFAULT 0;');
+  } catch (e) {
+    // La columna ya existe
+  }
+
+  // Migración de instalaciones anteriores: las tomas sin contexto heredan una
+  // sola vez el perfil actual del usuario. A partir de aquí cada toma lo conserva.
+  await db.exec(`
+    UPDATE readings
+    SET takes_antihypertensive_medication = COALESCE(
+      (
+        SELECT settings.takes_antihypertensive_medication
+        FROM settings
+        WHERE settings.user_id = readings.user_id
+      ),
+      0
+    )
+    WHERE takes_antihypertensive_medication IS NULL;
+  `);
 
   console.log('✓ Base de datos SQLite y tablas inicializadas correctamente en:', DB_PATH);
 }

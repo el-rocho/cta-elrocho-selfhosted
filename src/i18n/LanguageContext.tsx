@@ -1,17 +1,7 @@
-import React, { createContext, useContext } from 'react';
+import React from 'react';
 import type { LanguageOption } from '../types/bloodPressure';
 import { getTranslation } from './translations';
-
-interface LanguageContextProps {
-  language: LanguageOption;
-  setLanguage?: (lang: LanguageOption) => void;
-  t: (path: string, params?: Record<string, string | number>) => string;
-}
-
-const LanguageContext = createContext<LanguageContextProps>({
-  language: 'es',
-  t: (path, params) => getTranslation('es', path, params),
-});
+import { LanguageContext } from './useLanguage';
 
 interface LanguageProviderProps {
   language: LanguageOption;
@@ -33,5 +23,3 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({
     </LanguageContext.Provider>
   );
 };
-
-export const useLanguage = () => useContext(LanguageContext);

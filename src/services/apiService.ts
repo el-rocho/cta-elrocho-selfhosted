@@ -79,7 +79,7 @@ export async function addReadingAPI(reading: Omit<BloodPressureReading, 'id'>): 
     });
     if (!res.ok) throw new Error('Error al guardar lectura en el servidor');
     return await res.json();
-  } catch (error) {
+  } catch {
     const created: BloodPressureReading = {
       ...reading,
       id: `bp-local-${Date.now()}`,
@@ -98,7 +98,7 @@ export async function deleteReadingAPI(id: string): Promise<void> {
       method: 'DELETE',
     });
     if (!res.ok) throw new Error('Error al eliminar lectura en el servidor');
-  } catch (error) {
+  } catch {
     const cached = localStorage.getItem('server_bp_readings_cache');
     if (cached) {
       const current: BloodPressureReading[] = JSON.parse(cached);
@@ -116,7 +116,7 @@ export async function deleteSessionAPI(readingIds: string[]): Promise<void> {
       body: JSON.stringify({ readingIds }),
     });
     if (!res.ok) throw new Error('Error al eliminar sesión en el servidor');
-  } catch (error) {
+  } catch {
     const ids = new Set(readingIds);
     const cached = localStorage.getItem('server_bp_readings_cache');
     if (cached) {
@@ -147,7 +147,7 @@ export async function resetDemoDataAPI(): Promise<BloodPressureReading[]> {
     const data = await res.json();
     localStorage.setItem('server_bp_readings_cache', JSON.stringify(data));
     return data;
-  } catch (error) {
+  } catch {
     localStorage.setItem('server_bp_readings_cache', JSON.stringify(INITIAL_DEMO_READINGS));
     return INITIAL_DEMO_READINGS;
   }
@@ -164,7 +164,7 @@ export async function importReadingsAPI(imported: Omit<BloodPressureReading, 'id
     const result = await res.json();
     localStorage.setItem('server_bp_readings_cache', JSON.stringify(result.readings));
     return result;
-  } catch (error) {
+  } catch {
     const cached = localStorage.getItem('server_bp_readings_cache');
     const current: BloodPressureReading[] = cached ? JSON.parse(cached) : INITIAL_DEMO_READINGS;
     let addedCount = 0;
@@ -189,7 +189,7 @@ export async function fetchSettingsAPI(): Promise<AppSettings> {
     const res = await fetch(`${API_BASE}/settings`);
     if (!res.ok) throw new Error('Error de servidor al cargar ajustes');
     return await res.json();
-  } catch (error) {
+  } catch {
     const cached = localStorage.getItem('server_bp_settings_cache');
     return cached ? JSON.parse(cached) : {
       enableWhiteCoatFilter: false,
@@ -199,6 +199,7 @@ export async function fetchSettingsAPI(): Promise<AppSettings> {
       patientName: '',
       patientSex: '',
       patientAge: '',
+      takesAntihypertensiveMedication: false,
       backupFrequency: 'disabled',
       backupFolder: 'Descargas/Copias_Tension_Arterial',
     };
@@ -216,7 +217,7 @@ export async function saveSettingsAPI(settings: AppSettings): Promise<AppSetting
     const saved = await res.json();
     localStorage.setItem('server_bp_settings_cache', JSON.stringify(saved));
     return saved;
-  } catch (error) {
+  } catch {
     localStorage.setItem('server_bp_settings_cache', JSON.stringify(settings));
     return settings;
   }

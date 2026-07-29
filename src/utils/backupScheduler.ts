@@ -49,7 +49,13 @@ export function checkAndExecuteAutoBackup(
   if (isDue) {
     // Unificar formato de nombre: tension_arterial_daily_AAAA-MM-DD_HH-MM-SS.csv
     const prefix = `tension_arterial_${settings.backupFrequency}`;
-    exportToCSV(sessions, { preset: 'all' }, prefix);
+    exportToCSV(sessions, { preset: 'all' }, prefix, {
+      patientName: settings.patientName,
+      patientSex: settings.patientSex,
+      patientAge: settings.patientAge,
+      patientBirthDate: settings.patientBirthDate,
+      takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
+    }, settings.language);
 
     onUpdateSettings({
       ...settings,

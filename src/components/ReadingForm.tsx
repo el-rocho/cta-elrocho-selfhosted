@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Activity, Armchair, FileText, Keyboard, Sliders } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { PlusCircle, Activity, Armchair, FileText, Keyboard, Sliders, AlertCircle, Info, X, ClipboardCheck, Repeat2 } from 'lucide-react';
 import type { ArmPosition, AppSettings, BloodPressureReading, InputMode } from '../types/bloodPressure';
-import { getHealthCategory } from '../utils/healthClassification';
+import { getHealthAssessment } from '../utils/healthClassification';
+import { getReadingValidationError, hasSimilarConfirmedReadingToday, needsPulsePressureConfirmation, type ReadingValues } from '../utils/readingValidation';
 import { WheelPicker } from './WheelPicker';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface ReadingFormProps {
   onAddReading: (reading: {
@@ -12,10 +14,12 @@ interface ReadingFormProps {
     heartRate: number;
     arm: ArmPosition;
     notes?: string;
+    pulsePressureWarningConfirmed?: boolean;
   }) => void;
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
   lastReading?: BloodPressureReading | null;
+  readings: BloodPressureReading[];
 }
 
 export const ReadingForm: React.FC<ReadingFormProps> = ({
@@ -23,9 +27,11 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   settings,
   onUpdateInputMode,
   lastReading,
+  readings,
 }) => {
   const { t, language } = useLanguage();
   const [inputMode, setInputMode] = useState<InputMode>(settings.preferredInputMode || 'keyboard');
+  const [isMeasurementGuideOpen, setIsMeasurementGuideOpen] = useState(false);
 
   // Inicializar los valores centrados en la última medición realizada o en valores medios por defecto (120 / 80 / 72)
   const initialSys = lastReading ? lastReading.systolic : 120;
@@ -38,6 +44,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   const [arm, setArm] = useState<ArmPosition>(settings.defaultArm || 'left');
   const [notes, setNotes] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [pendingReading, setPendingReading] = useState<(ReadingValues & { arm: ArmPosition; notes?: string }) | null>(null);
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
@@ -56,11 +63,18 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
       setDiastolic(lastReading.diastolic);
       setHeartRate(lastReading.heartRate);
     }
-  }, [lastReading?.id]);
+  }, [lastReading]);
 
   const liveSystolic = typeof systolic === 'number' ? systolic : 120;
   const liveDiastolic = typeof diastolic === 'number' ? diastolic : 80;
-  const category = getHealthCategory(liveSystolic, liveDiastolic, language);
+  const liveHeartRate = typeof heartRate === 'number' ? heartRate : 72;
+  const { category, alerts: healthAlerts } = getHealthAssessment(
+    liveSystolic,
+    liveDiastolic,
+    liveHeartRate,
+    language,
+    settings.takesAntihypertensiveMedication
+  );
 
   // Auto-seleccionar todo el texto al tocar/enfocar un campo numérico
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -74,40 +88,29 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     }
   };
 
+  const saveReading = (reading: ReadingValues & { arm: ArmPosition; notes?: string }, pulsePressureWarningConfirmed: boolean) => {
+    onAddReading({ ...reading, pulsePressureWarningConfirmed });
+    setNotes('');
+    setPendingReading(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-
-    const sys = Number(systolic);
-    const dia = Number(diastolic);
-    const pulse = Number(heartRate);
-
-    if (!sys || sys < 50 || sys > 260) {
-      setErrorMsg(t('form.validationAlert'));
+    setPendingReading(null);
+    const values: ReadingValues = { systolic: Number(systolic), diastolic: Number(diastolic), heartRate: Number(heartRate) };
+    const validationError = getReadingValidationError(values);
+    if (validationError) {
+      setErrorMsg(t(validationError === 'diastolicNotLower' ? 'form.diastolicMustBeLower' : 'form.validationAlert'));
       return;
     }
-    if (!dia || dia < 30 || dia > 160) {
-      setErrorMsg(t('form.validationAlert'));
+    const candidate = { ...values, arm, notes: notes.trim() ? notes.trim() : undefined };
+    if (needsPulsePressureConfirmation(values)) {
+      if (hasSimilarConfirmedReadingToday(readings, values)) saveReading(candidate, true);
+      else setPendingReading(candidate);
       return;
     }
-    if (sys <= dia) {
-      setErrorMsg(t('form.validationAlert'));
-      return;
-    }
-    if (!pulse || pulse < 30 || pulse > 220) {
-      setErrorMsg(t('form.validationAlert'));
-      return;
-    }
-
-    onAddReading({
-      systolic: sys,
-      diastolic: dia,
-      heartRate: pulse,
-      arm,
-      notes: notes.trim() ? notes.trim() : undefined,
-    });
-
-    setNotes('');
+    saveReading(candidate, false);
   };
 
   return (
@@ -179,6 +182,28 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
       {errorMsg && <div className="alert-danger">{errorMsg}</div>}
 
+      {healthAlerts.length > 0 && (
+        <div className="health-alerts-strip" aria-live="polite">
+          <div className="health-alerts-heading">
+            <AlertCircle size={16} />
+            <span>{t('healthAlerts.title')}</span>
+          </div>
+          <div className="health-alerts-badges">
+            {healthAlerts.map((alert) => (
+              <span
+                key={alert.key}
+                className="clinical-alert-pill"
+                style={{ backgroundColor: alert.badgeBg, color: alert.badgeText }}
+                title={alert.description}
+              >
+                <span className="dot" style={{ backgroundColor: alert.colorHex }}></span>
+                {alert.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="bp-form">
         {activeInputMode === 'keyboard' ? (
           /* Modo 1: Introducción mediante Teclado Numérico */
@@ -195,7 +220,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   min={50}
                   max={260}
                   value={systolic}
-                  onChange={(e) => setSystolic(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onChange={(e) => { setPendingReading(null); setSystolic(e.target.value === '' ? '' : parseInt(e.target.value, 10)); }}
                   onFocus={handleFocus}
                   className="input-number input-sys"
                   required
@@ -215,7 +240,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   min={30}
                   max={160}
                   value={diastolic}
-                  onChange={(e) => setDiastolic(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onChange={(e) => { setPendingReading(null); setDiastolic(e.target.value === '' ? '' : parseInt(e.target.value, 10)); }}
                   onFocus={handleFocus}
                   className="input-number input-dia"
                   required
@@ -235,7 +260,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   min={30}
                   max={220}
                   value={heartRate}
-                  onChange={(e) => setHeartRate(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+                  onChange={(e) => { setPendingReading(null); setHeartRate(e.target.value === '' ? '' : parseInt(e.target.value, 10)); }}
                   onFocus={handleFocus}
                   className="input-number input-pulse"
                   required
@@ -250,9 +275,9 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
               systolic={typeof systolic === 'number' ? systolic : 120}
               diastolic={typeof diastolic === 'number' ? diastolic : 80}
               heartRate={typeof heartRate === 'number' ? heartRate : 72}
-              onChangeSystolic={setSystolic}
-              onChangeDiastolic={setDiastolic}
-              onChangeHeartRate={setHeartRate}
+              onChangeSystolic={(value) => { setPendingReading(null); setSystolic(value); }}
+              onChangeDiastolic={(value) => { setPendingReading(null); setDiastolic(value); }}
+              onChangeHeartRate={(value) => { setPendingReading(null); setHeartRate(value); }}
             />
           </div>
         )}
@@ -271,11 +296,54 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
           </div>
         </div>
 
-        <button type="submit" className="btn-submit-reading">
-          <PlusCircle size={20} />
-          <span>{t('form.submit')}</span>
-        </button>
+        {pendingReading && (
+          <div className="pulse-pressure-confirmation" role="alert" aria-live="assertive">
+            <div><strong>{t('form.pulsePressureTitle')}</strong><p>{t('form.pulsePressureWarning', { value: pendingReading.systolic - pendingReading.diastolic })}</p></div>
+            <div className="pulse-pressure-actions">
+              <button type="button" className="btn-cancel-warning" onClick={() => setPendingReading(null)}>{t('form.cancel')}</button>
+              <button type="button" className="btn-force-save" onClick={() => saveReading(pendingReading, true)}>{t('form.forceSave')}</button>
+            </div>
+          </div>
+        )}
+        <div className="reading-submit-row">
+          <button type="submit" className="btn-submit-reading">
+            <PlusCircle size={20} />
+            <span>{t('form.submit')}</span>
+          </button>
+          <button type="button" className="btn-measurement-guide" title={t('form.measurementGuideTooltip')} aria-label={t('form.measurementGuideTooltip')} onClick={() => setIsMeasurementGuideOpen(true)}>
+            <Info size={22} />
+          </button>
+        </div>
       </form>
+      {isMeasurementGuideOpen && createPortal(
+        <div className="modal-overlay measurement-guide-overlay" onClick={() => setIsMeasurementGuideOpen(false)}>
+          <div className="modal-content measurement-guide-dialog" role="dialog" aria-modal="true" aria-labelledby="measurement-guide-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-group"><Info size={26} className="modal-icon text-blue legal-icon-main" /><h2 id="measurement-guide-title" className="legal-modal-title">{t('form.measurementGuideTitle')}</h2></div>
+              <button type="button" className="btn-close-modal" aria-label={t('form.measurementGuideClose')} onClick={() => setIsMeasurementGuideOpen(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body measurement-guide-body">
+              <div className="settings-subcard measurement-guide-main-card">
+                <div className="field-label measurement-guide-section-title"><ClipboardCheck size={22} className="legal-icon-block" /><span>{t('form.measurementGuideEssentialsTitle')}</span></div>
+                <p className="measurement-guide-intro">{t('form.measurementGuideIntro')} <strong>{t('form.measurementGuideIntroStrong')}</strong>:</p>
+                <ul className="measurement-guide-list">
+                  <li>{t('form.measurementGuideSameArm')}</li>
+                  <li><strong>{t('form.measurementGuidePreparationTitle')}</strong> {t('form.measurementGuidePreparation')}</li>
+                  <li><strong>{t('form.measurementGuideRestTitle')}</strong> {t('form.measurementGuideRest')}</li>
+                  <li><strong>{t('form.measurementGuidePostureTitle')}</strong> {t('form.measurementGuidePosture')}</li>
+                  <li><strong>{t('form.measurementGuideArmTitle')}</strong> {t('form.measurementGuideArm')}</li>
+                  <li><strong>{t('form.measurementGuideDuringTitle')}</strong> {t('form.measurementGuideDuring')}</li>
+                </ul>
+              </div>
+              <div className="settings-subcard measurement-guide-advice-card">
+                <div className="field-label measurement-guide-advice-title"><Repeat2 size={22} className="legal-icon-block" /><span>{t('form.measurementGuideAdviceTitle')}</span></div>
+                <p>{t('form.measurementGuideAdviceStart')} <strong>{t('form.measurementGuideAdviceStrong')}</strong>, {t('form.measurementGuideAdviceEnd')} ({t('form.measurementGuideAdviceAlternative')} <em>{t('form.measurementGuideFilter')}</em> {t('form.measurementGuideFilterEnd')})</p>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

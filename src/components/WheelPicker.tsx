@@ -1,6 +1,6 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface WheelColumnProps {
   label: string;
@@ -26,10 +26,10 @@ const WheelColumn: React.FC<WheelColumnProps> = ({
   const ITEM_HEIGHT = 40; // Altura de cada ítem en píxeles
 
   // Generar array de valores válidos
-  const values: number[] = [];
-  for (let i = min; i <= max; i++) {
-    values.push(i);
-  }
+  const values = useMemo(
+    () => Array.from({ length: max - min + 1 }, (_, index) => min + index),
+    [min, max]
+  );
 
   // Centrar el scroll de la ruleta inicialmente y cuando cambie 'value' externamente
   useEffect(() => {
@@ -46,7 +46,7 @@ const WheelColumn: React.FC<WheelColumnProps> = ({
         }
       }
     }
-  }, [value, min, max]);
+  }, [value, values]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     if (isProgrammaticScrollRef.current) return;

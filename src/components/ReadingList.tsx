@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
 import type { BloodPressureReading, BloodPressureSession, DateRange, LanguageOption } from '../types/bloodPressure';
-import { getHealthCategory } from '../utils/healthClassification';
+import { getConfirmedPulsePressureAlerts, getCulpritLabel, getHealthAssessment, getReadingMedicationContext, getSessionMedicationContext } from '../utils/healthClassification';
 import { filterSessionsByDateRange } from '../utils/exportCsv';
 import { History, Trash2, ChevronDown, ChevronUp, Clock, Armchair, ShieldCheck, AlertCircle } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface ReadingListProps {
   sessions: BloodPressureSession[];
@@ -12,6 +12,7 @@ interface ReadingListProps {
   onEditReading: (reading: BloodPressureReading) => void;
   dateRange: DateRange;
   onDateRangeChange: (range: DateRange) => void;
+  takesMedication: boolean;
 }
 
 // Subcomponente con useRef para manejar tomas individuales en tabla desglosada
@@ -21,11 +22,20 @@ const BreakdownRow: React.FC<{
   isDiscarded: boolean;
   rTime: string;
   language: LanguageOption;
+  takesMedication: boolean;
   onEditReading: (reading: BloodPressureReading) => void;
   onDeleteSingleReading: (id: string) => void;
-}> = ({ reading, index, isDiscarded, rTime, language, onEditReading, onDeleteSingleReading }) => {
+}> = ({ reading, index, isDiscarded, rTime, language, takesMedication, onEditReading, onDeleteSingleReading }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const { category: readingCategory, alerts: readingAlerts, culprit: readingCulprit } = getHealthAssessment(
+    reading.systolic,
+    reading.diastolic,
+    reading.heartRate,
+    language,
+    getReadingMedicationContext(reading, takesMedication),
+    reading.pulsePressureWarningConfirmed === true
+  );
 
   const startTimer = (x: number, y: number) => {
     touchStartPosRef.current = { x, y };
@@ -76,6 +86,24 @@ const BreakdownRow: React.FC<{
       <td>{rTime}</td>
       <td>
         <strong>{reading.systolic}</strong> / <strong>{reading.diastolic}</strong> / <strong>{reading.heartRate}</strong>
+        <div className="breakdown-classification">
+          <span className="category-pill compact" style={{ backgroundColor: readingCategory.badgeBg, color: readingCategory.badgeText }}>{readingCategory.name}</span>
+          {readingCulprit !== 'none' && <span className="culprit-pill">{getCulpritLabel(readingCulprit, readingCategory.key, language)}</span>}
+        </div>
+        {readingAlerts.length > 0 && (
+          <div className="breakdown-alerts">
+            {readingAlerts.map((alert) => (
+              <span
+                key={alert.key}
+                className="clinical-alert-pill compact"
+                style={{ backgroundColor: alert.badgeBg, color: alert.badgeText }}
+                title={alert.description}
+              >
+                {alert.name}
+              </span>
+            ))}
+          </div>
+        )}
       </td>
       <td>
         {isDiscarded ? (
@@ -117,6 +145,7 @@ const SessionCardItem: React.FC<{
   t: (key: string, params?: Record<string, any>) => string;
   language: LanguageOption;
   locale: string;
+  takesMedication: boolean;
 }> = ({
   session,
   isExpanded,
@@ -127,13 +156,23 @@ const SessionCardItem: React.FC<{
   t,
   language,
   locale,
+  takesMedication,
 }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const primaryReading = session.readings[0];
   const isMulti = session.readings.length > 1;
-  const category = getHealthCategory(session.averageSystolic, session.averageDiastolic, language);
+  const sessionTakesMedication = getSessionMedicationContext(session.readings, takesMedication);
+  const sessionAssessment = getHealthAssessment(
+    session.averageSystolic,
+    session.averageDiastolic,
+    session.averageHeartRate,
+    language,
+    sessionTakesMedication
+  );
+  const { category, culprit } = sessionAssessment;
+  const healthAlerts = [...sessionAssessment.alerts, ...getConfirmedPulsePressureAlerts(session.readings, language)];
 
   const dateObj = new Date(session.timestamp);
   const dateStr = dateObj.toLocaleDateString(locale, {
@@ -209,7 +248,7 @@ const SessionCardItem: React.FC<{
           </div>
         </div>
 
-        {/* Badge OMS / AHA */}
+        {/* Categoría principal ESC 2024 */}
         <div className="session-badge-col">
           <span
             className="category-pill"
@@ -219,6 +258,22 @@ const SessionCardItem: React.FC<{
             <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
             {category.name}
           </span>
+          {culprit !== 'none' && <span className="culprit-pill">{getCulpritLabel(culprit, category.key, language)}</span>}
+
+          {healthAlerts.length > 0 && (
+            <div className="session-health-alerts">
+              {healthAlerts.map((alert) => (
+                <span
+                  key={alert.key}
+                  className="clinical-alert-pill compact"
+                  style={{ backgroundColor: alert.badgeBg, color: alert.badgeText }}
+                  title={alert.description}
+                >
+                  {alert.name}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Badge de Bata Blanca */}
           {isMulti && (
@@ -308,6 +363,7 @@ const SessionCardItem: React.FC<{
                     isDiscarded={isDiscarded}
                     rTime={rTime}
                     language={language}
+                    takesMedication={takesMedication}
                     onEditReading={onEditReading}
                     onDeleteSingleReading={onDeleteSingleReading}
                   />
@@ -328,6 +384,7 @@ export const ReadingList: React.FC<ReadingListProps> = ({
   onEditReading,
   dateRange,
   onDateRangeChange,
+  takesMedication,
 }) => {
   const { t, language } = useLanguage();
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
@@ -403,6 +460,7 @@ export const ReadingList: React.FC<ReadingListProps> = ({
               t={t}
               language={language}
               locale={locale}
+              takesMedication={takesMedication}
             />
           ))}
         </div>

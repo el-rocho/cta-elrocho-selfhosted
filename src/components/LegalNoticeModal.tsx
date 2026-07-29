@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShieldCheck, X, AlertTriangle, Lock } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface LegalNoticeModalProps {
   isOpen: boolean;
@@ -36,13 +36,13 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
             </div>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               {isEn
-                ? 'This app is intended exclusively for personal tracking of blood pressure readings. The displayed information is for informational purposes only.'
-                : 'Esta aplicación está destinada exclusivamente al registro y seguimiento personal de valores de tensión arterial. La información mostrada tiene carácter meramente informativo.'}
+                ? 'This application is intended for the personal recording and monitoring of blood pressure values. The comments and alerts included are for informational purposes only. Although they are based on the 2024 ESC guidelines, the thresholds used are not a literal reproduction of those guidelines and may contain errors.'
+                : 'Esta aplicación está destinada al registro y seguimiento personal de valores de tensión arterial. Los comentarios y avisos incluidos son meramente informativos, aunque se basan en las guías ESC 2024, los umbrales utilizados no son una reproducción literal de dichas guías y pueden contener errores.'}
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               {isEn
-                ? 'It is not a medical device, does not diagnose, and does not replace evaluation, advice, or treatment prescribed by a qualified healthcare professional.'
-                : 'No constituye un producto sanitario, no realiza diagnósticos y no sustituye la valoración, el consejo ni el tratamiento indicado por un profesional sanitario cualificado.'}
+                ? 'A single measurement does not diagnose or establish whether medication is excessive or insufficient. The application does not make diagnoses and does not replace the assessment, advice, or treatment indicated by a qualified healthcare professional.'
+                : 'Una medición aislada no diagnostica ni permite determinar si la medicación es excesiva o insuficiente. La aplicación no realiza diagnósticos y no sustituye la valoración, el consejo ni el tratamiento indicado por un profesional sanitario cualificado.'}
             </p>
             <p style={{ margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>
               <em>

@@ -15,6 +15,10 @@ export interface BloodPressureReading {
   arm: ArmPosition; // Brazo utilizado ('left' = Izquierdo, 'right' = Derecho)
   notes?: string; // Notas adicionales del usuario
   sessionId?: string; // ID de sesión si pertenece a un conjunto de lecturas continuas
+  // Solo es true cuando una PP < 25 o > 60 mmHg fue confirmada por el usuario.
+  pulsePressureWarningConfirmed?: boolean;
+  // Foto del contexto clínico en el momento de la toma. Es opcional solo para importar datos antiguos.
+  takesAntihypertensiveMedication?: boolean;
 }
 
 export interface BloodPressureSession {
@@ -44,6 +48,7 @@ export interface AppSettings {
   patientSex?: PatientSex;
   patientAge?: number | '';
   patientBirthDate?: string; // Formato YYYY-MM-DD
+  takesAntihypertensiveMedication: boolean;
 
   // Copias de seguridad automáticas CSV
   backupFrequency: BackupFrequency;
@@ -56,11 +61,13 @@ export interface ExportReportOptions {
   patientSex?: PatientSex;
   patientAge?: number | '';
   patientBirthDate?: string;
+  takesAntihypertensiveMedication?: boolean;
   reportNotes?: string;
   hidePatientData?: boolean;
 }
 
-export type HealthSeverity = 'optimal' | 'normal' | 'elevated' | 'stage1' | 'stage2' | 'crisis';
+export type HealthSeverity = 'hypotension' | 'overtreatment' | 'optimal' | 'elevated' | 'hypertension';
+export type HealthCulprit = 'none' | 'systolic' | 'diastolic' | 'both';
 
 export interface HealthCategoryInfo {
   key: HealthSeverity;
@@ -69,6 +76,34 @@ export interface HealthCategoryInfo {
   colorHex: string;
   badgeBg: string;
   badgeText: string;
+}
+
+export type HealthAlertKey =
+  | 'lowDiastolic'
+  | 'narrowPulsePressure'
+  | 'widePulsePressure'
+  | 'bradycardia'
+  | 'tachycardia'
+  | 'hypotensionTachycardia'
+  | 'hypertensionTachycardia';
+
+export type HealthAlertLevel = 'info' | 'caution' | 'warning';
+
+export interface HealthAlertInfo {
+  key: HealthAlertKey;
+  level: HealthAlertLevel;
+  name: string;
+  description: string;
+  colorHex: string;
+  badgeBg: string;
+  badgeText: string;
+}
+
+export interface HealthAssessment {
+  category: HealthCategoryInfo;
+  alerts: HealthAlertInfo[];
+  pulsePressure: number;
+  culprit: HealthCulprit;
 }
 
 export type DateFilterPreset = 'all' | '7days' | '30days' | '90days' | 'custom';

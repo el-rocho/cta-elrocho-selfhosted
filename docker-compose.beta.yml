@@ -1,12 +1,12 @@
 services:
-  control-tension-server:
-    image: ${CTA_IMAGE:-ghcr.io/el-rocho/cta-elrocho-selfhosted:latest}
-    container_name: control-tension-server
+  control-tension-server-beta:
+    image: ghcr.io/el-rocho/cta-elrocho-selfhosted:beta
+    container_name: control-tension-server-beta
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
-      - ./data:/app/data
+      - ./data-beta:/app/data
     environment:
       - PORT=3000
       - NODE_ENV=production
@@ -18,5 +18,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-
-

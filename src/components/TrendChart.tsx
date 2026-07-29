@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { BloodPressureSession, DateFilterPreset } from '../types/bloodPressure';
 import { TrendingUp } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface TrendChartProps {
   sessions: BloodPressureSession[];

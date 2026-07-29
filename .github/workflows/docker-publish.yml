@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
     tags:
       - 'v*.*.*'
 
@@ -36,6 +37,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=beta,enable=${{ github.ref == 'refs/heads/dev' }}
             type=semver,pattern={{version}}
           labels: |
             org.opencontainers.image.title=Control Tensión Arterial Selfhosted

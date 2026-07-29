@@ -1,5 +1,5 @@
 import type { BloodPressureSession, DateRange, ExportReportOptions, LanguageOption } from '../types/bloodPressure';
-import { getHealthCategory } from './healthClassification';
+import { getConfirmedPulsePressureAlerts, getCulpritLabel, getHealthAssessment, getHealthDisclaimer, getSessionMedicationContext } from './healthClassification';
 
 export function filterSessionsByDateRange(
   sessions: BloodPressureSession[],
@@ -60,10 +60,15 @@ export function exportToCSV(
         'Diastolic_mmHg',
         'Pulse_BPM',
         'Arm',
-        'WHO_Classification',
+        'Medication_Context',
+        'BP_Classification',
         'Readings_In_Session',
         'Discarded_Readings',
         'Notes',
+        'Pulse_Pressure_mmHg',
+        'Alert_Culprit',
+        'Pulse_Pressure_Confirmed',
+        'Informational_Alerts',
       ]
     : [
         'Fecha',
@@ -72,10 +77,15 @@ export function exportToCSV(
         'Diastolica_mmHg',
         'Pulsaciones_ppm',
         'Brazo',
-        'Clasificacion_OMS',
+        'Contexto_Medicacion',
+        'Clasificacion_PA',
         'Tomas_En_Sesion',
         'Tomas_Descartadas',
         'Notas',
+        'Presion_Pulso_mmHg',
+        'Valor_Causante',
+        'Presion_Pulso_Confirmada',
+        'Avisos_Informativos',
       ];
 
   let metadataHeader = '';
@@ -84,9 +94,11 @@ export function exportToCSV(
     if (options.patientSex) metadataHeader += `# ${isEn ? 'Sex' : 'Sexo'}: ${options.patientSex}\n`;
     if (options.patientAge) metadataHeader += `# ${isEn ? 'Age' : 'Edad'}: ${options.patientAge}\n`;
   }
+  metadataHeader += `# ${isEn ? 'Antihypertensive medication' : 'Medicación antihipertensiva'}: ${options.takesAntihypertensiveMedication ? (isEn ? 'Yes' : 'Sí') : 'No'}\n`;
   if (options.reportNotes) {
     metadataHeader += `# ${isEn ? 'Remarks' : 'Observaciones'}: ${options.reportNotes}\n`;
   }
+  metadataHeader += `# ${isEn ? 'Notice' : 'Aviso'}: ${getHealthDisclaimer(lang)}\n`;
 
   const locale = isEn ? 'en-US' : 'es-ES';
 
@@ -102,9 +114,24 @@ export function exportToCSV(
       minute: '2-digit',
     });
 
-    const category = getHealthCategory(s.averageSystolic, s.averageDiastolic, lang);
+    const pulsePressureConfirmed = s.readings.some((reading) => reading.pulsePressureWarningConfirmed === true);
+    const sessionTakesMedication = getSessionMedicationContext(
+      s.readings,
+      options.takesAntihypertensiveMedication === true
+    );
+    const assessment = getHealthAssessment(
+      s.averageSystolic,
+      s.averageDiastolic,
+      s.averageHeartRate,
+      lang,
+      sessionTakesMedication
+    );
+    const sessionAlerts = [...assessment.alerts, ...getConfirmedPulsePressureAlerts(s.readings, lang)];
     const armStr = s.arm === 'left' ? (isEn ? 'Left' : 'Izquierdo') : (isEn ? 'Right' : 'Derecho');
     const notesClean = s.notes ? `"${s.notes.replace(/"/g, '""')}"` : '';
+    const alertsClean = sessionAlerts.length > 0
+      ? `"${sessionAlerts.map((alert) => alert.name).join(' | ').replace(/"/g, '""')}"`
+      : '';
 
     return [
       dateStr,
@@ -113,10 +140,15 @@ export function exportToCSV(
       s.averageDiastolic,
       s.averageHeartRate,
       armStr,
-      `"${category.name}"`,
+      sessionTakesMedication ? 'true' : 'false',
+      `"${assessment.category.name}"`,
       s.readings.length,
       s.discardedCount,
       notesClean,
+      assessment.pulsePressure,
+      assessment.culprit === 'none' ? '' : `"${getCulpritLabel(assessment.culprit, assessment.category.key, lang)}"`,
+      pulsePressureConfirmed ? 'true' : 'false',
+      alertsClean,
     ].join(';');
   });
 

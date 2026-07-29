@@ -1,8 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import type { BloodPressureReading, AppSettings, InputMode } from '../types/bloodPressure';
-import { Edit3, X, Save, Clock, AlertCircle, Keyboard, Sliders } from 'lucide-react';
+import { Edit3, X, Save, CalendarDays, AlertCircle, Keyboard, Sliders } from 'lucide-react';
 import { WheelPicker } from './WheelPicker';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
+import { getReadingValidationError, hasSimilarConfirmedReadingToday, needsPulsePressureConfirmation, type ReadingValues } from '../utils/readingValidation';
+
+const formatDateInputValue = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeInputValue = (date: Date): string => {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const parseLocalDateTime = (dateValue: string, timeValue: string): Date | null => {
+  const [year, month, day] = dateValue.split('-').map(Number);
+  const [hours, minutes] = timeValue.split(':').map(Number);
+
+  if (![year, month, day, hours, minutes].every(Number.isFinite)) {
+    return null;
+  }
+
+  const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
+  const matchesInput =
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day &&
+    parsed.getHours() === hours &&
+    parsed.getMinutes() === minutes;
+
+  return matchesInput ? parsed : null;
+};
 
 interface EditReadingModalProps {
   isOpen: boolean;
@@ -11,6 +44,7 @@ interface EditReadingModalProps {
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
   onSaveReading: (updatedReading: BloodPressureReading) => void;
+  readings: BloodPressureReading[];
 }
 
 export const EditReadingModal: React.FC<EditReadingModalProps> = ({
@@ -20,6 +54,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
   settings,
   onUpdateInputMode,
   onSaveReading,
+  readings,
 }) => {
   const { t, language } = useLanguage();
 
@@ -28,17 +63,24 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
   const [diastolic, setDiastolic] = useState<number | ''>('');
   const [heartRate, setHeartRate] = useState<number | ''>('');
   const [notes, setNotes] = useState<string>('');
+  const [readingDate, setReadingDate] = useState<string>('');
+  const [readingTime, setReadingTime] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [pendingReading, setPendingReading] = useState<BloodPressureReading | null>(null);
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
   useEffect(() => {
     if (reading) {
+      const timestamp = new Date(reading.timestamp);
       setSystolic(reading.systolic);
       setDiastolic(reading.diastolic);
       setHeartRate(reading.heartRate);
       setNotes(reading.notes || '');
+      setReadingDate(formatDateInputValue(timestamp));
+      setReadingTime(formatTimeInputValue(timestamp));
       setErrorMsg(null);
+      setPendingReading(null);
     }
   }, [reading]);
 
@@ -50,18 +92,10 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
 
   if (!isOpen || !reading) return null;
 
-  const locale = language === 'en' ? 'en-US' : 'es-ES';
   const dateObj = new Date(reading.timestamp);
-  const formattedDate = dateObj.toLocaleDateString(locale, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-  const formattedTime = dateObj.toLocaleTimeString(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const originalDateValue = formatDateInputValue(dateObj);
+  const originalTimeValue = formatTimeInputValue(dateObj);
+  const maxDate = formatDateInputValue(new Date());
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
@@ -74,38 +108,56 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
     }
   };
 
+  const saveReading = (updated: BloodPressureReading, pulsePressureWarningConfirmed: boolean) => {
+    onSaveReading({ ...updated, pulsePressureWarningConfirmed });
+    setPendingReading(null);
+    onClose();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
 
     const sysNum = Number(systolic);
     const diaNum = Number(diastolic);
     const hrNum = Number(heartRate);
+    const editedDateTime = parseLocalDateTime(readingDate, readingTime);
 
-    if (
-      !sysNum ||
-      !diaNum ||
-      !hrNum ||
-      sysNum < 40 ||
-      sysNum > 300 ||
-      diaNum < 30 ||
-      diaNum > 200 ||
-      hrNum < 30 ||
-      hrNum > 250
-    ) {
-      setErrorMsg(t('form.validationAlert'));
+    if (!editedDateTime) {
+      setErrorMsg(t('editModal.dateTimeRequired'));
       return;
     }
 
+    if (editedDateTime.getTime() > Date.now()) {
+      setErrorMsg(t('editModal.dateTimeFuture'));
+      return;
+    }
+
+    const values: ReadingValues = { systolic: sysNum, diastolic: diaNum, heartRate: hrNum };
+    const validationError = getReadingValidationError(values);
+    if (validationError) {
+      setErrorMsg(t(validationError === 'diastolicNotLower' ? 'form.diastolicMustBeLower' : 'form.validationAlert'));
+      return;
+    }
+
+    const timestampChanged = readingDate !== originalDateValue || readingTime !== originalTimeValue;
     const updated: BloodPressureReading = {
       ...reading,
+      timestamp: timestampChanged ? editedDateTime.toISOString() : reading.timestamp,
       systolic: sysNum,
       diastolic: diaNum,
       heartRate: hrNum,
       notes: notes.trim() ? notes.trim() : undefined,
+      sessionId: timestampChanged ? undefined : reading.sessionId,
     };
 
-    onSaveReading(updated);
-    onClose();
+    if (needsPulsePressureConfirmation(values)) {
+      const valuesUnchanged = reading.systolic === sysNum && reading.diastolic === diaNum && reading.heartRate === hrNum;
+      if ((valuesUnchanged && reading.pulsePressureWarningConfirmed === true) || hasSimilarConfirmedReadingToday(readings, values, editedDateTime, reading.id)) saveReading(updated, true);
+      else setPendingReading(updated);
+      return;
+    }
+    saveReading(updated, false);
   };
 
   return (
@@ -148,13 +200,37 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="edit-modal-body">
-          {/* Recuadro Informativo de Fecha y Hora Originales */}
-          <div className="readonly-timestamp-banner">
-            <div className="timestamp-value">
-              <Clock size={16} />
-              <span>
-                <strong>{formattedDate} - {formattedTime}</strong>
-              </span>
+          {/* Fecha y hora editables */}
+          <div className="timestamp-editor">
+            <div className="timestamp-editor-header">
+              <CalendarDays size={17} />
+              <strong>{t('editModal.dateTimeTitle')}</strong>
+            </div>
+            <div className="timestamp-fields-grid">
+              <div className="timestamp-field">
+                <input
+                  id="edit-reading-date"
+                  type="date"
+                  aria-label={t('editModal.date')}
+                  value={readingDate}
+                  max={maxDate}
+                  onChange={(e) => { setPendingReading(null); setReadingDate(e.target.value); }}
+                  className="edit-input timestamp-input"
+                  required
+                />
+              </div>
+              <div className="timestamp-field">
+                <input
+                  id="edit-reading-time"
+                  type="time"
+                  aria-label={t('editModal.time')}
+                  value={readingTime}
+                  step="60"
+                  onChange={(e) => { setPendingReading(null); setReadingTime(e.target.value); }}
+                  className="edit-input timestamp-input"
+                  required
+                />
+              </div>
             </div>
           </div>
 
@@ -178,10 +254,10 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                   id="edit-systolic"
                   type="number"
                   inputMode="numeric"
-                  min="40"
-                  max="300"
+                  min="50"
+                  max="260"
                   value={systolic}
-                  onChange={(e) => setSystolic(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => { setPendingReading(null); setSystolic(e.target.value === '' ? '' : Number(e.target.value)); }}
                   onFocus={handleFocus}
                   className="edit-input num-input"
                   required
@@ -199,9 +275,9 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                   type="number"
                   inputMode="numeric"
                   min="30"
-                  max="200"
+                  max="160"
                   value={diastolic}
-                  onChange={(e) => setDiastolic(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => { setPendingReading(null); setDiastolic(e.target.value === '' ? '' : Number(e.target.value)); }}
                   onFocus={handleFocus}
                   className="edit-input num-input"
                   required
@@ -219,9 +295,9 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                   type="number"
                   inputMode="numeric"
                   min="30"
-                  max="250"
+                  max="220"
                   value={heartRate}
-                  onChange={(e) => setHeartRate(e.target.value === '' ? '' : Number(e.target.value))}
+                  onChange={(e) => { setPendingReading(null); setHeartRate(e.target.value === '' ? '' : Number(e.target.value)); }}
                   onFocus={handleFocus}
                   className="edit-input num-input"
                   required
@@ -234,9 +310,9 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                 systolic={typeof systolic === 'number' ? systolic : 120}
                 diastolic={typeof diastolic === 'number' ? diastolic : 80}
                 heartRate={typeof heartRate === 'number' ? heartRate : 72}
-                onChangeSystolic={setSystolic}
-                onChangeDiastolic={setDiastolic}
-                onChangeHeartRate={setHeartRate}
+                onChangeSystolic={(value) => { setPendingReading(null); setSystolic(value); }}
+                onChangeDiastolic={(value) => { setPendingReading(null); setDiastolic(value); }}
+                onChangeHeartRate={(value) => { setPendingReading(null); setHeartRate(value); }}
               />
             </div>
           )}
@@ -254,6 +330,15 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
           </div>
 
           {/* Acciones */}
+          {pendingReading && (
+            <div className="pulse-pressure-confirmation" role="alert" aria-live="assertive">
+              <div><strong>{t('form.pulsePressureTitle')}</strong><p>{t('form.pulsePressureWarning', { value: pendingReading.systolic - pendingReading.diastolic })}</p></div>
+              <div className="pulse-pressure-actions">
+                <button type="button" className="btn-cancel-warning" onClick={() => setPendingReading(null)}>{t('form.cancel')}</button>
+                <button type="button" className="btn-force-save" onClick={() => saveReading(pendingReading, true)}>{t('form.forceSave')}</button>
+              </div>
+            </div>
+          )}
           <div className="modal-actions-row">
             <button type="button" className="btn-secondary-large" onClick={onClose}>
               <X size={20} />

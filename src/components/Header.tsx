@@ -1,6 +1,6 @@
 import React from 'react';
-import { Server, Download, Moon, Sun, Settings, LogOut, Users, User } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { Server, Download, Moon, Sun, Settings, LogOut, Users } from 'lucide-react';
+import { useLanguage } from '../i18n/useLanguage';
 import { AppLogo } from './AppLogo';
 import type { AuthUser } from '../types/bloodPressure';
 
@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleDarkMode,
 }) => {
   const { t } = useLanguage();
-  const appVersion = import.meta.env.VITE_APP_VERSION || 'v1.5.6';
+  const appVersion = import.meta.env.VITE_APP_VERSION || 'v1.6.0-beta.1';
 
   return (
     <header className="app-header">

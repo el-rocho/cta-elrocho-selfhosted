@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { AppSettings, BackupFrequency, PatientSex, LanguageOption } from '../types/bloodPressure';
 import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe } from 'lucide-react';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 import { calculateAge } from '../utils/pdfGenerator';
 import { FlagES, FlagGB } from './FlagIcons';
 
@@ -10,6 +10,7 @@ interface SettingsModalProps {
   onClose: () => void;
   settings: AppSettings;
   onUpdateSettings: (newSettings: AppSettings) => void;
+  onMedicationContextChange: (takesMedication: boolean, recalculateHistory: boolean) => boolean | Promise<boolean>;
   onResetDemoData: () => void;
   onClearAllData: () => void;
   onTriggerManualBackup: () => void;
@@ -22,6 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   settings,
   onUpdateSettings,
+  onMedicationContextChange,
   onResetDemoData,
   onClearAllData,
   onTriggerManualBackup,
@@ -29,6 +31,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isTotpEnabled = false,
 }) => {
   const { t } = useLanguage();
+  const [pendingMedicationValue, setPendingMedicationValue] = useState<boolean | null>(null);
+  const [isUpdatingMedication, setIsUpdatingMedication] = useState(false);
 
   if (!isOpen) return null;
 
@@ -46,6 +50,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handlePatientSexChange = (sex: PatientSex) => {
     onUpdateSettings({ ...settings, patientSex: sex });
+  };
+
+  const handleMedicationChange = (takesMedication: boolean) => {
+    if (takesMedication !== settings.takesAntihypertensiveMedication) {
+      setPendingMedicationValue(takesMedication);
+    }
+  };
+
+  const confirmMedicationChange = async (recalculateHistory: boolean) => {
+    if (pendingMedicationValue === null || isUpdatingMedication) return;
+    setIsUpdatingMedication(true);
+    const success = await onMedicationContextChange(pendingMedicationValue, recalculateHistory);
+    setIsUpdatingMedication(false);
+    if (success) setPendingMedicationValue(null);
   };
 
   const handlePatientBirthDateChange = (val: string) => {
@@ -143,8 +161,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <User size={22} className="text-blue settings-field-icon" />
               <span>{t('settings.patientProfile')}</span>
             </div>
-            <p className="settings-desc patient-profile-desc">{t('settings.patientProfileDesc')}</p>
-
             <div className="patient-profile-fields">
               <div className="patient-profile-field">
                 <label className="settings-desc">
@@ -172,7 +188,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               <div className="patient-profile-field">
-                <label className="settings-desc">{t('settings.sexLabel')}</label>
                 <div className="chip-options-row patient-sex-options">
                   <button
                     type="button"
@@ -187,6 +202,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     onClick={() => handlePatientSexChange('femenino')}
                   >
                     {t('settings.sexFemale')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="patient-profile-field patient-profile-field-wide">
+                <label className="settings-desc">{t('settings.medicationLabel')}</label>
+                <div className="chip-options-row medication-options">
+                  <button type="button" className={`chip-select medication-yes ${settings.takesAntihypertensiveMedication ? 'active' : ''}`} onClick={() => handleMedicationChange(true)}>
+                    {t('settings.medicationYes')}
+                  </button>
+                  <button type="button" className={`chip-select medication-no ${!settings.takesAntihypertensiveMedication ? 'active' : ''}`} onClick={() => handleMedicationChange(false)}>
+                    {t('settings.medicationNo')}
                   </button>
                 </div>
               </div>
@@ -391,6 +418,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
       </div>
+      {pendingMedicationValue !== null && (
+        <div className="modal-overlay medication-context-overlay" onClick={(event) => { event.stopPropagation(); if (!isUpdatingMedication) setPendingMedicationValue(null); }}>
+          <div className="modal-content medication-context-dialog" onClick={(event) => event.stopPropagation()}>
+            <div className="medication-context-heading">
+              <ShieldAlert size={24} />
+              <h3>{t('settings.medicationChangeTitle')}</h3>
+            </div>
+            <p className="medication-context-message">
+              <strong>{t('settings.medicationChangeValuesUnchanged')}</strong>{' '}
+              {t('settings.medicationChangeMessage')}
+            </p>
+            <div className="medication-context-choice"><strong>{t('settings.medicationKeepHistory')}</strong><span>{t('settings.medicationKeepHistoryDesc')}</span></div>
+            <div className="medication-context-choice"><strong>{t('settings.medicationRecalculateHistory')}</strong><span>{t('settings.medicationRecalculateHistoryDesc')}</span></div>
+            <div className="medication-context-actions">
+              <button type="button" className="btn-secondary-large" disabled={isUpdatingMedication} onClick={() => setPendingMedicationValue(null)}>{t('settings.medicationChangeCancel')}</button>
+              <button type="button" className="btn-recalculate-history" disabled={isUpdatingMedication} onClick={() => confirmMedicationChange(true)}>{t('settings.medicationRecalculateButton')}</button>
+              <button type="button" className="btn-primary-large" disabled={isUpdatingMedication} onClick={() => confirmMedicationChange(false)}>{t('settings.medicationKeepButton')}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

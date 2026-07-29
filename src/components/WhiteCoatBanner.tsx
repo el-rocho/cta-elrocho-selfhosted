@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldAlert, ChevronDown, ChevronUp, Info, Settings } from 'lucide-react';
 import type { AppSettings } from '../types/bloodPressure';
-import { useLanguage } from '../i18n/LanguageContext';
+import { useLanguage } from '../i18n/useLanguage';
 
 interface WhiteCoatBannerProps {
   settings: AppSettings;

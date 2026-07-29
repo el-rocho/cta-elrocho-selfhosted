@@ -1,5 +1,6 @@
 import type { BloodPressureReading, BloodPressureSession, AppSettings } from '../types/bloodPressure';
 import { DEFAULT_SETTINGS } from '../services/storageService';
+import { getReadingMedicationContext } from './healthClassification';
 
 /**
  * Agrupa una lista de lecturas en sesiones de medición continua respetando las opciones configuradas.
@@ -52,9 +53,20 @@ export function processReadingsIntoSessions(
   for (let i = 1; i < sorted.length; i++) {
     const prevTime = new Date(sorted[i - 1].timestamp).getTime();
     const currTime = new Date(sorted[i].timestamp).getTime();
+    const previousMedicationContext = getReadingMedicationContext(
+      sorted[i - 1],
+      settings.takesAntihypertensiveMedication
+    );
+    const currentMedicationContext = getReadingMedicationContext(
+      sorted[i],
+      settings.takesAntihypertensiveMedication
+    );
 
-    // Agrupar si la diferencia con la toma ANTERIOR es menor o igual al intervalo configurado
-    if (currTime - prevTime <= sessionThresholdMs) {
+    // Nunca mezclar en una misma media tomas realizadas bajo contextos clínicos distintos.
+    if (
+      currTime - prevTime <= sessionThresholdMs &&
+      previousMedicationContext === currentMedicationContext
+    ) {
       currentGroup.push(sorted[i]);
     } else {
       sessionGroups.push(currentGroup);

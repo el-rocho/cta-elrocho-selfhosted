@@ -1,4 +1,5 @@
 import type { BloodPressureReading, ArmPosition } from '../types/bloodPressure';
+import { getReadingValidationError } from './readingValidation';
 
 /**
  * Parsea el contenido de un archivo CSV y devuelve un array de lecturas normalizadas.
@@ -6,7 +7,7 @@ import type { BloodPressureReading, ArmPosition } from '../types/bloodPressure';
 export function parseCSVData(csvText: string): Omit<BloodPressureReading, 'id'>[] {
   // Limpiar BOM UTF-8 y normalizar saltos de línea
   const cleanText = csvText.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lines = cleanText.split('\n').filter((l) => l.trim().length > 0);
+  const lines = cleanText.split('\n').filter((line) => line.trim().length > 0).filter((line) => !line.trim().toLowerCase().startsWith('sep=') && !line.trim().startsWith('#'));
 
   if (lines.length === 0) return [];
 
@@ -50,6 +51,8 @@ export function parseCSVData(csvText: string): Omit<BloodPressureReading, 'id'>[
   );
   let armIdx = headers.findIndex((h) => h.includes('brazo') || h.includes('arm'));
   let notesIdx = headers.findIndex((h) => h.includes('nota') || h.includes('note') || h.includes('comentario'));
+  let ppConfirmedIdx = headers.findIndex((h) => h.includes('pulse_pressure_confirmed') || h.includes('presion_pulso_confirmada'));
+  let medicationContextIdx = headers.findIndex((h) => h.includes('medication_context') || h.includes('contexto_medicacion'));
 
   const hasHeaderMatch = sysIdx !== -1 && diaIdx !== -1;
   const startLineIdx = hasHeaderMatch ? 1 : 0;
@@ -63,6 +66,8 @@ export function parseCSVData(csvText: string): Omit<BloodPressureReading, 'id'>[
     pulseIdx = 4;
     armIdx = 5;
     notesIdx = 9; // En la app propia las notas están en col 9
+    ppConfirmedIdx = -1;
+    medicationContextIdx = -1;
   }
 
   const readings: Omit<BloodPressureReading, 'id'>[] = [];
@@ -75,7 +80,8 @@ export function parseCSVData(csvText: string): Omit<BloodPressureReading, 'id'>[
     const rawDia = parseInt(cols[diaIdx], 10);
     const rawPulse = pulseIdx !== -1 && cols[pulseIdx] ? parseInt(cols[pulseIdx], 10) : 72;
 
-    if (isNaN(rawSys) || isNaN(rawDia) || rawSys <= rawDia || rawSys < 50 || rawSys > 260) {
+    const normalizedPulse = isNaN(rawPulse) ? 72 : rawPulse;
+    if (getReadingValidationError({ systolic: rawSys, diastolic: rawDia, heartRate: normalizedPulse })) {
       continue; // Ignorar filas no numéricas o con encabezado
     }
 
@@ -91,14 +97,24 @@ export function parseCSVData(csvText: string): Omit<BloodPressureReading, 'id'>[
 
     // Procesar Notas
     const notes = notesIdx !== -1 && cols[notesIdx] ? cols[notesIdx].trim() : undefined;
+    const rawPPConfirmed = ppConfirmedIdx !== -1 ? (cols[ppConfirmedIdx] || '').trim().toLowerCase() : '';
+    const pulsePressureWarningConfirmed = ['true', '1', 'yes', 'si', 'sí'].includes(rawPPConfirmed);
+    const rawMedicationContext = medicationContextIdx !== -1 ? (cols[medicationContextIdx] || '').trim().toLowerCase() : '';
+    const takesAntihypertensiveMedication = ['true', '1', 'yes', 'si', 'sí'].includes(rawMedicationContext)
+      ? true
+      : ['false', '0', 'no'].includes(rawMedicationContext)
+        ? false
+        : undefined;
 
     readings.push({
       timestamp,
       systolic: rawSys,
       diastolic: rawDia,
-      heartRate: isNaN(rawPulse) ? 72 : rawPulse,
+      heartRate: normalizedPulse,
       arm,
       notes: notes || undefined,
+      pulsePressureWarningConfirmed: pulsePressureWarningConfirmed || undefined,
+      takesAntihypertensiveMedication,
     });
   }
 
@@ -155,7 +171,7 @@ function parseDateTimeString(dateStr: string, timeStr: string): string {
       return new Date().toISOString();
     }
     return d.toISOString();
-  } catch (error) {
+  } catch {
     return new Date().toISOString();
   }
 }

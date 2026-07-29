@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { UserCheck, Key, Lock, AlertCircle, LogIn, Sparkles, Calendar, User } from 'lucide-react';
 import type { AuthUser, PatientSex } from '../types/bloodPressure';
 import { login, setupAdmin, verifyLoginTotp } from '../services/authService';
-import { useLanguage } from '../i18n/LanguageContext';
 import { AppLogo } from './AppLogo';
 
 interface LoginModalProps {
@@ -11,10 +10,8 @@ interface LoginModalProps {
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess }) => {
-  const { t } = useLanguage();
-
   // Estados de formulario
-  const [isInitialSetup, setIsInitialSetup] = useState(!hasAdmin);
+  const [isInitialSetup] = useState(!hasAdmin);
   const [step2FA, setStep2FA] = useState(false);
   const [tempToken2FA, setTempToken2FA] = useState<string | null>(null);
 
@@ -80,7 +77,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ hasAdmin, onLoginSuccess
       if (res.user) {
         onLoginSuccess(res.user);
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Error de comunicación con el servidor');
       setLoading(false);
     }

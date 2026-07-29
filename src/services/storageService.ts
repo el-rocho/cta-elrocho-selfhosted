@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   patientName: '',
   patientSex: '',
   patientAge: '',
+  takesAntihypertensiveMedication: false,
   backupFrequency: 'disabled',
   backupFolder: 'Descargas/Copias_Tension_Arterial',
   lastBackupTimestamp: undefined,
@@ -52,6 +53,23 @@ export async function updateReadingOnServer(updatedReading: BloodPressureReading
     return res.ok;
   } catch (error) {
     console.error('Error al actualizar toma en el servidor:', error);
+    return false;
+  }
+}
+
+export async function updateMedicationContextForAllReadings(
+  takesAntihypertensiveMedication: boolean
+): Promise<boolean> {
+  try {
+    const res = await fetch('/api/readings/medication-context', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ takesAntihypertensiveMedication }),
+    });
+    return res.ok;
+  } catch (error) {
+    console.error('Error al actualizar el contexto de medicación del historial:', error);
     return false;
   }
 }
