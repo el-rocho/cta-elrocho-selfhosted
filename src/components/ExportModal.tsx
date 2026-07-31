@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { BloodPressureSession, DateFilterPreset, DateRange, BloodPressureReading, AppSettings, ExportReportOptions, AuthUser } from '../types/bloodPressure';
 import { exportToCSV } from '../utils/exportCsv';
 import { downloadPDFReport, calculateAge } from '../utils/pdfGenerator';
-import { parseCSVData } from '../utils/importCsv';
+import { analyzeCSVImport, type CSVImportResult } from '../utils/importCsv';
 import { FileSpreadsheet, Printer, X, Calendar, User, Upload, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 
@@ -20,7 +20,7 @@ interface ExportModalProps {
   sessions: BloodPressureSession[];
   settings: AppSettings;
   currentUser?: AuthUser | null;
-  onImportReadings: (readings: Omit<BloodPressureReading, 'id'>[]) => void;
+  onImportReadings: (readings: Omit<BloodPressureReading, 'id'>[]) => number | Promise<number>;
   onNotify?: (toast: string | ToastNotification) => void;
 }
 
@@ -38,7 +38,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [reportNotes, setReportNotes] = useState<string>('');
   const [hidePatientData, setHidePatientData] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
-  const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
+  const [pendingImport, setPendingImport] = useState<CSVImportResult | null>(null);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -60,6 +61,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       patientAge: ageVal,
       patientBirthDate: birthDateVal,
       takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
+      guidelineProfile: settings.guidelineProfile,
       reportNotes: reportNotes.trim() ? reportNotes.trim() : undefined,
       hidePatientData,
     };
@@ -112,20 +114,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setImportStatus(null);
+    setPendingImport(null);
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       if (text) {
-        const parsed = parseCSVData(text);
-        if (parsed.length === 0) {
-          setImportStatus(language === 'en' ? 'No valid blood pressure records found in CSV.' : 'No se encontraron registros de tensión válidos en el archivo CSV.');
+        const result = analyzeCSVImport(text, { defaultArm: settings.defaultArm });
+        if (result.format === 'unknown' || result.readings.length === 0) {
+          setImportStatus({ kind: 'error', message: t('export.importNoValidReadings') });
         } else {
-          onImportReadings(parsed);
-          setImportStatus(t('toast.importedCount', { count: parsed.length }));
+          setPendingImport(result);
         }
       }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.onerror = () => {
+      setImportStatus({ kind: 'error', message: t('export.importReadError') });
+      if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file, 'UTF-8');
+  };
+
+  const confirmImport = async () => {
+    if (!pendingImport) return;
+    const addedCount = await onImportReadings(pendingImport.readings);
+    setImportStatus({ kind: 'success', message: t('toast.importedCount', { count: addedCount }) });
+    setPendingImport(null);
   };
 
   const currentOpts = getExportOptions();
@@ -274,10 +290,84 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 />
               </div>
 
+              {pendingImport && (
+                <div className="import-preview-card">
+                  <div className="import-preview-heading">
+                    <FileSpreadsheet size={21} />
+                    <div>
+                      <h3>{t('export.importPreviewTitle')}</h3>
+                      <p>
+                        {pendingImport.format === 'mytherapy'
+                          ? t('export.importFormatMyTherapy')
+                          : t('export.importFormatNative')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="import-summary-grid">
+                    <div className="import-summary-item">
+                      <strong>{pendingImport.readings.length}</strong>
+                      <span>{t('export.importReadingsReady')}</span>
+                    </div>
+                    <div className="import-summary-item">
+                      <strong>{pendingImport.ignoredRows}</strong>
+                      <span>{t('export.importRowsIgnored')}</span>
+                    </div>
+                    <div className="import-summary-item">
+                      <strong>{pendingImport.shorthandNormalized}</strong>
+                      <span>{t('export.importShorthandNormalized')}</span>
+                    </div>
+                    <div className="import-summary-item">
+                      <strong>{pendingImport.invalidReadings}</strong>
+                      <span>{t('export.importInvalidReadings')}</span>
+                    </div>
+                  </div>
+
+                  {pendingImport.format === 'mytherapy' && (
+                    <div className="import-preview-note">
+                      <AlertCircle size={17} />
+                      <span>
+                        {t('export.importMyTherapyNotice', {
+                          arm: settings.defaultArm === 'right' ? t('form.armRight') : t('form.armLeft'),
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+                  {pendingImport.shorthandNormalized > 0 && (
+                    <div className="import-preview-note warning">
+                      <AlertCircle size={17} />
+                      <span>{t('export.importShorthandNotice', { count: pendingImport.shorthandNormalized })}</span>
+                    </div>
+                  )}
+
+                  {pendingImport.incompleteGroups > 0 && (
+                    <div className="import-preview-note warning">
+                      <AlertCircle size={17} />
+                      <span>{t('export.importIncompleteNotice', { count: pendingImport.incompleteGroups })}</span>
+                    </div>
+                  )}
+
+                  <div className="import-preview-actions">
+                    <button type="button" className="btn-import-confirm" onClick={confirmImport}>
+                      <CheckCircle2 size={18} />
+                      {t('export.confirmImport')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-import-reselect"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {t('export.selectAnotherCsv')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {importStatus && (
-                <div className={`import-status-box ${importStatus.includes('✓') || importStatus.includes('Éxito') ? 'success' : 'error'}`}>
-                  {importStatus.includes('✓') || importStatus.includes('Éxito') ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-                  <span>{importStatus}</span>
+                <div className={`import-status-box ${importStatus.kind}`}>
+                  {importStatus.kind === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                  <span>{importStatus.message}</span>
                 </div>
               )}
             </div>

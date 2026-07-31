@@ -35,6 +35,8 @@ export interface BloodPressureSession {
 
 export type BackupFrequency = 'disabled' | 'daily' | 'weekly' | 'monthly';
 export type LanguageOption = 'es' | 'en';
+export type GuidelineProfile = 'esc-2024' | 'aha-acc-2025' | 'ish-2020';
+export type TreatmentTargetMode = 'guideline' | 'custom';
 
 export interface AppSettings {
   language: LanguageOption; // Idioma de la aplicación ('es' / 'en')
@@ -42,6 +44,12 @@ export interface AppSettings {
   whiteCoatIntervalMinutes: number; // Intervalo de tiempo máximo entre tomas (ej. 5, 10, 15 min)
   defaultArm: ArmPosition; // Brazo predeterminado ('left' / 'right')
   preferredInputMode: InputMode; // Modo de introducción de datos ('keyboard' / 'wheel')
+  guidelineProfile: GuidelineProfile;
+  treatmentTargetMode: TreatmentTargetMode;
+  customTargetSystolicMin: number;
+  customTargetSystolicMax: number;
+  customTargetDiastolicMin: number;
+  customTargetDiastolicMax: number;
   
   // Perfil del paciente
   patientName?: string;
@@ -62,15 +70,22 @@ export interface ExportReportOptions {
   patientAge?: number | '';
   patientBirthDate?: string;
   takesAntihypertensiveMedication?: boolean;
+  guidelineProfile?: GuidelineProfile;
   reportNotes?: string;
   hidePatientData?: boolean;
 }
 
-export type HealthSeverity = 'hypotension' | 'overtreatment' | 'optimal' | 'elevated' | 'hypertension';
+export type HealthSeverity = 'low' | 'normal' | 'elevated' | 'hypertension' | 'stage1' | 'stage2' | 'belowThreshold' | 'aboveThreshold' | 'extreme';
 export type HealthCulprit = 'none' | 'systolic' | 'diastolic' | 'both';
+export type HealthDirection = 'low' | 'neutral' | 'high' | 'extreme';
+export type HealthColorRole = 'blue' | 'green' | 'yellow' | 'orange' | 'red';
 
 export interface HealthCategoryInfo {
   key: HealthSeverity;
+  guidelineProfile: GuidelineProfile;
+  direction: HealthDirection;
+  colorRole: HealthColorRole;
+  rank: number;
   name: string;
   description: string;
   colorHex: string;
@@ -79,7 +94,8 @@ export interface HealthCategoryInfo {
 }
 
 export type HealthAlertKey =
-  | 'lowDiastolic'
+  | 'extremeHighPressure'
+  | 'lowBloodPressure'
   | 'narrowPulsePressure'
   | 'widePulsePressure'
   | 'bradycardia'
@@ -87,11 +103,13 @@ export type HealthAlertKey =
   | 'hypotensionTachycardia'
   | 'hypertensionTachycardia';
 
-export type HealthAlertLevel = 'info' | 'caution' | 'warning';
+export type HealthAlertLevel = 'info' | 'caution' | 'warning' | 'urgent';
+export type HealthAlertScope = 'measurement' | 'safety';
 
 export interface HealthAlertInfo {
   key: HealthAlertKey;
   level: HealthAlertLevel;
+  scope: HealthAlertScope;
   name: string;
   description: string;
   colorHex: string;
@@ -102,6 +120,7 @@ export interface HealthAlertInfo {
 export interface HealthAssessment {
   category: HealthCategoryInfo;
   alerts: HealthAlertInfo[];
+  safetyAlerts: HealthAlertInfo[];
   pulsePressure: number;
   culprit: HealthCulprit;
 }

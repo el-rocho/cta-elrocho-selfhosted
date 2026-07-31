@@ -2,18 +2,19 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import type { BloodPressureSession, DateRange, ExportReportOptions, LanguageOption, HealthSeverity } from '../types/bloodPressure';
+import type { BloodPressureSession, DateRange, ExportReportOptions, GuidelineProfile, LanguageOption } from '../types/bloodPressure';
 import logoSvgRaw from '../assets/app-logo.svg?raw';
 import { filterSessionsByDateRange } from './exportCsv';
 import {
   getHealthAssessment,
-  getHealthCategoriesMap,
+  getHealthCategories,
   getHealthCategory,
   getCulpritLabel,
   getConfirmedPulsePressureAlerts,
+  getGuidelineName,
   getHealthDisclaimer,
-  getSessionMedicationContext,
 } from './healthClassification';
+import { getEffectiveSessionReadings } from './whiteCoatAlgorithm';
 
 export interface PDFGenerationResult {
   success: boolean;
@@ -44,19 +45,20 @@ export async function downloadPDFReport(
 ): Promise<PDFGenerationResult> {
   const isEn = lang === 'en';
   const locale = isEn ? 'en-US' : 'es-ES';
+  const guidelineProfile = options.guidelineProfile ?? 'esc-2024';
   const filtered = filterSessionsByDateRange(sessions, dateRange);
 
   if (filtered.length === 0) {
-    alert(isEn ? 'No blood pressure records found for selected period.' : 'No hay registros de tensión en el periodo seleccionado.');
+    alert(isEn ? 'No blood pressure records found for selected period.' : 'No hay registros de tensiÃ³n en el periodo seleccionado.');
     return { success: false };
   }
 
-  // Ordenar de más antiguo a más reciente para el gráfico de líneas
+  // Ordenar de mÃ¡s antiguo a mÃ¡s reciente para el grÃ¡fico de lÃ­neas
   const chronological = [...filtered].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  // Estadísticas para el resumen
+  // EstadÃ­sticas para el resumen
   const total = filtered.length;
   let sumSys = 0;
   let sumDia = 0;
@@ -72,7 +74,7 @@ export async function downloadPDFReport(
   const avgDia = total > 0 ? Math.round(sumDia / total) : 0;
   const avgPulse = total > 0 ? Math.round(sumPulse / total) : 0;
   const takesMedication = options.takesAntihypertensiveMedication === true;
-  const avgAssessment = getHealthAssessment(avgSys, avgDia, avgPulse, lang, takesMedication);
+  const avgAssessment = getHealthAssessment(avgSys, avgDia, avgPulse, lang, guidelineProfile);
   const avgCategory = avgAssessment.category;
 
   // Calcular periodo de fechas real
@@ -94,7 +96,7 @@ export async function downloadPDFReport(
 
     const computedAge = options.patientAge || (options.patientBirthDate ? calculateAge(options.patientBirthDate) : '');
     if (computedAge !== '' && computedAge !== undefined && computedAge !== null) {
-      parts.push(`<strong>${isEn ? 'Age:' : 'Edad:'}</strong> ${computedAge} ${isEn ? 'years' : 'años'}`);
+      parts.push(`<strong>${isEn ? 'Age:' : 'Edad:'}</strong> ${computedAge} ${isEn ? 'years' : 'aÃ±os'}`);
     }
 
     if (options.patientSex) {
@@ -107,7 +109,7 @@ export async function downloadPDFReport(
         parts.push(`<strong>${sexLetter}</strong>`);
       }
     }
-    parts.push(`<strong>${isEn ? 'Antihypertensive medication:' : 'Medicación antihipertensiva:'}</strong> ${takesMedication ? (isEn ? 'Yes' : 'Sí') : 'No'}`);
+    parts.push(`<strong>${isEn ? 'Antihypertensive medication:' : 'MedicaciÃ³n antihipertensiva:'}</strong> ${takesMedication ? (isEn ? 'Yes' : 'SÃ­') : 'No'}`);
 
     patientInfoStr = parts.length > 0 ? parts.join(' | ') : '';
   }
@@ -134,36 +136,36 @@ export async function downloadPDFReport(
       )
       .join('');
 
-  // Los avisos pueden ocupar más de una línea; se reduce el número de filas para evitar cortes.
+  // Los avisos pueden ocupar mÃ¡s de una lÃ­nea; se reduce el nÃºmero de filas para evitar cortes.
   const ROWS_PER_PAGE = 10;
   const tablePagesCount = Math.ceil(filtered.length / ROWS_PER_PAGE);
-  const totalPDFPages = 1 + tablePagesCount; // Página 1 = Gráficos y Resumen
+  const totalPDFPages = 1 + tablePagesCount; // PÃ¡gina 1 = GrÃ¡ficos y Resumen
 
-  // Generar HTML de los gráficos para la Página 1
+  // Generar HTML de los grÃ¡ficos para la PÃ¡gina 1
   const svgLineChartHtml = generateChartSVG(chronological, locale, isEn);
-  const categoryDistributionHtml = generateCategoryDistributionHTML(filtered, lang, takesMedication);
+  const categoryDistributionHtml = generateCategoryDistributionHTML(filtered, lang, guidelineProfile);
 
-  // Función para construir la cabecera estándar de cualquier página
+  // FunciÃ³n para construir la cabecera estÃ¡ndar de cualquier pÃ¡gina
   const buildPageHeader = (pageTitle: string, pageNum: number) => `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
       <div style="display: flex; align-items: center; gap: 12px;">
         ${reportLogoMarkup}
         <div>
           <h1 style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 700;">${pageTitle}</h1>
-          <p style="margin: 3px 0 0 0; font-size: 12px; color: #64748b;">${patientInfoStr ? patientInfoStr + ' | ' : ''}<strong>${isEn ? 'Period:' : 'Periodo:'}</strong> ${realPeriodStr}</p>
+          <p style="margin: 3px 0 0 0; font-size: 12px; color: #64748b;">${patientInfoStr ? patientInfoStr + ' | ' : ''}<strong>${isEn ? 'Reference:' : 'Referencia:'}</strong> ${getGuidelineName(guidelineProfile, lang)} | <strong>${isEn ? 'Period:' : 'Periodo:'}</strong> ${realPeriodStr}</p>
         </div>
       </div>
       <div style="text-align: right; font-size: 11px; color: #64748b;">
         <p style="margin:0;">${isEn ? 'Generated:' : 'Generado:'} ${new Date().toLocaleDateString(locale)} ${new Date().toLocaleTimeString(locale)}</p>
-        <p style="margin:4px 0 0 0; font-weight: 600; color: #3b82f6;">${isEn ? `Page ${pageNum} of ${totalPDFPages}` : `Página ${pageNum} de ${totalPDFPages}`}</p>
+        <p style="margin:4px 0 0 0; font-weight: 600; color: #3b82f6;">${isEn ? `Page ${pageNum} of ${totalPDFPages}` : `PÃ¡gina ${pageNum} de ${totalPDFPages}`}</p>
       </div>
     </div>
   `;
 
-  // Pie de página estándar
+  // Pie de pÃ¡gina estÃ¡ndar
   const buildPageFooter = () => `
     <div style="margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 10px; color: #94a3b8; text-align: center;">
-      ${isEn ? 'Personal and private log document.' : 'Documento de registro personal y privado.'} ${getHealthDisclaimer(lang)}
+      ${isEn ? 'Personal and private log document.' : 'Documento de registro personal y privado.'} ${getHealthDisclaimer(lang, guidelineProfile)}
     </div>
   `;
 
@@ -171,7 +173,7 @@ export async function downloadPDFReport(
   const pageContainers: HTMLDivElement[] = [];
 
   // ==========================================
-  // PÁGINA 1: RESUMEN Y GRÁFICOS (evolución + categorías ESC 2024)
+  // PÃGINA 1: RESUMEN Y GRÃFICOS (evoluciÃ³n + categorÃ­as ESC 2024)
   // ==========================================
   const page1 = document.createElement('div');
   page1.style.position = 'absolute';
@@ -186,13 +188,13 @@ export async function downloadPDFReport(
   page1.style.boxSizing = 'border-box';
 
   page1.innerHTML = `
-    ${buildPageHeader(isEn ? 'Blood Pressure Clinical Report' : 'Informe Clínico de Tensión Arterial', 1)}
+    ${buildPageHeader(isEn ? 'Blood Pressure Clinical Report' : 'Informe ClÃ­nico de TensiÃ³n Arterial', 1)}
 
     ${
       options.reportNotes
         ? `
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11.5px;">
-        <strong>${isEn ? 'Medical Remarks:' : 'Observaciones Médico-Clínicas:'}</strong>
+        <strong>${isEn ? 'Medical Remarks:' : 'Observaciones MÃ©dico-ClÃ­nicas:'}</strong>
         <p style="margin:2px 0 0 0; font-style:italic;">"${options.reportNotes}"</p>
       </div>
     `
@@ -202,11 +204,11 @@ export async function downloadPDFReport(
     <!-- Tarjetas KPI Resumen -->
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px;">
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center;">
-        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Systolic' : 'Promedio Sistólico'}</div>
+        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Systolic' : 'Promedio SistÃ³lico'}</div>
         <div style="font-size: 19px; font-weight: 800; color: #0f172a;">${avgSys} <span style="font-size: 11px; font-weight: 400; color: #64748b;">mmHg</span></div>
       </div>
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center;">
-        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Diastolic' : 'Promedio Diastólico'}</div>
+        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Diastolic' : 'Promedio DiastÃ³lico'}</div>
         <div style="font-size: 19px; font-weight: 800; color: #0f172a;">${avgDia} <span style="font-size: 11px; font-weight: 400; color: #64748b;">mmHg</span></div>
       </div>
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center;">
@@ -221,13 +223,13 @@ export async function downloadPDFReport(
       </div>
     </div>
 
-    <!-- 1. Gráfico de Evolución (ARRIBA - ANCHO COMPLETO 100%) -->
+    <!-- 1. GrÃ¡fico de EvoluciÃ³n (ARRIBA - ANCHO COMPLETO 100%) -->
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; width: 100%; box-sizing: border-box;">
       <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-        <span>${isEn ? 'Blood Pressure Evolution' : 'Evolución Tensión Arterial'}</span>
+        <span>${isEn ? 'Blood Pressure Evolution' : 'EvoluciÃ³n TensiÃ³n Arterial'}</span>
         <div style="display: flex; gap: 12px; font-size: 9.5px; font-weight: 500; color: #64748b;">
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#ef4444; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Systolic' : 'Sistólica'}</span>
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#3b82f6; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Diastolic' : 'Diastólica'}</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#ef4444; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Systolic' : 'SistÃ³lica'}</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#3b82f6; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Diastolic' : 'DiastÃ³lica'}</span>
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#64748b; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Pulse' : 'Pulsaciones'}</span>
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:9px; height:7px; background:rgba(16, 185, 129, 0.15); border:1px solid rgba(16, 185, 129, 0.4); display:inline-block;"></span> ${isEn ? 'Healthy Range' : 'Rango Saludable'}</span>
         </div>
@@ -235,7 +237,7 @@ export async function downloadPDFReport(
       ${svgLineChartHtml}
     </div>
 
-    <!-- 2. Gráfico de distribución ESC 2024 -->
+    <!-- 2. GrÃ¡fico de distribuciÃ³n ESC 2024 -->
     ${categoryDistributionHtml}
 
     ${buildPageFooter()}
@@ -244,7 +246,7 @@ export async function downloadPDFReport(
   pageContainers.push(page1);
 
   // ==========================================
-  // PÁGINAS 2+: HISTORIAL DE MEDICIONES POR BLOQUES
+  // PÃGINAS 2+: HISTORIAL DE MEDICIONES POR BLOQUES
   // ==========================================
   for (let pageIdx = 0; pageIdx < tablePagesCount; pageIdx++) {
     const pageNum = pageIdx + 2;
@@ -268,15 +270,18 @@ export async function downloadPDFReport(
         const d = new Date(s.timestamp);
         const dateStr = d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
         const timeStr = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-        const sessionTakesMedication = getSessionMedicationContext(s.readings, takesMedication);
         const assessment = getHealthAssessment(
           s.averageSystolic,
           s.averageDiastolic,
           s.averageHeartRate,
           lang,
-          sessionTakesMedication
+          guidelineProfile
         );
-        const sessionAlerts = [...assessment.alerts, ...getConfirmedPulsePressureAlerts(s.readings, lang)];
+        const sessionAlerts = [
+          ...assessment.safetyAlerts,
+          ...assessment.alerts,
+          ...getConfirmedPulsePressureAlerts(getEffectiveSessionReadings(s), lang),
+        ];
         const cat = assessment.category;
         const armLabel = s.arm === 'left' ? (isEn ? 'Left' : 'Izq') : (isEn ? 'Right' : 'Der');
         const sessionTag = s.readings.length > 1 ? (isEn ? ` (Avg of ${s.readings.length} readings)` : ` (Media de ${s.readings.length} tomas)`) : '';
@@ -293,7 +298,9 @@ export async function downloadPDFReport(
             <span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:10px; font-weight:600; background:${cat.badgeBg}; color:${cat.badgeText};">
               ${cat.name}
             </span>
-            ${assessment.culprit !== 'none' ? `<div style="font-size:8.5px; color:#475569; margin-top:3px;">${getCulpritLabel(assessment.culprit, assessment.category.key, lang)}</div>` : ''}
+            ${assessment.culprit !== 'none'
+              ? `<div style="font-size:8.5px; color:#475569; margin-top:3px;">${getCulpritLabel(assessment.culprit, assessment.category.direction, lang)}</div>`
+              : ''}
             ${
               sessionAlerts.length > 0
                 ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">${renderAlertBadges(sessionAlerts)}</div>`
@@ -317,12 +324,12 @@ export async function downloadPDFReport(
         <thead>
           <tr style="background-color: #f1f5f9; color: #475569; text-align: left;">
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Date & Time' : 'Fecha y Hora'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Systolic' : 'Sistólica'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Diastolic' : 'Diastólica'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Systolic' : 'SistÃ³lica'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Diastolic' : 'DiastÃ³lica'}</th>
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Pulse' : 'Pulso'}</th>
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Arm' : 'Brazo'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'BP Category / Alerts' : 'Categoría PA / Avisos'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Notes / Session' : 'Notas / Sesión'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'BP Category / Alerts' : 'CategorÃ­a PA / Avisos'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Notes / Session' : 'Notas / SesiÃ³n'}</th>
           </tr>
         </thead>
         <tbody>
@@ -359,7 +366,7 @@ export async function downloadPDFReport(
     const pdfHeight = pdf.internal.pageSize.getHeight(); // 210 mm
     const imgWidth = pdfWidth - 16; // 8mm margen a cada lado
 
-    // Renderizar página a página
+    // Renderizar pÃ¡gina a pÃ¡gina
     for (let i = 0; i < pageContainers.length; i++) {
       const container = pageContainers[i];
       document.body.appendChild(container);
@@ -436,7 +443,7 @@ export function printPDFReport(
   downloadPDFReport(sessions, dateRange, options, lang);
 }
 
-// Gráfico de líneas (Evolución Tensión) a ancho completo (970px)
+// GrÃ¡fico de lÃ­neas (EvoluciÃ³n TensiÃ³n) a ancho completo (970px)
 function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale = 'es-ES', isEn = false): string {
   if (chronologicalSessions.length === 0) {
     return `<p style="text-align:center; color:#94a3b8; font-size:12px;">${isEn ? 'No data to chart in this period' : 'Sin datos para graficar en este periodo'}</p>`;
@@ -496,7 +503,7 @@ function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale 
         })
         .join('')}
 
-      <!-- Líneas -->
+      <!-- LÃ­neas -->
       <path d="${pulsePath}" fill="none" stroke="#64748b" stroke-width="0.8" stroke-linecap="round" stroke-dasharray="4 3" />
       <path d="${sysPath}" fill="none" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round" />
       <path d="${diaPath}" fill="none" stroke="#3b82f6" stroke-width="1.2" stroke-linecap="round" />
@@ -519,30 +526,27 @@ function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale 
   `;
 }
 
-// Gráfico de barras verticales por categorías europeas ESC 2024
-function generateCategoryDistributionHTML(sessions: BloodPressureSession[], lang: LanguageOption = 'es', takesMedication = false): string {
+// GrÃ¡fico de barras verticales por categorÃ­as de la referencia seleccionada
+function generateCategoryDistributionHTML(
+  sessions: BloodPressureSession[],
+  lang: LanguageOption = 'es',
+  guidelineProfile: GuidelineProfile = 'esc-2024'
+): string {
   const isEn = lang === 'en';
   const total = sessions.length;
+  const categories = getHealthCategories(guidelineProfile, lang);
+  const counts = new Map(categories.map((category) => [category.key, 0]));
 
-  const counts: Record<HealthSeverity, number> = {
-    hypotension: 0,
-    overtreatment: 0,
-    optimal: 0,
-    elevated: 0,
-    hypertension: 0,
-  };
-
-  let hasMedicatedSessions = false;
   sessions.forEach((s) => {
-    const sessionTakesMedication = getSessionMedicationContext(s.readings, takesMedication);
-    hasMedicatedSessions ||= sessionTakesMedication;
-    const cat = getHealthCategory(s.averageSystolic, s.averageDiastolic, lang, sessionTakesMedication);
-    counts[cat.key]++;
+    const category = getHealthCategory(
+      s.averageSystolic,
+      s.averageDiastolic,
+      lang,
+      guidelineProfile
+    );
+    counts.set(category.key, (counts.get(category.key) ?? 0) + 1);
   });
-  const categoriesMap = getHealthCategoriesMap(lang, hasMedicatedSessions || takesMedication);
-
-  const keys: HealthSeverity[] = hasMedicatedSessions ? ['hypotension', 'overtreatment', 'optimal', 'elevated', 'hypertension'] : ['hypotension', 'optimal', 'elevated', 'hypertension'];
-  const maxCount = Math.max(1, ...Object.values(counts));
+  const maxCount = Math.max(1, ...counts.values());
 
   const svgWidth = 720;
   const svgHeight = 135;
@@ -554,14 +558,13 @@ function generateCategoryDistributionHTML(sessions: BloodPressureSession[], lang
   const chartWidth = svgWidth - paddingLeft - paddingRight;
   const chartHeight = svgHeight - paddingTop - paddingBottom;
 
-  const barGroupWidth = chartWidth / keys.length;
+  const barGroupWidth = chartWidth / categories.length;
   const barWidth = Math.min(38, barGroupWidth * 0.52);
 
-  const barsSvgHtml = keys
-    .map((key, idx) => {
-      const count = counts[key];
+  const barsSvgHtml = categories
+    .map((category, idx) => {
+      const count = counts.get(category.key) ?? 0;
       const pct = total > 0 ? (count / total) * 100 : 0;
-      const cat = categoriesMap[key];
 
       const groupCenterX = paddingLeft + (idx + 0.5) * barGroupWidth;
       const barX = groupCenterX - barWidth / 2;
@@ -571,17 +574,17 @@ function generateCategoryDistributionHTML(sessions: BloodPressureSession[], lang
 
       const labelText = count > 0 ? `${count} (${pct % 1 === 0 ? pct.toFixed(0) : pct.toFixed(1)}%)` : '0';
       const labelY = Math.max(12, barY - 4);
-      const xLabel = cat.name;
+      const xLabel = category.name;
 
       return `
         <g>
-          <!-- Barra vertical por categoría ESC 2024 -->
+          <!-- Barra vertical por categorÃ­a de la referencia seleccionada -->
           <rect
             x="${barX}"
             y="${barY}"
             width="${barWidth}"
             height="${barH}"
-            fill="${count > 0 ? cat.colorHex : '#e2e8f0'}"
+            fill="${count > 0 ? category.colorHex : '#e2e8f0'}"
             rx="4"
           />
 
@@ -595,7 +598,7 @@ function generateCategoryDistributionHTML(sessions: BloodPressureSession[], lang
             font-weight="${count > 0 ? '700' : '400'}"
           >${labelText}</text>
 
-          <!-- Nombre de Categoría en Eje X -->
+          <!-- Nombre de CategorÃ­a en Eje X -->
           <text
             x="${groupCenterX}"
             y="${svgHeight - 12}"
@@ -612,12 +615,12 @@ function generateCategoryDistributionHTML(sessions: BloodPressureSession[], lang
   return `
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 0 auto; width: 780px; box-sizing: border-box; text-align: center;">
       <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-        <span>${isEn ? 'Distribution by BP Category' : 'Distribución por Categorías de PA'}</span>
+        <span>${isEn ? 'Distribution by BP Category' : 'DistribuciÃ³n por CategorÃ­as de PA'} Â· ${getGuidelineName(guidelineProfile, lang)}</span>
         <span style="font-size: 10px; color: #64748b; font-weight: 500;">${total} ${isEn ? 'readings total' : 'tomas totales'}</span>
       </div>
 
       <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" style="width:100%; height:auto; overflow:visible; display:block; margin: 0 auto;">
-        <!-- Línea Base Eje X -->
+        <!-- LÃ­nea Base Eje X -->
         <line x1="${paddingLeft}" y1="${svgHeight - paddingBottom}" x2="${svgWidth - paddingRight}" y2="${svgHeight - paddingBottom}" stroke="#cbd5e1" stroke-width="1" />
 
         ${barsSvgHtml}

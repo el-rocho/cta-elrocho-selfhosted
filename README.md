@@ -93,21 +93,9 @@ Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa 
 
 ---
 
-### Validar una versión beta sin tocar los datos de producción
+### Actualizaciones
 
-La rama `dev` publica la imagen `ghcr.io/el-rocho/cta-elrocho-selfhosted:beta`. El archivo `docker-compose.beta.yml` la ejecuta en el puerto `3001` y utiliza el directorio independiente `data-beta`.
-
-Para probar también la migración sobre una copia del historial:
-
-```bash
-sudo docker compose -f docker-compose.beta.yml down
-sudo rm -rf ./data-beta
-sudo cp -a ./data ./data-beta
-sudo docker compose -f docker-compose.beta.yml pull
-sudo docker compose -f docker-compose.beta.yml up -d
-```
-
-La beta quedará disponible en `http://<IP_DE_TU_SERVIDOR>:3001`. Los datos originales de `./data` no se modifican.
+Antes de instalar una nueva versión, consulta la **[guía de actualización](UPGRADING.md)** y las notas específicas de la versión. Allí se describe cómo respaldar SQLite, actualizar la imagen y actuar si una versión incorpora migraciones.
 
 ---
 
@@ -166,17 +154,3 @@ npm run dev
 npm run build
 npm run server
 ```
-
----
-
-## Migración compatible del perfil y avisos
-
-Al iniciar por primera vez una versión que incluya el semáforo personalizado, el servidor añade automáticamente:
-
-- `settings.takes_antihypertensive_medication`, con valor inicial `0` para perfiles existentes.
-- `readings.pulse_pressure_confirmed`, con valor inicial `0` para mediciones existentes.
-- `readings.takes_antihypertensive_medication`, que guarda el contexto clínico propio de cada toma.
-
-Las mediciones antiguas heredan una sola vez el estado de medicación que tenga configurado su usuario al arrancar la versión actualizada. Después mantienen ese contexto histórico, salvo que el usuario elija expresamente **Recalcular todo** al cambiar la configuración.
-
-No hay que recrear la base SQLite ni volver a importar el historial. Se recomienda, como en cualquier actualización, hacer antes una copia del directorio persistente `data`. El servidor autoalojado y el cliente Android/PWA deben actualizarse conjuntamente para conservar y mostrar las nuevas etiquetas.

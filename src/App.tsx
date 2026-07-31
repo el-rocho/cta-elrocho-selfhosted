@@ -15,13 +15,16 @@ import {
   DEFAULT_SETTINGS,
 } from './services/storageService';
 import { getAuthStatus, logout } from './services/authService';
-import { processReadingsIntoSessions } from './utils/whiteCoatAlgorithm';
+import {
+  getSessionSummaryReading,
+  processReadingsIntoSessions,
+} from './utils/whiteCoatAlgorithm';
 import { checkAndExecuteAutoBackup } from './utils/backupScheduler';
 import { exportToCSV } from './utils/exportCsv';
 import { Header } from './components/Header';
 import { ReadingForm } from './components/ReadingForm';
-import { WhiteCoatBanner } from './components/WhiteCoatBanner';
 import { TrendChart } from './components/TrendChart';
+import { TrendInsights } from './components/TrendInsights';
 import { ReadingList } from './components/ReadingList';
 import { EditReadingModal } from './components/EditReadingModal';
 import { ExportModal, type ToastNotification } from './components/ExportModal';
@@ -149,6 +152,7 @@ export function App() {
     setReadings(result.readings);
     setNotificationMsg(getTranslation(settings.language, 'toast.importedCount', { count: result.addedCount }));
     setTimeout(() => setNotificationMsg(null), 5000);
+    return result.addedCount;
   };
 
   const handleTriggerManualBackup = () => {
@@ -162,6 +166,7 @@ export function App() {
       patientSex: settings.patientSex,
       patientAge: settings.patientAge,
       takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
+      guidelineProfile: settings.guidelineProfile,
     }, settings.language);
 
     const updatedSettings = {
@@ -252,7 +257,10 @@ export function App() {
     }
   };
 
-  const lastReading = readings.length > 0 ? readings[0] : null;
+  const lastReading = useMemo(
+    () => (sessions.length > 0 ? getSessionSummaryReading(sessions[0]) : null),
+    [sessions]
+  );
 
   if (authChecking) {
     return (
@@ -328,9 +336,15 @@ export function App() {
           readings={readings}
         />
 
-        <WhiteCoatBanner settings={settings} onOpenSettings={() => setIsSettingsModalOpen(true)} />
+        <TrendChart
+          sessions={sessions}
+          guidelineProfile={settings.guidelineProfile}
+        />
 
-        <TrendChart sessions={sessions} />
+        <TrendInsights
+          sessions={sessions}
+          guidelineProfile={settings.guidelineProfile}
+        />
 
         <ReadingList
           sessions={sessions}
@@ -339,7 +353,7 @@ export function App() {
           onEditReading={(reading) => setReadingToEdit(reading)}
           dateRange={dateRange}
           onDateRangeChange={setDateRange}
-          takesMedication={settings.takesAntihypertensiveMedication}
+          settings={settings}
         />
 
         <footer className="app-footer">
@@ -412,6 +426,7 @@ export function App() {
         <LegalNoticeModal
           isOpen={isLegalNoticeOpen}
           onClose={() => setIsLegalNoticeOpen(false)}
+          guidelineProfile={settings.guidelineProfile}
         />
       </div>
     </LanguageProvider>

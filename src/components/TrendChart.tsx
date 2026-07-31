@@ -1,35 +1,45 @@
-import React, { useState } from 'react';
-import type { BloodPressureSession, DateFilterPreset } from '../types/bloodPressure';
+import React, { useMemo, useState } from 'react';
+import type { BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
 import { TrendingUp } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
+import {
+  buildDailyTrendSeries,
+  type DailyAverage,
+  type LongTermTrendRange,
+} from '../utils/trendAnalysis';
 
 interface TrendChartProps {
   sessions: BloodPressureSession[];
+  guidelineProfile: GuidelineProfile;
 }
 
-export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
+const RANGE_TRANSLATION_KEYS: Record<LongTermTrendRange, string> = {
+  '28days': 'trend.range28Days',
+  '3months': 'trend.range3Months',
+  '6months': 'trend.range6Months',
+  '1year': 'trend.range1Year',
+};
+
+export const TrendChart: React.FC<TrendChartProps> = ({
+  sessions,
+  guidelineProfile,
+}) => {
   const { t, language } = useLanguage();
-  const [filter, setFilter] = useState<DateFilterPreset>('30days');
-  const [activeTooltip, setActiveTooltip] = useState<BloodPressureSession | null>(null);
-
-  // Ordenar de más antiguo a más reciente para graficar cronológicamente
-  const chronological = [...sessions].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  const [range, setRange] = useState<LongTermTrendRange>('28days');
+  const [activeTooltip, setActiveTooltip] = useState<DailyAverage | null>(null);
+  const series = useMemo(
+    () => buildDailyTrendSeries(sessions, range),
+    [sessions, range]
   );
+  const dailyAverages = series.dailyAverages;
+  const locale = language === 'en' ? 'en-US' : 'es-ES';
 
-  // Filtrar según el preset seleccionado
-  const now = new Date();
-  const filteredSessions = chronological.filter((s) => {
-    if (filter === 'all') return true;
-    const sDate = new Date(s.timestamp);
-    const diffDays = (now.getTime() - sDate.getTime()) / (1000 * 3600 * 24);
-    if (filter === '7days') return diffDays <= 7;
-    if (filter === '30days') return diffDays <= 30;
-    if (filter === '90days') return diffDays <= 90;
-    return true;
-  });
+  const selectRange = (nextRange: LongTermTrendRange) => {
+    setRange(nextRange);
+    setActiveTooltip(null);
+  };
 
-  if (filteredSessions.length === 0) {
+  if (dailyAverages.length === 0) {
     return (
       <div className="card chart-card">
         <div className="chart-header">
@@ -44,46 +54,72 @@ export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
     );
   }
 
-  // Dimensiones del canvas SVG
   const width = 700;
   const height = 260;
   const paddingLeft = 45;
   const paddingRight = 20;
   const paddingTop = 25;
   const paddingBottom = 40;
-
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
-
-  // Escalas (Tensión arterial 40 - 200 mmHg)
   const minVal = 40;
   const maxVal = 200;
+  const rangeStartTime = new Date(
+    series.rangeStart ?? dailyAverages[0].timestamp
+  ).getTime();
+  const rangeEndTime = new Date(
+    series.rangeEnd ?? dailyAverages[dailyAverages.length - 1].timestamp
+  ).getTime();
+  const timeSpan = Math.max(1, rangeEndTime - rangeStartTime);
+  const systolicThreshold = guidelineProfile === 'aha-acc-2025' ? 130 : 135;
+  const diastolicThreshold = guidelineProfile === 'aha-acc-2025' ? 80 : 85;
 
-  const getY = (val: number) => {
-    const clamped = Math.max(minVal, Math.min(maxVal, val));
+  const getY = (value: number) => {
+    const clamped = Math.max(minVal, Math.min(maxVal, value));
     const ratio = (clamped - minVal) / (maxVal - minVal);
     return height - paddingBottom - ratio * chartHeight;
   };
 
-  const getX = (index: number) => {
-    if (filteredSessions.length === 1) return paddingLeft + chartWidth / 2;
-    return paddingLeft + (index / (filteredSessions.length - 1)) * chartWidth;
+  const getX = (timestamp: string) => {
+    if (dailyAverages.length === 1) return paddingLeft + chartWidth / 2;
+    const ratio = (new Date(timestamp).getTime() - rangeStartTime) / timeSpan;
+    return paddingLeft + Math.max(0, Math.min(1, ratio)) * chartWidth;
   };
 
-  // Coordenadas de Sistólica, Diastólica y Pulsaciones
-  const sysPoints = filteredSessions.map((s, i) => ({ x: getX(i), y: getY(s.averageSystolic), data: s }));
-  const diaPoints = filteredSessions.map((s, i) => ({ x: getX(i), y: getY(s.averageDiastolic), data: s }));
-  const pulsePoints = filteredSessions.map((s, i) => ({ x: getX(i), y: getY(s.averageHeartRate), data: s }));
-
-  const sysPathD = sysPoints.reduce((acc, p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`), '');
-  const diaPathD = diaPoints.reduce((acc, p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`), '');
-  const pulsePathD = pulsePoints.reduce((acc, p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`), '');
-
-  // Área objetivo ideal (Sistólica < 120, Diastólica < 80)
-  const idealSysY = getY(120);
-  const idealDiaY = getY(80);
-
-  const locale = language === 'en' ? 'en-US' : 'es-ES';
+  const sysPoints = dailyAverages.map((day) => ({
+    x: getX(day.timestamp),
+    y: getY(day.averageSystolic),
+  }));
+  const diaPoints = dailyAverages.map((day) => ({
+    x: getX(day.timestamp),
+    y: getY(day.averageDiastolic),
+  }));
+  const pulsePoints = dailyAverages.map((day) => ({
+    x: getX(day.timestamp),
+    y: getY(day.averageHeartRate),
+  }));
+  const buildPath = (points: { x: number; y: number }[]) =>
+    points.reduce(
+      (path, point, index) =>
+        index === 0
+          ? `M ${point.x} ${point.y}`
+          : `${path} L ${point.x} ${point.y}`,
+      ''
+    );
+  const axisTickCount = range === '28days' ? 5 : 6;
+  const axisTicks = Array.from({ length: axisTickCount }, (_, index) => {
+    const ratio = index / (axisTickCount - 1);
+    const timestamp = rangeStartTime + timeSpan * ratio;
+    return {
+      x: paddingLeft + chartWidth * ratio,
+      label: new Date(timestamp).toLocaleDateString(
+        locale,
+        range === '28days'
+          ? { day: '2-digit', month: '2-digit' }
+          : { month: 'short', year: '2-digit' }
+      ),
+    };
+  });
 
   return (
     <div className="card chart-card">
@@ -94,34 +130,18 @@ export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
         </div>
 
         <div className="filter-chips">
-          <button
-            type="button"
-            className={`chip ${filter === '7days' ? 'active' : ''}`}
-            onClick={() => setFilter('7days')}
-          >
-            {t('list.preset7Days')}
-          </button>
-          <button
-            type="button"
-            className={`chip ${filter === '30days' ? 'active' : ''}`}
-            onClick={() => setFilter('30days')}
-          >
-            {t('list.preset30Days')}
-          </button>
-          <button
-            type="button"
-            className={`chip ${filter === '90days' ? 'active' : ''}`}
-            onClick={() => setFilter('90days')}
-          >
-            {t('list.preset90Days')}
-          </button>
-          <button
-            type="button"
-            className={`chip ${filter === 'all' ? 'active' : ''}`}
-            onClick={() => setFilter('all')}
-          >
-            {t('list.presetAll')}
-          </button>
+          {(Object.keys(RANGE_TRANSLATION_KEYS) as LongTermTrendRange[]).map(
+            (option) => (
+              <button
+                key={option}
+                type="button"
+                className={`chip ${range === option ? 'active' : ''}`}
+                onClick={() => selectRange(option)}
+              >
+                {t(RANGE_TRANSLATION_KEYS[option])}
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -138,33 +158,17 @@ export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
           <span className="legend-dot pulse-dot"></span>
           <span>{t('form.heartRate')}</span>
         </div>
+        <span className="daily-average-caption">
+          {t('trend.dailyAveragesCount', { days: dailyAverages.length })}
+        </span>
       </div>
 
       <div className="svg-container">
         <svg viewBox={`0 0 ${width} ${height}`} className="trend-svg">
-          {/* Banda de rango objetivo óptimo */}
-          <rect
-            x={paddingLeft}
-            y={idealSysY}
-            width={chartWidth}
-            height={Math.max(0, idealDiaY - idealSysY)}
-            fill="rgba(16, 185, 129, 0.08)"
-            rx={4}
-          />
-          <line
-            x1={paddingLeft}
-            y1={idealSysY}
-            x2={width - paddingRight}
-            y2={idealSysY}
-            stroke="rgba(16, 185, 129, 0.4)"
-            strokeDasharray="4 4"
-          />
-
-          {/* Líneas horizontales de escala Y */}
-          {[60, 90, 120, 150, 180].map((val) => {
-            const y = getY(val);
+          {[60, 90, 120, 150, 180].map((value) => {
+            const y = getY(value);
             return (
-              <g key={val}>
+              <g key={value}>
                 <line
                   x1={paddingLeft}
                   y1={y}
@@ -175,98 +179,124 @@ export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
                   opacity={0.5}
                 />
                 <text x={paddingLeft - 8} y={y + 4} textAnchor="end" className="axis-text">
-                  {val}
+                  {value}
                 </text>
               </g>
             );
           })}
 
-          {/* Línea gris fina punteada de Pulsaciones */}
+          <line
+            x1={paddingLeft}
+            y1={getY(systolicThreshold)}
+            x2={width - paddingRight}
+            y2={getY(systolicThreshold)}
+            stroke="#ef4444"
+            strokeDasharray="5 5"
+            opacity={0.22}
+          />
+          <line
+            x1={paddingLeft}
+            y1={getY(diastolicThreshold)}
+            x2={width - paddingRight}
+            y2={getY(diastolicThreshold)}
+            stroke="#3b82f6"
+            strokeDasharray="5 5"
+            opacity={0.22}
+          />
+
           <path
-            d={pulsePathD}
+            d={buildPath(pulsePoints)}
             fill="none"
             stroke="var(--accent-pulse)"
-            strokeWidth="1.5"
+            strokeWidth="1.3"
             strokeDasharray="3 3"
             strokeLinecap="round"
             opacity={0.7}
           />
+          <path
+            d={buildPath(sysPoints)}
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d={buildPath(diaPoints)}
+            fill="none"
+            stroke="#3b82f6"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
 
-          {/* Líneas de tendencia principales (Finas) */}
-          <path d={sysPathD} fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={diaPathD} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-
-          {/* Puntos e interactividad */}
-          {filteredSessions.map((s, i) => {
-            const sysP = sysPoints[i];
-            const diaP = diaPoints[i];
-            const pulseP = pulsePoints[i];
-            const dateStr = new Date(s.timestamp).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
+          {dailyAverages.map((day, index) => {
+            const sysPoint = sysPoints[index];
+            const diaPoint = diaPoints[index];
+            const pulsePoint = pulsePoints[index];
+            const activate = () => setActiveTooltip(day);
 
             return (
-              <g key={s.id} className="chart-point-group">
-                {/* Línea conectora vertical al pasar o tocar */}
+              <g key={day.dayKey} className="chart-point-group">
                 <line
-                  x1={sysP.x}
-                  y1={sysP.y}
-                  x2={diaP.x}
-                  y2={diaP.y}
+                  x1={sysPoint.x}
+                  y1={sysPoint.y}
+                  x2={diaPoint.x}
+                  y2={diaPoint.y}
                   stroke="var(--text-muted)"
                   strokeWidth="1"
-                  opacity={0.3}
+                  opacity={0.25}
                 />
-
-                {/* Punto Pulsaciones */}
                 <circle
-                  cx={pulseP.x}
-                  cy={pulseP.y}
+                  cx={pulsePoint.x}
+                  cy={pulsePoint.y}
                   r="3"
                   fill="var(--accent-pulse)"
                   opacity={0.8}
-                  onMouseEnter={() => setActiveTooltip(s)}
-                  onClick={() => setActiveTooltip(s)}
+                  onMouseEnter={activate}
+                  onClick={activate}
                   className="point-interactive"
                 />
-
-                {/* Punto Sistólica */}
                 <circle
-                  cx={sysP.x}
-                  cy={sysP.y}
+                  cx={sysPoint.x}
+                  cy={sysPoint.y}
                   r="3.5"
                   fill="#ef4444"
                   stroke="#ffffff"
                   strokeWidth="1.5"
-                  onMouseEnter={() => setActiveTooltip(s)}
-                  onClick={() => setActiveTooltip(s)}
+                  onMouseEnter={activate}
+                  onClick={activate}
                   className="point-interactive"
                 />
-
-                {/* Punto Diastólica */}
                 <circle
-                  cx={diaP.x}
-                  cy={diaP.y}
+                  cx={diaPoint.x}
+                  cy={diaPoint.y}
                   r="3.5"
                   fill="#3b82f6"
                   stroke="#ffffff"
                   strokeWidth="1.5"
-                  onMouseEnter={() => setActiveTooltip(s)}
-                  onClick={() => setActiveTooltip(s)}
+                  onMouseEnter={activate}
+                  onClick={activate}
                   className="point-interactive"
                 />
-
-                {/* Etiquetas fecha en eje X */}
-                {(filteredSessions.length <= 10 || i % Math.ceil(filteredSessions.length / 8) === 0) && (
-                  <text x={sysP.x} y={height - 12} textAnchor="middle" className="axis-text">
-                    {dateStr}
-                  </text>
-                )}
               </g>
             );
           })}
+
+          {axisTicks.map((tick) => (
+            <text
+              key={`${tick.x}-${tick.label}`}
+              x={tick.x}
+              y={height - 12}
+              textAnchor="middle"
+              className="axis-text"
+            >
+              {tick.label}
+            </text>
+          ))}
         </svg>
       </div>
 
-      {/* Tooltip de detalle al tocar o pulsar un punto */}
       {activeTooltip && (
         <div className="chart-tooltip-detail">
           <div className="tooltip-header">
@@ -275,19 +305,23 @@ export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
                 weekday: 'short',
                 day: '2-digit',
                 month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
+                year: 'numeric',
               })}
             </strong>
-            <button className="btn-close-tooltip" onClick={() => setActiveTooltip(null)}>
-              ×
+            <button
+              className="btn-close-tooltip"
+              onClick={() => setActiveTooltip(null)}
+              aria-label={t('settings.close')}
+            >
+              Ã—
             </button>
           </div>
           <div className="tooltip-body">
             <div className="tooltip-metric">
-              <span className="label">{t('form.systolic')} / {t('form.diastolic')}:</span>
+              <span className="label">{t('trend.dailyAverage')}:</span>
               <span className="val-sys">{activeTooltip.averageSystolic}</span> /{' '}
-              <span className="val-dia">{activeTooltip.averageDiastolic}</span> <span className="unit">mmHg</span>
+              <span className="val-dia">{activeTooltip.averageDiastolic}</span>{' '}
+              <span className="unit">mmHg</span>
             </div>
             <div className="tooltip-metric">
               <span className="label">{t('form.heartRate')}:</span>
@@ -295,16 +329,12 @@ export const TrendChart: React.FC<TrendChartProps> = ({ sessions }) => {
                 {activeTooltip.averageHeartRate} {language === 'en' ? 'BPM' : 'ppm'}
               </span>
             </div>
-            <div className="tooltip-metric">
-              <span className="label">{t('list.arm')}:</span>
-              <span>{activeTooltip.arm === 'left' ? t('form.armLeft') : t('form.armRight')}</span>
+            <div className="tooltip-badge-session">
+              {t('trend.sessionsOnDay', { count: activeTooltip.sessionCount })}
             </div>
-            {activeTooltip.readings.length > 1 && (
-              <div className="tooltip-badge-session">
-                ✓ {t('list.readingsCount', { count: activeTooltip.readings.length })} ({t('whiteCoatBanner.activeTitle')})
-              </div>
+            {activeTooltip.notes && (
+              <div className="tooltip-notes">"{activeTooltip.notes}"</div>
             )}
-            {activeTooltip.notes && <div className="tooltip-notes">"{activeTooltip.notes}"</div>}
           </div>
         </div>
       )}

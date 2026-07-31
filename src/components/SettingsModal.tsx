@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import type { AppSettings, BackupFrequency, PatientSex, LanguageOption } from '../types/bloodPressure';
-import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe } from 'lucide-react';
+import type { AppSettings, BackupFrequency, GuidelineProfile, PatientSex, LanguageOption } from '../types/bloodPressure';
+import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe, BookOpenCheck, Target } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { calculateAge } from '../utils/pdfGenerator';
 import { FlagES, FlagGB } from './FlagIcons';
+import { getTreatmentTarget } from '../utils/treatmentTarget';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -48,6 +49,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onUpdateSettings({ ...settings, patientName: name });
   };
 
+  const handleGuidelineChange = (guidelineProfile: GuidelineProfile) => {
+    onUpdateSettings({ ...settings, guidelineProfile });
+  };
+
   const handlePatientSexChange = (sex: PatientSex) => {
     onUpdateSettings({ ...settings, patientSex: sex });
   };
@@ -56,6 +61,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (takesMedication !== settings.takesAntihypertensiveMedication) {
       setPendingMedicationValue(takesMedication);
     }
+  };
+
+  const handleResetTreatmentTarget = () => {
+    const recommended = getTreatmentTarget({ ...settings, treatmentTargetMode: 'guideline' });
+    onUpdateSettings({
+      ...settings,
+      treatmentTargetMode: 'guideline',
+      customTargetSystolicMin: recommended.systolicMin ?? 0,
+      customTargetSystolicMax: recommended.systolicMax,
+      customTargetDiastolicMin: recommended.diastolicMin ?? 0,
+      customTargetDiastolicMax: recommended.diastolicMax,
+    });
+  };
+
+  const handleCustomTargetChange = (
+    field: 'customTargetSystolicMin' | 'customTargetSystolicMax' | 'customTargetDiastolicMin' | 'customTargetDiastolicMax',
+    value: string
+  ) => {
+    const parsed = value === '' ? 0 : Number(value);
+    if (!Number.isFinite(parsed)) return;
+    const isSystolic = field.includes('Systolic');
+    const current = getTreatmentTarget(settings);
+    const nextValue = Math.min(isSystolic ? 250 : 150, Math.max(0, Math.round(parsed)));
+    const updated = {
+      ...settings,
+      treatmentTargetMode: 'custom' as const,
+      customTargetSystolicMin: settings.treatmentTargetMode === 'custom' ? settings.customTargetSystolicMin : (current.systolicMin ?? 0),
+      customTargetSystolicMax: settings.treatmentTargetMode === 'custom' ? settings.customTargetSystolicMax : current.systolicMax,
+      customTargetDiastolicMin: settings.treatmentTargetMode === 'custom' ? settings.customTargetDiastolicMin : (current.diastolicMin ?? 0),
+      customTargetDiastolicMax: settings.treatmentTargetMode === 'custom' ? settings.customTargetDiastolicMax : current.diastolicMax,
+      [field]: nextValue,
+    };
+    onUpdateSettings(updated);
+  };
+
+  const handleCustomTargetBlur = (
+    field: 'customTargetSystolicMin' | 'customTargetSystolicMax' | 'customTargetDiastolicMin' | 'customTargetDiastolicMax'
+  ) => {
+    if (settings.treatmentTargetMode !== 'custom') return;
+    const isSystolic = field.includes('Systolic');
+    const isMinimum = field.endsWith('Min');
+    const lowerLimit = isSystolic ? 70 : 40;
+    const upperLimit = isSystolic ? 250 : 150;
+    const rawValue = settings[field];
+    const nextValue = isMinimum && rawValue === 0
+      ? 0
+      : Math.min(upperLimit, Math.max(lowerLimit, rawValue));
+    const updated = { ...settings, [field]: nextValue };
+    if (field === 'customTargetSystolicMin' && nextValue > updated.customTargetSystolicMax) updated.customTargetSystolicMax = nextValue;
+    if (field === 'customTargetSystolicMax' && nextValue < updated.customTargetSystolicMin) updated.customTargetSystolicMin = nextValue;
+    if (field === 'customTargetDiastolicMin' && nextValue > updated.customTargetDiastolicMax) updated.customTargetDiastolicMax = nextValue;
+    if (field === 'customTargetDiastolicMax' && nextValue < updated.customTargetDiastolicMin) updated.customTargetDiastolicMin = nextValue;
+    onUpdateSettings(updated);
   };
 
   const confirmMedicationChange = async (recalculateHistory: boolean) => {
@@ -114,6 +172,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         minute: '2-digit',
       })
     : t('settings.lastBackupNone');
+  const activeTreatmentTarget = getTreatmentTarget(settings);
+  const targetFieldValues = {
+    customTargetSystolicMin: settings.treatmentTargetMode === 'custom' ? (settings.customTargetSystolicMin || '') : (activeTreatmentTarget.systolicMin ?? ''),
+    customTargetSystolicMax: settings.treatmentTargetMode === 'custom' ? (settings.customTargetSystolicMax || '') : activeTreatmentTarget.systolicMax,
+    customTargetDiastolicMin: settings.treatmentTargetMode === 'custom' ? (settings.customTargetDiastolicMin || '') : (activeTreatmentTarget.diastolicMin ?? ''),
+    customTargetDiastolicMax: settings.treatmentTargetMode === 'custom' ? (settings.customTargetDiastolicMax || '') : activeTreatmentTarget.diastolicMax,
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -156,6 +221,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Opción 1: Datos del Paciente */}
+          <div className="settings-section border-top">
+            <div className="field-label">
+              <BookOpenCheck size={22} className="text-blue settings-field-icon" />
+              <span>{t('settings.guidelineTitle')}</span>
+            </div>
+            <p className="settings-desc" style={{ marginBottom: '10px' }}>
+              {t('settings.guidelineDesc')}
+            </p>
+            <div className="guideline-options">
+              {([
+                ['esc-2024', 'settings.guidelineEsc', 'settings.guidelineEscDesc'],
+                ['aha-acc-2025', 'settings.guidelineAha', 'settings.guidelineAhaDesc'],
+                ['ish-2020', 'settings.guidelineIsh', 'settings.guidelineIshDesc'],
+              ] as const).map(([profile, labelKey, descKey]) => (
+                <button
+                  key={profile}
+                  type="button"
+                  className={`guideline-option ${settings.guidelineProfile === profile ? 'active' : ''}`}
+                  onClick={() => handleGuidelineChange(profile)}
+                >
+                  <strong>{t(labelKey)}</strong>
+                  <span>{t(descKey)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="settings-section border-top">
             <div className="field-label">
               <User size={22} className="text-blue settings-field-icon" />
@@ -206,16 +298,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </div>
 
-              <div className="patient-profile-field patient-profile-field-wide">
-                <label className="settings-desc">{t('settings.medicationLabel')}</label>
-                <div className="chip-options-row medication-options">
+              <div className={`medication-target-layout patient-profile-field-wide ${settings.takesAntihypertensiveMedication ? 'has-target' : ''}`}>
+                <div className="patient-profile-field medication-setting-card">
+                  <label className="settings-desc">{t('settings.medicationLabel')}</label>
+                  <div className="chip-options-row medication-options">
                   <button type="button" className={`chip-select medication-yes ${settings.takesAntihypertensiveMedication ? 'active' : ''}`} onClick={() => handleMedicationChange(true)}>
                     {t('settings.medicationYes')}
                   </button>
                   <button type="button" className={`chip-select medication-no ${!settings.takesAntihypertensiveMedication ? 'active' : ''}`} onClick={() => handleMedicationChange(false)}>
                     {t('settings.medicationNo')}
                   </button>
+                  </div>
                 </div>
+                {settings.takesAntihypertensiveMedication && (
+                  <div className="treatment-target-settings">
+                    <div className="treatment-target-heading"><Target size={18} /><strong>{t('settings.targetTitle')}</strong></div>
+                    <div className="chip-options-row treatment-target-modes">
+                      <button type="button" className="chip-select treatment-target-reset" onClick={handleResetTreatmentTarget}><RotateCcw size={13} /> {t('settings.targetGuideline')}</button>
+                    </div>
+                    <div className="custom-target-grid">
+                      {([['customTargetSystolicMin', 'settings.targetSystolicMin', 70, 250], ['customTargetSystolicMax', 'settings.targetSystolicMax', 70, 250], ['customTargetDiastolicMin', 'settings.targetDiastolicMin', 40, 150], ['customTargetDiastolicMax', 'settings.targetDiastolicMax', 40, 150]] as const).map(([field, labelKey, min, max]) => <label key={field}><span>{t(labelKey)}</span><div className="target-number-input"><input type="number" min={min} max={max} value={targetFieldValues[field]} onChange={(event) => handleCustomTargetChange(field, event.target.value)} onBlur={() => handleCustomTargetBlur(field)} /><small>mmHg</small></div></label>)}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

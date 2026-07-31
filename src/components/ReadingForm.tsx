@@ -3,9 +3,16 @@ import { createPortal } from 'react-dom';
 import { PlusCircle, Activity, Armchair, FileText, Keyboard, Sliders, AlertCircle, Info, X, ClipboardCheck, Repeat2 } from 'lucide-react';
 import type { ArmPosition, AppSettings, BloodPressureReading, InputMode } from '../types/bloodPressure';
 import { getHealthAssessment } from '../utils/healthClassification';
-import { getReadingValidationError, hasSimilarConfirmedReadingToday, needsPulsePressureConfirmation, type ReadingValues } from '../utils/readingValidation';
+import {
+  getReadingValidationError,
+  hasSimilarConfirmedReadingToday,
+  needsPulsePressureConfirmation,
+  type ReadingValues,
+} from '../utils/readingValidation';
 import { WheelPicker } from './WheelPicker';
 import { useLanguage } from '../i18n/useLanguage';
+import { assessTreatmentTarget } from '../utils/treatmentTarget';
+import { TreatmentTargetBadge } from './TreatmentTargetBadge';
 
 interface ReadingFormProps {
   onAddReading: (reading: {
@@ -31,9 +38,8 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [inputMode, setInputMode] = useState<InputMode>(settings.preferredInputMode || 'keyboard');
-  const [isMeasurementGuideOpen, setIsMeasurementGuideOpen] = useState(false);
 
-  // Inicializar los valores centrados en la última medición realizada o en valores medios por defecto (120 / 80 / 72)
+  // Inicializar los valores centrados en la Ãºltima mediciÃ³n realizada o en valores medios por defecto (120 / 80 / 72)
   const initialSys = lastReading ? lastReading.systolic : 120;
   const initialDia = lastReading ? lastReading.diastolic : 80;
   const initialPulse = lastReading ? lastReading.heartRate : 72;
@@ -44,11 +50,15 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   const [arm, setArm] = useState<ArmPosition>(settings.defaultArm || 'left');
   const [notes, setNotes] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [pendingReading, setPendingReading] = useState<(ReadingValues & { arm: ArmPosition; notes?: string }) | null>(null);
+  const [isMeasurementGuideOpen, setIsMeasurementGuideOpen] = useState(false);
+  const [pendingReading, setPendingReading] = useState<(ReadingValues & {
+    arm: ArmPosition;
+    notes?: string;
+  }) | null>(null);
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
-  // Sincronizar brazo y modo de entrada predeterminado si cambia la configuración
+  // Sincronizar brazo y modo de entrada predeterminado si cambia la configuraciÃ³n
   useEffect(() => {
     setArm(settings.defaultArm || 'left');
     if (settings.preferredInputMode) {
@@ -56,7 +66,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     }
   }, [settings.defaultArm, settings.preferredInputMode]);
 
-  // Actualizar valores iniciales cuando entra una nueva medición
+  // Actualizar valores iniciales cuando entra una nueva mediciÃ³n
   useEffect(() => {
     if (lastReading) {
       setSystolic(lastReading.systolic);
@@ -68,15 +78,18 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   const liveSystolic = typeof systolic === 'number' ? systolic : 120;
   const liveDiastolic = typeof diastolic === 'number' ? diastolic : 80;
   const liveHeartRate = typeof heartRate === 'number' ? heartRate : 72;
-  const { category, alerts: healthAlerts } = getHealthAssessment(
+  const { category, alerts: healthAlerts, safetyAlerts } = getHealthAssessment(
     liveSystolic,
     liveDiastolic,
     liveHeartRate,
     language,
-    settings.takesAntihypertensiveMedication
+    settings.guidelineProfile
   );
+  const treatmentTargetAssessment = settings.takesAntihypertensiveMedication
+    ? assessTreatmentTarget(liveSystolic, liveDiastolic, settings)
+    : null;
 
-  // Auto-seleccionar todo el texto al tocar/enfocar un campo numérico
+  // Auto-seleccionar todo el texto al tocar/enfocar un campo numÃ©rico
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
   };
@@ -88,8 +101,14 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     }
   };
 
-  const saveReading = (reading: ReadingValues & { arm: ArmPosition; notes?: string }, pulsePressureWarningConfirmed: boolean) => {
-    onAddReading({ ...reading, pulsePressureWarningConfirmed });
+  const saveReading = (
+    reading: ReadingValues & { arm: ArmPosition; notes?: string },
+    pulsePressureWarningConfirmed: boolean
+  ) => {
+    onAddReading({
+      ...reading,
+      pulsePressureWarningConfirmed,
+    });
     setNotes('');
     setPendingReading(null);
   };
@@ -98,16 +117,29 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     e.preventDefault();
     setErrorMsg(null);
     setPendingReading(null);
-    const values: ReadingValues = { systolic: Number(systolic), diastolic: Number(diastolic), heartRate: Number(heartRate) };
+
+    const values: ReadingValues = {
+      systolic: Number(systolic),
+      diastolic: Number(diastolic),
+      heartRate: Number(heartRate),
+    };
     const validationError = getReadingValidationError(values);
     if (validationError) {
       setErrorMsg(t(validationError === 'diastolicNotLower' ? 'form.diastolicMustBeLower' : 'form.validationAlert'));
       return;
     }
-    const candidate = { ...values, arm, notes: notes.trim() ? notes.trim() : undefined };
+
+    const candidate = {
+      ...values,
+      arm,
+      notes: notes.trim() ? notes.trim() : undefined,
+    };
     if (needsPulsePressureConfirmation(values)) {
-      if (hasSimilarConfirmedReadingToday(readings, values)) saveReading(candidate, true);
-      else setPendingReading(candidate);
+      if (hasSimilarConfirmedReadingToday(readings, values)) {
+        saveReading(candidate, true);
+      } else {
+        setPendingReading(candidate);
+      }
       return;
     }
     saveReading(candidate, false);
@@ -122,14 +154,17 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             <h2>{t('form.title')}</h2>
           </div>
 
-          {/* Badge de clasificación en tiempo real */}
-          <div
-            className="live-category-badge"
-            style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
-            title={category.description}
-          >
-            <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
-            {category.name}
+          {/* Badge de clasificaciÃ³n en tiempo real */}
+          <div className="classification-badges">
+            <div
+              className="live-category-badge"
+              style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
+              title={category.description}
+            >
+              <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
+              {category.name}
+            </div>
+            {treatmentTargetAssessment && <TreatmentTargetBadge assessment={treatmentTargetAssessment} live />}
           </div>
         </div>
 
@@ -158,7 +193,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             </div>
           </div>
 
-          {/* Conmutador discreto Modo Teclado vs Modo Ruleta Rápida */}
+          {/* Conmutador discreto Modo Teclado vs Modo Ruleta RÃ¡pida */}
           <div className="input-mode-toggle">
             <button
               type="button"
@@ -181,6 +216,16 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
       </div>
 
       {errorMsg && <div className="alert-danger">{errorMsg}</div>}
+
+      {safetyAlerts.map((alert) => (
+        <div key={alert.key} className="safety-alert-card" role="alert" aria-live="assertive">
+          <div className="safety-alert-title">
+            <AlertCircle size={18} />
+            <strong>{alert.name}</strong>
+          </div>
+          <p>{alert.description}</p>
+        </div>
+      ))}
 
       {healthAlerts.length > 0 && (
         <div className="health-alerts-strip" aria-live="polite">
@@ -206,7 +251,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
       <form onSubmit={handleSubmit} className="bp-form">
         {activeInputMode === 'keyboard' ? (
-          /* Modo 1: Introducción mediante Teclado Numérico */
+          /* Modo 1: IntroducciÃ³n mediante Teclado NumÃ©rico */
           <div className="metrics-inputs-grid">
             <div className="input-group">
               <label htmlFor="systolic-input">
@@ -220,7 +265,10 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   min={50}
                   max={260}
                   value={systolic}
-                  onChange={(e) => { setPendingReading(null); setSystolic(e.target.value === '' ? '' : parseInt(e.target.value, 10)); }}
+                  onChange={(e) => {
+                    setPendingReading(null);
+                    setSystolic(e.target.value === '' ? '' : parseInt(e.target.value, 10));
+                  }}
                   onFocus={handleFocus}
                   className="input-number input-sys"
                   required
@@ -240,7 +288,10 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   min={30}
                   max={160}
                   value={diastolic}
-                  onChange={(e) => { setPendingReading(null); setDiastolic(e.target.value === '' ? '' : parseInt(e.target.value, 10)); }}
+                  onChange={(e) => {
+                    setPendingReading(null);
+                    setDiastolic(e.target.value === '' ? '' : parseInt(e.target.value, 10));
+                  }}
                   onFocus={handleFocus}
                   className="input-number input-dia"
                   required
@@ -260,7 +311,10 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   min={30}
                   max={220}
                   value={heartRate}
-                  onChange={(e) => { setPendingReading(null); setHeartRate(e.target.value === '' ? '' : parseInt(e.target.value, 10)); }}
+                  onChange={(e) => {
+                    setPendingReading(null);
+                    setHeartRate(e.target.value === '' ? '' : parseInt(e.target.value, 10));
+                  }}
                   onFocus={handleFocus}
                   className="input-number input-pulse"
                   required
@@ -269,7 +323,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             </div>
           </div>
         ) : (
-          /* Modo 2: Ruleta Táctil de Selección Rápida */
+          /* Modo 2: Ruleta TÃ¡ctil de SelecciÃ³n RÃ¡pida */
           <div className="wheel-mode-container">
             <WheelPicker
               systolic={typeof systolic === 'number' ? systolic : 120}
@@ -298,34 +352,79 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
         {pendingReading && (
           <div className="pulse-pressure-confirmation" role="alert" aria-live="assertive">
-            <div><strong>{t('form.pulsePressureTitle')}</strong><p>{t('form.pulsePressureWarning', { value: pendingReading.systolic - pendingReading.diastolic })}</p></div>
+            <div>
+              <strong>{t('form.pulsePressureTitle')}</strong>
+              <p>{t('form.pulsePressureWarning', {
+                value: pendingReading.systolic - pendingReading.diastolic,
+              })}</p>
+            </div>
             <div className="pulse-pressure-actions">
-              <button type="button" className="btn-cancel-warning" onClick={() => setPendingReading(null)}>{t('form.cancel')}</button>
-              <button type="button" className="btn-force-save" onClick={() => saveReading(pendingReading, true)}>{t('form.forceSave')}</button>
+              <button type="button" className="btn-cancel-warning" onClick={() => setPendingReading(null)}>
+                {t('form.cancel')}
+              </button>
+              <button type="button" className="btn-force-save" onClick={() => saveReading(pendingReading, true)}>
+                {t('form.forceSave')}
+              </button>
             </div>
           </div>
         )}
+
         <div className="reading-submit-row">
           <button type="submit" className="btn-submit-reading">
             <PlusCircle size={20} />
-            <span>{t('form.submit')}</span>
+            <span className="submit-reading-label">
+              <span>{t('form.submit')}</span>
+              {settings.enableWhiteCoatFilter && (
+                <small>{t('form.whiteCoatFilterActive', { minutes: settings.whiteCoatIntervalMinutes })}</small>
+              )}
+            </span>
           </button>
-          <button type="button" className="btn-measurement-guide" title={t('form.measurementGuideTooltip')} aria-label={t('form.measurementGuideTooltip')} onClick={() => setIsMeasurementGuideOpen(true)}>
+          <button
+            type="button"
+            className="btn-measurement-guide"
+            title={t('form.measurementGuideTooltip')}
+            aria-label={t('form.measurementGuideTooltip')}
+            onClick={() => setIsMeasurementGuideOpen(true)}
+          >
             <Info size={22} />
           </button>
         </div>
       </form>
       {isMeasurementGuideOpen && createPortal(
         <div className="modal-overlay measurement-guide-overlay" onClick={() => setIsMeasurementGuideOpen(false)}>
-          <div className="modal-content measurement-guide-dialog" role="dialog" aria-modal="true" aria-labelledby="measurement-guide-title" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="modal-content measurement-guide-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="measurement-guide-title"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="modal-header">
-              <div className="modal-title-group"><Info size={26} className="modal-icon text-blue legal-icon-main" /><h2 id="measurement-guide-title" className="legal-modal-title">{t('form.measurementGuideTitle')}</h2></div>
-              <button type="button" className="btn-close-modal" aria-label={t('form.measurementGuideClose')} onClick={() => setIsMeasurementGuideOpen(false)}><X size={20} /></button>
+              <div className="modal-title-group">
+                <Info size={26} className="modal-icon text-blue legal-icon-main" />
+                <h2 id="measurement-guide-title" className="legal-modal-title">
+                  {t('form.measurementGuideTitle')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="btn-close-modal"
+                aria-label={t('form.measurementGuideClose')}
+                onClick={() => setIsMeasurementGuideOpen(false)}
+              >
+                <X size={20} />
+              </button>
             </div>
             <div className="modal-body measurement-guide-body">
               <div className="settings-subcard measurement-guide-main-card">
-                <div className="field-label measurement-guide-section-title"><ClipboardCheck size={22} className="legal-icon-block" /><span>{t('form.measurementGuideEssentialsTitle')}</span></div>
-                <p className="measurement-guide-intro">{t('form.measurementGuideIntro')} <strong>{t('form.measurementGuideIntroStrong')}</strong>:</p>
+                <div className="field-label measurement-guide-section-title">
+                  <ClipboardCheck size={22} className="legal-icon-block" />
+                  <span>{t('form.measurementGuideEssentialsTitle')}</span>
+                </div>
+                <p className="measurement-guide-intro">
+                  {t('form.measurementGuideIntro')}{' '}
+                  <strong>{t('form.measurementGuideIntroStrong')}</strong>:
+                </p>
                 <ul className="measurement-guide-list">
                   <li>{t('form.measurementGuideSameArm')}</li>
                   <li><strong>{t('form.measurementGuidePreparationTitle')}</strong> {t('form.measurementGuidePreparation')}</li>
@@ -336,8 +435,16 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                 </ul>
               </div>
               <div className="settings-subcard measurement-guide-advice-card">
-                <div className="field-label measurement-guide-advice-title"><Repeat2 size={22} className="legal-icon-block" /><span>{t('form.measurementGuideAdviceTitle')}</span></div>
-                <p>{t('form.measurementGuideAdviceStart')} <strong>{t('form.measurementGuideAdviceStrong')}</strong>, {t('form.measurementGuideAdviceEnd')} ({t('form.measurementGuideAdviceAlternative')} <em>{t('form.measurementGuideFilter')}</em> {t('form.measurementGuideFilterEnd')})</p>
+                <div className="field-label measurement-guide-advice-title">
+                  <Repeat2 size={22} className="legal-icon-block" />
+                  <span>{t('form.measurementGuideAdviceTitle')}</span>
+                </div>
+                <p>
+                  {t('form.measurementGuideAdviceStart')}{' '}
+                  <strong>{t('form.measurementGuideAdviceStrong')}</strong>, {t('form.measurementGuideAdviceEnd')}{' '}
+                  ({t('form.measurementGuideAdviceAlternative')} <em>{t('form.measurementGuideFilter')}</em>{' '}
+                  {t('form.measurementGuideFilterEnd')})
+                </p>
               </div>
             </div>
           </div>

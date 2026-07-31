@@ -659,49 +659,135 @@ app.delete('/api/readings/all/confirm', requireAuth, async (req, res) => {
 app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
   try {
     const db = await getDB();
-    const takesAntihypertensiveMedication = await getCurrentMedicationContext(db, req.user.id);
     await db.run('DELETE FROM readings WHERE user_id = ?', [req.user.id]);
 
     const nowMs = Date.now();
+    const dayMs = 1000 * 60 * 60 * 24;
     const demoItems = [
       {
-        id: `demo-100-${req.user.id}`,
-        user_id: req.user.id,
-        timestamp: new Date(nowMs).toISOString(),
-        systolic: 120,
-        diastolic: 80,
+        id: 'demo-optimal-unmedicated',
+        daysAgo: 0,
+        systolic: 115,
+        diastolic: 75,
         heart_rate: 72,
         arm: 'left',
-        notes: 'Medición habitual de control',
-        created_at: new Date(nowMs).toISOString(),
+        notes: 'Ejemplo verde: óptima sin medicación',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 0,
       },
       {
-        id: `demo-5-${req.user.id}`,
-        user_id: req.user.id,
-        timestamp: new Date(nowMs - 1000 * 60 * 60 * 24 * 1).toISOString(),
-        systolic: 124,
-        diastolic: 81,
-        heart_rate: 70,
+        id: 'demo-optimal-medicated',
+        daysAgo: 2,
+        systolic: 120,
+        diastolic: 70,
+        heart_rate: 68,
+        arm: 'right',
+        notes: 'Ejemplo verde: óptima con medicación',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 1,
+      },
+      {
+        id: 'demo-hypotension',
+        daysAgo: 6,
+        systolic: 88,
+        diastolic: 58,
+        heart_rate: 105,
         arm: 'left',
-        notes: 'Mañana en ayunas',
-        created_at: new Date(nowMs - 1000 * 60 * 60 * 24 * 1).toISOString(),
+        notes: 'Ejemplo azul: hipotensión con taquicardia',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 0,
       },
       {
-        id: `demo-4-${req.user.id}`,
-        user_id: req.user.id,
-        timestamp: new Date(nowMs - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        systolic: 118,
+        id: 'demo-suboptimal-medicated',
+        daysAgo: 10,
+        systolic: 110,
+        diastolic: 62,
+        heart_rate: 66,
+        arm: 'right',
+        notes: 'Ejemplo turquesa: subóptima con medicación',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 1,
+      },
+      {
+        id: 'demo-elevated-unmedicated',
+        daysAgo: 20,
+        systolic: 130,
+        diastolic: 82,
+        heart_rate: 74,
+        arm: 'left',
+        notes: 'Ejemplo naranja: presión elevada sin medicación',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 0,
+      },
+      {
+        id: 'demo-elevated-medicated',
+        daysAgo: 45,
+        systolic: 128,
         diastolic: 78,
-        heart_rate: 69,
-        arm: 'left',
-        notes: 'Tras reposo',
-        created_at: new Date(nowMs - 1000 * 60 * 60 * 24 * 2).toISOString(),
+        heart_rate: 76,
+        arm: 'right',
+        notes: 'Ejemplo naranja: franja elevada con medicación',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 1,
       },
-    ];
+      {
+        id: 'demo-hypertension-systolic',
+        daysAgo: 75,
+        systolic: 138,
+        diastolic: 82,
+        heart_rate: 72,
+        arm: 'left',
+        notes: 'Ejemplo rojo: sistólica elevada',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 0,
+      },
+      {
+        id: 'demo-hypertension-diastolic',
+        daysAgo: 100,
+        systolic: 125,
+        diastolic: 88,
+        heart_rate: 106,
+        arm: 'right',
+        notes: 'Ejemplo rojo: diastólica elevada con taquicardia',
+        pulse_pressure_confirmed: 0,
+        takes_antihypertensive_medication: 1,
+      },
+      {
+        id: 'demo-narrow-pulse-pressure',
+        daysAgo: 180,
+        systolic: 100,
+        diastolic: 78,
+        heart_rate: 48,
+        arm: 'left',
+        notes: 'Ejemplo: presión de pulso estrecha y bradicardia',
+        pulse_pressure_confirmed: 1,
+        takes_antihypertensive_medication: 0,
+      },
+      {
+        id: 'demo-wide-pulse-pressure',
+        daysAgo: 365,
+        systolic: 150,
+        diastolic: 85,
+        heart_rate: 70,
+        arm: 'right',
+        notes: 'Ejemplo rojo: ambos valores elevados y presión de pulso amplia',
+        pulse_pressure_confirmed: 1,
+        takes_antihypertensive_medication: 0,
+      },
+    ].map((item) => {
+      const timestamp = new Date(nowMs - dayMs * item.daysAgo).toISOString();
+      return {
+        ...item,
+        id: `${item.id}-${req.user.id}`,
+        user_id: req.user.id,
+        timestamp,
+        created_at: timestamp,
+      };
+    });
 
     for (const item of demoItems) {
       await db.run(
-        'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, pulse_pressure_confirmed, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           item.id,
           item.user_id,
@@ -711,7 +797,8 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
           item.heart_rate,
           item.arm,
           item.notes,
-          takesAntihypertensiveMedication ? 1 : 0,
+          item.pulse_pressure_confirmed,
+          item.takes_antihypertensive_medication,
           item.created_at,
         ]
       );
@@ -746,35 +833,42 @@ app.post('/api/readings/import', requireAuth, async (req, res) => {
     let addedCount = 0;
     const now = new Date().toISOString();
 
-    for (const item of importedItems) {
-      const validation = validateReadingInput(item, false);
-      if (validation.error) continue;
-      const sig = `${new Date(item.timestamp).toISOString().slice(0, 16)}_${item.systolic}_${item.diastolic}_${item.heartRate}`;
-      if (!existingSigs.has(sig)) {
-        existingSigs.add(sig);
-        addedCount++;
-        const id = `imp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-        const takesAntihypertensiveMedication =
-          typeof item.takesAntihypertensiveMedication === 'boolean'
-            ? item.takesAntihypertensiveMedication
-            : currentMedicationContext;
-        await db.run(
-          'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, pulse_pressure_confirmed, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            id,
-            req.user.id,
-            item.timestamp,
-            validation.systolic,
-            validation.diastolic,
-            validation.heartRate,
-            item.arm || 'left',
-            item.notes ? String(item.notes).trim() : null,
-            validation.pulsePressureWarningConfirmed ? 1 : 0,
-            takesAntihypertensiveMedication ? 1 : 0,
-            now,
-          ]
-        );
+    await db.exec('BEGIN');
+    try {
+      for (const item of importedItems) {
+        const validation = validateReadingInput(item, false);
+        if (validation.error) continue;
+        const sig = `${new Date(item.timestamp).toISOString().slice(0, 16)}_${item.systolic}_${item.diastolic}_${item.heartRate}`;
+        if (!existingSigs.has(sig)) {
+          existingSigs.add(sig);
+          addedCount++;
+          const id = `imp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          const takesAntihypertensiveMedication =
+            typeof item.takesAntihypertensiveMedication === 'boolean'
+              ? item.takesAntihypertensiveMedication
+              : currentMedicationContext;
+          await db.run(
+            'INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, arm, notes, pulse_pressure_confirmed, takes_antihypertensive_medication, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              id,
+              req.user.id,
+              item.timestamp,
+              validation.systolic,
+              validation.diastolic,
+              validation.heartRate,
+              item.arm || 'left',
+              item.notes ? String(item.notes).trim() : null,
+              validation.pulsePressureWarningConfirmed ? 1 : 0,
+              takesAntihypertensiveMedication ? 1 : 0,
+              now,
+            ]
+          );
+        }
       }
+      await db.exec('COMMIT');
+    } catch (error) {
+      await db.exec('ROLLBACK');
+      throw error;
     }
 
     const updatedRows = await db.all(
@@ -800,9 +894,17 @@ app.get('/api/settings', requireAuth, async (req, res) => {
       whiteCoatIntervalMinutes: row?.white_coat_minutes || 5,
       defaultArm: row?.default_arm || 'left',
       preferredInputMode: row?.preferred_input_mode || 'keyboard',
+      guidelineProfile: row?.guideline_profile || 'esc-2024',
+      treatmentTargetMode: row?.treatment_target_mode || 'guideline',
+      customTargetSystolicMin: row?.custom_target_systolic_min ?? 120,
+      customTargetSystolicMax: row?.custom_target_systolic_max ?? 129,
+      customTargetDiastolicMin: row?.custom_target_diastolic_min ?? 70,
+      customTargetDiastolicMax: row?.custom_target_diastolic_max ?? 79,
       patientName: row?.patient_name || req.user.name || '',
       patientSex: row?.patient_sex || req.user.sex || '',
-      patientAge: row?.patient_age || '',
+      patientAge: row?.patient_age === null || row?.patient_age === undefined || row?.patient_age === ''
+        ? ''
+        : Number(row.patient_age),
       patientBirthDate: row?.patient_birth_date || req.user.birth_date || '',
       takesAntihypertensiveMedication: Boolean(row?.takes_antihypertensive_medication),
       backupFrequency: row?.backup_frequency || 'disabled',
@@ -822,15 +924,23 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     await db.run(
       `INSERT INTO settings (
         user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode,
+        guideline_profile, treatment_target_mode, custom_target_systolic_min, custom_target_systolic_max,
+        custom_target_diastolic_min, custom_target_diastolic_max,
         patient_name, patient_sex, patient_age, patient_birth_date, takes_antihypertensive_medication,
         backup_frequency, backup_folder, last_backup_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         language = excluded.language,
         enable_white_coat = excluded.enable_white_coat,
         white_coat_minutes = excluded.white_coat_minutes,
         default_arm = excluded.default_arm,
         preferred_input_mode = excluded.preferred_input_mode,
+        guideline_profile = excluded.guideline_profile,
+        treatment_target_mode = excluded.treatment_target_mode,
+        custom_target_systolic_min = excluded.custom_target_systolic_min,
+        custom_target_systolic_max = excluded.custom_target_systolic_max,
+        custom_target_diastolic_min = excluded.custom_target_diastolic_min,
+        custom_target_diastolic_max = excluded.custom_target_diastolic_max,
         patient_name = excluded.patient_name,
         patient_sex = excluded.patient_sex,
         patient_age = excluded.patient_age,
@@ -846,6 +956,12 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         s.whiteCoatIntervalMinutes || 5,
         s.defaultArm || 'left',
         s.preferredInputMode || 'keyboard',
+        ['esc-2024', 'aha-acc-2025', 'ish-2020'].includes(s.guidelineProfile) ? s.guidelineProfile : 'esc-2024',
+        s.treatmentTargetMode === 'custom' ? 'custom' : 'guideline',
+        Number.isFinite(s.customTargetSystolicMin) ? s.customTargetSystolicMin : 120,
+        Number.isFinite(s.customTargetSystolicMax) ? s.customTargetSystolicMax : 129,
+        Number.isFinite(s.customTargetDiastolicMin) ? s.customTargetDiastolicMin : 70,
+        Number.isFinite(s.customTargetDiastolicMax) ? s.customTargetDiastolicMax : 79,
         s.patientName || req.user.name || '',
         s.patientSex || req.user.sex || '',
         s.patientAge || '',

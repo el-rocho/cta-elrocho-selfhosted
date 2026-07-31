@@ -134,6 +134,12 @@ async function initSchema(db) {
       white_coat_minutes INTEGER NOT NULL DEFAULT 5,
       default_arm TEXT NOT NULL DEFAULT 'left',
       preferred_input_mode TEXT NOT NULL DEFAULT 'keyboard',
+      guideline_profile TEXT NOT NULL DEFAULT 'esc-2024',
+      treatment_target_mode TEXT NOT NULL DEFAULT 'guideline',
+      custom_target_systolic_min INTEGER NOT NULL DEFAULT 120,
+      custom_target_systolic_max INTEGER NOT NULL DEFAULT 129,
+      custom_target_diastolic_min INTEGER NOT NULL DEFAULT 70,
+      custom_target_diastolic_max INTEGER NOT NULL DEFAULT 79,
       patient_name TEXT,
       patient_sex TEXT,
       patient_age TEXT,
@@ -155,6 +161,21 @@ async function initSchema(db) {
     await db.exec('ALTER TABLE settings ADD COLUMN takes_antihypertensive_medication INTEGER NOT NULL DEFAULT 0;');
   } catch (e) {
     // La columna ya existe
+  }
+  const treatmentTargetMigrations = [
+    "ALTER TABLE settings ADD COLUMN guideline_profile TEXT NOT NULL DEFAULT 'esc-2024';",
+    "ALTER TABLE settings ADD COLUMN treatment_target_mode TEXT NOT NULL DEFAULT 'guideline';",
+    'ALTER TABLE settings ADD COLUMN custom_target_systolic_min INTEGER NOT NULL DEFAULT 120;',
+    'ALTER TABLE settings ADD COLUMN custom_target_systolic_max INTEGER NOT NULL DEFAULT 129;',
+    'ALTER TABLE settings ADD COLUMN custom_target_diastolic_min INTEGER NOT NULL DEFAULT 70;',
+    'ALTER TABLE settings ADD COLUMN custom_target_diastolic_max INTEGER NOT NULL DEFAULT 79;',
+  ];
+  for (const migration of treatmentTargetMigrations) {
+    try {
+      await db.exec(migration);
+    } catch (e) {
+      // La columna ya existe
+    }
   }
 
   // Migración de instalaciones anteriores: las tomas sin contexto heredan una

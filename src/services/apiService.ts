@@ -2,59 +2,124 @@ import type { BloodPressureReading, AppSettings } from '../types/bloodPressure';
 
 const API_BASE = '/api';
 
-const INITIAL_DEMO_READINGS: BloodPressureReading[] = [
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+// Mismos diez ejemplos utilizados por las versiones individual, cliente y autoalojada.
+function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
+  const demoTimestamp = (daysAgo: number) => new Date(referenceMs - DAY_MS * daysAgo).toISOString();
+  return [
   {
-    id: 'demo-100',
-    timestamp: new Date().toISOString(),
-    systolic: 120,
-    diastolic: 80,
+    id: 'demo-optimal-unmedicated',
+    timestamp: demoTimestamp(0),
+    systolic: 115,
+    diastolic: 75,
     heartRate: 72,
     arm: 'left',
-    notes: 'Medición habitual de control',
+    notes: 'Ejemplo verde: óptima sin medicación',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: false,
   },
   {
-    id: 'demo-5',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-    systolic: 124,
-    diastolic: 81,
-    heartRate: 70,
-    arm: 'left',
-    notes: 'Mañana en ayunas',
-  },
-  {
-    id: 'demo-4',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    systolic: 118,
-    diastolic: 78,
-    heartRate: 69,
-    arm: 'left',
-    notes: 'Tras reposo',
-  },
-  {
-    id: 'demo-3',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    systolic: 122,
-    diastolic: 80,
-    heartRate: 71,
-    arm: 'right',
-  },
-  {
-    id: 'demo-2',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    systolic: 126,
-    diastolic: 82,
-    heartRate: 73,
-    arm: 'left',
-  },
-  {
-    id: 'demo-1',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-    systolic: 119,
-    diastolic: 79,
+    id: 'demo-optimal-medicated',
+    timestamp: demoTimestamp(2),
+    systolic: 120,
+    diastolic: 70,
     heartRate: 68,
-    arm: 'left',
+    arm: 'right',
+    notes: 'Ejemplo verde: óptima con medicación',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: true,
   },
-];
+  {
+    id: 'demo-hypotension',
+    timestamp: demoTimestamp(6),
+    systolic: 88,
+    diastolic: 58,
+    heartRate: 105,
+    arm: 'left',
+    notes: 'Ejemplo azul: hipotensión con taquicardia',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: false,
+  },
+  {
+    id: 'demo-suboptimal-medicated',
+    timestamp: demoTimestamp(10),
+    systolic: 110,
+    diastolic: 62,
+    heartRate: 66,
+    arm: 'right',
+    notes: 'Ejemplo turquesa: subóptima con medicación',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: true,
+  },
+  {
+    id: 'demo-elevated-unmedicated',
+    timestamp: demoTimestamp(20),
+    systolic: 130,
+    diastolic: 82,
+    heartRate: 74,
+    arm: 'left',
+    notes: 'Ejemplo naranja: presión elevada sin medicación',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: false,
+  },
+  {
+    id: 'demo-elevated-medicated',
+    timestamp: demoTimestamp(45),
+    systolic: 128,
+    diastolic: 78,
+    heartRate: 76,
+    arm: 'right',
+    notes: 'Ejemplo naranja: franja elevada con medicación',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: true,
+  },
+  {
+    id: 'demo-hypertension-systolic',
+    timestamp: demoTimestamp(75),
+    systolic: 138,
+    diastolic: 82,
+    heartRate: 72,
+    arm: 'left',
+    notes: 'Ejemplo rojo: sistólica elevada',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: false,
+  },
+  {
+    id: 'demo-hypertension-diastolic',
+    timestamp: demoTimestamp(100),
+    systolic: 125,
+    diastolic: 88,
+    heartRate: 106,
+    arm: 'right',
+    notes: 'Ejemplo rojo: diastólica elevada con taquicardia',
+    pulsePressureWarningConfirmed: false,
+    takesAntihypertensiveMedication: true,
+  },
+  {
+    id: 'demo-narrow-pulse-pressure',
+    timestamp: demoTimestamp(180),
+    systolic: 100,
+    diastolic: 78,
+    heartRate: 48,
+    arm: 'left',
+    notes: 'Ejemplo: presión de pulso estrecha y bradicardia',
+    pulsePressureWarningConfirmed: true,
+    takesAntihypertensiveMedication: false,
+  },
+  {
+    id: 'demo-wide-pulse-pressure',
+    timestamp: demoTimestamp(365),
+    systolic: 150,
+    diastolic: 85,
+    heartRate: 70,
+    arm: 'right',
+    notes: 'Ejemplo rojo: ambos valores elevados y presión de pulso amplia',
+    pulsePressureWarningConfirmed: true,
+    takesAntihypertensiveMedication: false,
+  },
+  ];
+}
 
 export async function fetchReadingsAPI(): Promise<BloodPressureReading[]> {
   try {
@@ -66,7 +131,7 @@ export async function fetchReadingsAPI(): Promise<BloodPressureReading[]> {
   } catch (error) {
     console.warn('Servidor local no alcanzable, usando almacenamiento en caché local:', error);
     const cached = localStorage.getItem('server_bp_readings_cache');
-    return cached ? JSON.parse(cached) : INITIAL_DEMO_READINGS;
+    return cached ? JSON.parse(cached) : createDemoReadings();
   }
 }
 
@@ -85,7 +150,7 @@ export async function addReadingAPI(reading: Omit<BloodPressureReading, 'id'>): 
       id: `bp-local-${Date.now()}`,
     };
     const cached = localStorage.getItem('server_bp_readings_cache');
-    const current = cached ? JSON.parse(cached) : INITIAL_DEMO_READINGS;
+    const current = cached ? JSON.parse(cached) : createDemoReadings();
     const updated = [created, ...current];
     localStorage.setItem('server_bp_readings_cache', JSON.stringify(updated));
     return created;
@@ -148,8 +213,9 @@ export async function resetDemoDataAPI(): Promise<BloodPressureReading[]> {
     localStorage.setItem('server_bp_readings_cache', JSON.stringify(data));
     return data;
   } catch {
-    localStorage.setItem('server_bp_readings_cache', JSON.stringify(INITIAL_DEMO_READINGS));
-    return INITIAL_DEMO_READINGS;
+    const demoReadings = createDemoReadings();
+    localStorage.setItem('server_bp_readings_cache', JSON.stringify(demoReadings));
+    return demoReadings;
   }
 }
 
@@ -166,7 +232,7 @@ export async function importReadingsAPI(imported: Omit<BloodPressureReading, 'id
     return result;
   } catch {
     const cached = localStorage.getItem('server_bp_readings_cache');
-    const current: BloodPressureReading[] = cached ? JSON.parse(cached) : INITIAL_DEMO_READINGS;
+    const current: BloodPressureReading[] = cached ? JSON.parse(cached) : createDemoReadings();
     let addedCount = 0;
     const newItems: BloodPressureReading[] = [];
     const existingSigs = new Set(current.map((r) => `${new Date(r.timestamp).toISOString().slice(0, 16)}_${r.systolic}_${r.diastolic}_${r.heartRate}`));
@@ -188,14 +254,17 @@ export async function fetchSettingsAPI(): Promise<AppSettings> {
   try {
     const res = await fetch(`${API_BASE}/settings`);
     if (!res.ok) throw new Error('Error de servidor al cargar ajustes');
-    return await res.json();
+    const data = await res.json();
+    return { guidelineProfile: 'esc-2024', ...data };
   } catch {
     const cached = localStorage.getItem('server_bp_settings_cache');
-    return cached ? JSON.parse(cached) : {
+    return cached ? { guidelineProfile: 'esc-2024', ...JSON.parse(cached) } : {
+      language: 'es',
       enableWhiteCoatFilter: false,
       whiteCoatIntervalMinutes: 5,
       defaultArm: 'left',
       preferredInputMode: 'keyboard',
+      guidelineProfile: 'esc-2024',
       patientName: '',
       patientSex: '',
       patientAge: '',

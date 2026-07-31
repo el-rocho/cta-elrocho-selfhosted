@@ -1,18 +1,22 @@
 import React from 'react';
 import { ShieldCheck, X, AlertTriangle, Lock } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
+import type { GuidelineProfile } from '../types/bloodPressure';
+import { getGuidelineName, getGuidelineSourceUrl } from '../utils/healthClassification';
 
 interface LegalNoticeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  guidelineProfile: GuidelineProfile;
 }
 
-export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onClose }) => {
+export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onClose, guidelineProfile }) => {
   const { t, language } = useLanguage();
 
   if (!isOpen) return null;
 
   const isEn = language === 'en';
+  const guidelineName = getGuidelineName(guidelineProfile, language);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -36,8 +40,13 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
             </div>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               {isEn
-                ? 'This application is intended for the personal recording and monitoring of blood pressure values. The comments and alerts included are for informational purposes only. Although they are based on the 2024 ESC guidelines, the thresholds used are not a literal reproduction of those guidelines and may contain errors.'
-                : 'Esta aplicación está destinada al registro y seguimiento personal de valores de tensión arterial. Los comentarios y avisos incluidos son meramente informativos, aunque se basan en las guías ESC 2024, los umbrales utilizados no son una reproducción literal de dichas guías y pueden contener errores.'}
+                ? `This application is intended for the personal recording and monitoring of blood pressure values. Its comments and notices are informational interpretations based on ${guidelineName}; they are not a diagnosis or a literal reproduction of the guideline.`
+                : `Esta aplicación está destinada al registro y seguimiento personal de valores de tensión arterial. Sus comentarios y avisos son interpretaciones informativas basadas en ${guidelineName}; no constituyen un diagnóstico ni una reproducción literal de la guía.`}
+            </p>
+            <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
+              <a href={getGuidelineSourceUrl(guidelineProfile)} target="_blank" rel="noreferrer">
+                {isEn ? 'View reference source' : 'Consultar fuente de referencia'}
+              </a>
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               {isEn

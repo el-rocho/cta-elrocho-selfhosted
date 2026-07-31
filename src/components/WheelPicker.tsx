@@ -1,5 +1,4 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 
 interface WheelColumnProps {
@@ -59,40 +58,12 @@ const WheelColumn: React.FC<WheelColumnProps> = ({
     }
   };
 
-  const handleStep = (delta: number) => {
-    const nextVal = Math.max(min, Math.min(max, value + delta));
-    onChange(nextVal);
-    if (containerRef.current) {
-      const targetIndex = values.indexOf(nextVal);
-      if (targetIndex !== -1) {
-        isProgrammaticScrollRef.current = true;
-        containerRef.current.scrollTo({
-          top: targetIndex * ITEM_HEIGHT,
-          behavior: 'smooth',
-        });
-        setTimeout(() => {
-          isProgrammaticScrollRef.current = false;
-        }, 150);
-      }
-    }
-  };
-
   return (
     <div className="wheel-column-card">
       <div className="wheel-column-header">
         <span className="wheel-label">{label}</span>
         <span className="wheel-unit">({unit})</span>
       </div>
-
-      {/* Botón Incrementar (+) */}
-      <button
-        type="button"
-        className="btn-wheel-step"
-        onClick={() => handleStep(1)}
-        title={`+1 ${label}`}
-      >
-        <ChevronUp size={18} />
-      </button>
 
       {/* Tambor Deslizable */}
       <div
@@ -126,16 +97,6 @@ const WheelColumn: React.FC<WheelColumnProps> = ({
         })}
         <div className="wheel-spacer" style={{ height: ITEM_HEIGHT }} />
       </div>
-
-      {/* Botón Decrementar (-) */}
-      <button
-        type="button"
-        className="btn-wheel-step"
-        onClick={() => handleStep(-1)}
-        title={`-1 ${label}`}
-      >
-        <ChevronDown size={18} />
-      </button>
     </div>
   );
 };

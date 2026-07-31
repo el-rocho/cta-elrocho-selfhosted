@@ -2,9 +2,33 @@ import type { BloodPressureReading, BloodPressureSession, AppSettings } from '..
 import { DEFAULT_SETTINGS } from '../services/storageService';
 import { getReadingMedicationContext } from './healthClassification';
 
+export function getEffectiveSessionReadings(
+  session: BloodPressureSession
+): BloodPressureReading[] {
+  return session.readings.slice(session.discardedCount);
+}
+
+export function getSessionSummaryReading(
+  session: BloodPressureSession
+): BloodPressureReading | null {
+  const effectiveReadings = getEffectiveSessionReadings(session);
+  const representativeReading =
+    effectiveReadings[effectiveReadings.length - 1] ??
+    session.readings[session.readings.length - 1];
+
+  if (!representativeReading) return null;
+
+  return {
+    ...representativeReading,
+    systolic: session.averageSystolic,
+    diastolic: session.averageDiastolic,
+    heartRate: session.averageHeartRate,
+  };
+}
+
 /**
- * Agrupa una lista de lecturas en sesiones de medición continua respetando las opciones configuradas.
- * Aplica el filtro médico de bata blanca para descartar picos de ansiedad iniciales (15-25 mmHg Sistólica / 5-10 mmHg Diastólica).
+ * Agrupa una lista de lecturas en sesiones de mediciÃ³n continua respetando las opciones configuradas.
+ * Aplica el filtro mÃ©dico de bata blanca para descartar picos de ansiedad iniciales (15-25 mmHg SistÃ³lica / 5-10 mmHg DiastÃ³lica).
  */
 export function processReadingsIntoSessions(
   readings: BloodPressureReading[],
@@ -17,10 +41,10 @@ export function processReadingsIntoSessions(
     return { sessions: [], allReadings: [] };
   }
 
-  // Ordenar cronológicamente ascendente para agrupar
+  // Ordenar cronolÃ³gicamente ascendente para agrupar
   const sorted = [...readings].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // Si el filtro de bata blanca está DESACTIVADO por el usuario, tratamos cada lectura como una sesión individual
+  // Si el filtro de bata blanca estÃ¡ DESACTIVADO por el usuario, tratamos cada lectura como una sesiÃ³n individual
   if (!settings.enableWhiteCoatFilter) {
     const individualSessions: BloodPressureSession[] = sorted.map((r) => ({
       id: `session-single-${r.id}`,
@@ -44,7 +68,7 @@ export function processReadingsIntoSessions(
     };
   }
 
-  // Umbral de tiempo dinámico según la configuración del usuario (en milisegundos) entre tomas consecutivas
+  // Umbral de tiempo dinÃ¡mico segÃºn la configuraciÃ³n del usuario (en milisegundos) entre tomas consecutivas
   const sessionThresholdMs = (settings.whiteCoatIntervalMinutes || 5) * 60 * 1000;
 
   const sessionGroups: BloodPressureReading[][] = [];
@@ -62,7 +86,7 @@ export function processReadingsIntoSessions(
       settings.takesAntihypertensiveMedication
     );
 
-    // Nunca mezclar en una misma media tomas realizadas bajo contextos clínicos distintos.
+    // Nunca mezclar en una misma media tomas realizadas bajo contextos clÃ­nicos distintos.
     if (
       currTime - prevTime <= sessionThresholdMs &&
       previousMedicationContext === currentMedicationContext
@@ -77,7 +101,7 @@ export function processReadingsIntoSessions(
     sessionGroups.push(currentGroup);
   }
 
-  // Procesar cada grupo de tomas consecutivas aplicando los criterios médicos del filtro de bata blanca
+  // Procesar cada grupo de tomas consecutivas aplicando los criterios mÃ©dicos del filtro de bata blanca
   const sessions: BloodPressureSession[] = sessionGroups.map((group, index) => {
     const sessionId = group[0].sessionId || `session-${index}-${group[0].id}`;
 
@@ -89,29 +113,22 @@ export function processReadingsIntoSessions(
     let discardedCount = 0;
 
     if (group.length === 2) {
-      // En 2 tomas: Si la 1ª está significativamente elevada respecto a la 2ª (efecto bata blanca inicial), se descarta la 1ª
+      // En 2 tomas: Si la 1Âª estÃ¡ significativamente elevada respecto a la 2Âª (efecto bata blanca inicial), se descarta la 1Âª
       if (group[0].systolic >= group[1].systolic + 8 || group[0].diastolic >= group[1].diastolic + 4) {
         validReadingsForAvg = [group[1]];
         discardedCount = 1;
       }
     } else if (group.length === 3) {
-      // En 3 tomas: La 1ª toma se descarta siempre, manteniendo 2 tomas válidas para la media
+      // En 3 tomas: La 1Âª toma se descarta siempre, manteniendo 2 tomas vÃ¡lidas para la media
       validReadingsForAvg = group.slice(1);
       discardedCount = 1;
     } else if (group.length >= 4) {
-      // En 4 o más tomas consecutivas:
-      // 1. La 1ª toma se descarta SIEMPRE
-      validReadingsForAvg = group.slice(1);
-      discardedCount = 1;
-
-      // 2. Evaluar progresivamente tomas iniciales elevadas (2ª, 3ª...) MIENTRAS sigan quedando al menos 3 tomas válidas para la media
-      for (let i = 1; i < group.length; i++) {
+      // En usuarios muy sensibles el descenso puede prolongarse hasta la cuarta
+      // toma o mÃ¡s. Se elimina Ãºnicamente el prefijo que siga claramente por
+      // encima de las tomas posteriores. Puede quedar una sola toma estable:
+      // el resultado de toda la sesiÃ³n seguirÃ¡ siendo una Ãºnica mediciÃ³n.
+      for (let i = 0; i < group.length - 1; i++) {
         const remainingIfDiscarded = group.slice(i + 1);
-        if (remainingIfDiscarded.length < 3) {
-          // Garantizar que siempre queden 3 o más tomas para calcular la media definitiva
-          break;
-        }
-
         const avgSysRemaining = remainingIfDiscarded.reduce((acc, r) => acc + r.systolic, 0) / remainingIfDiscarded.length;
         const avgDiaRemaining = remainingIfDiscarded.reduce((acc, r) => acc + r.diastolic, 0) / remainingIfDiscarded.length;
 

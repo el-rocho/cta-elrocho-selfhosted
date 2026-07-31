@@ -55,6 +55,7 @@ export function checkAndExecuteAutoBackup(
       patientAge: settings.patientAge,
       patientBirthDate: settings.patientBirthDate,
       takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
+      guidelineProfile: settings.guidelineProfile,
     }, settings.language);
 
     onUpdateSettings({
