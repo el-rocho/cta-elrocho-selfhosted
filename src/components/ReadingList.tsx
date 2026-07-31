@@ -149,7 +149,7 @@ const BreakdownRow: React.FC<{
   );
 };
 
-// Subcomponente de Tarjeta de SesiÃ³n
+// Subcomponente de Tarjeta de Sesión
 const SessionCardItem: React.FC<{
   session: BloodPressureSession;
   isExpanded: boolean;
@@ -256,7 +256,7 @@ const SessionCardItem: React.FC<{
           </div>
         </div>
 
-        {/* Cifras Principales: SistÃ³lica / DiastÃ³lica / Pulsaciones */}
+        {/* Cifras Principales: Sistólica / Diastólica / Pulsaciones */}
         <div className="session-metrics-col">
           <div className="bp-reading-display">
             <span className="sys-num">{session.averageSystolic}</span>
@@ -267,7 +267,7 @@ const SessionCardItem: React.FC<{
           </div>
         </div>
 
-        {/* CategorÃ­a principal ESC 2024 */}
+        {/* Categoría principal ESC 2024 */}
         <div className="session-badge-col">
           <span
             className="category-pill"
@@ -343,15 +343,15 @@ const SessionCardItem: React.FC<{
               onDeleteSession(session);
             }}
             className="btn-icon-delete"
-            title={language === 'en' ? 'Delete session' : 'Eliminar sesiÃ³n'}
-            aria-label={language === 'en' ? 'Delete session' : 'Eliminar sesiÃ³n'}
+            title={language === 'en' ? 'Delete session' : 'Eliminar sesión'}
+            aria-label={language === 'en' ? 'Delete session' : 'Eliminar sesión'}
           >
             <Trash2 size={16} />
           </button>
         </div>
       </div>
 
-      {/* Desglose desplegable de tomas de la sesiÃ³n de bata blanca */}
+      {/* Desglose desplegable de tomas de la sesión de bata blanca */}
       {isExpanded && isMulti && (
         <div className="session-expanded-details" onClick={(e) => e.stopPropagation()}>
           <div className="expanded-banner-info">
@@ -368,7 +368,7 @@ const SessionCardItem: React.FC<{
               <tr>
                 <th>#</th>
                 <th>{language === 'en' ? 'Time' : 'Hora'}</th>
-                <th>{language === 'en' ? 'Values' : 'MediciÃ³n'}</th>
+                <th>{language === 'en' ? 'Values' : 'Medición'}</th>
                 <th>{language === 'en' ? 'Status' : 'Estado'}</th>
                 <th>{language === 'en' ? 'Actions' : 'Acciones'}</th>
               </tr>

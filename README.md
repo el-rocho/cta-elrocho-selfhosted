@@ -57,9 +57,12 @@ Escanea este código QR desde tu teléfono o tablet para acceder directamente al
   - **8 Códigos de rescate de emergencia** de un solo uso.
 - **Panel de Administración Familiar**: La primera persona registrada se convierte en Administrador, pudiendo dar de alta a familiares, restablecer claves o administrar permisos.
 - **Misma Experiencia de Diseño Cuidada**:
-  - **Filtro de Síndrome de Bata Blanca**: Algoritmo médico inteligente que descarta tomas iniciales elevadas producidas por la ansiedad del momento.
-  - **Informes PDF**: Gráfico temporal con doble eje Y (tensión arterial + línea de pulsaciones) y tabla de registros.
-  - **Exportación e Importación CSV**: Copias de seguridad automáticas con metadatos.
+  - **Tres Referencias Clínicas**: Etiquetas y avisos según `ESC 2024`, `AHA/ACC 2025` o `ISH 2020`.
+  - **Objetivos Terapéuticos**: Recomendados por guía y edad para usuarios medicados, con límites editables.
+  - **Evolución y Tendencias**: Comparación de medias diarias en cuatro semanas y gráficas de hasta un año.
+  - **Filtro Opcional de Acomodación**: Calcula un único resultado efectivo por sesión y conserva el desglose completo.
+  - **Informes PDF**: Gráfico temporal, guía seleccionada y recuento de tomas efectivas y descartadas.
+  - **Exportación e Importación CSV**: Copias nativas con metadatos e importación transparente de MyTherapy.
   - **Interfaz Bilingüe (Español / Inglés)**: Adaptable a móviles, tabletas y ordenadores.
 
 ---
@@ -132,10 +135,12 @@ Para entornos de producción o acceso remoto fuera de tu red local, **se recomie
 El **Filtro de Síndrome de Bata Blanca** mitiga la distorsión generada por el sesgo de alerta o ansiedad inicial del paciente al colocarse el manguito de tensión.
 
 ### 🔬 Cómo funciona el algoritmo:
-1. **Agrupación Consecutiva**: Se agrupan dentro de una misma sesión las tomas donde el intervalo entre una toma y la anterior sea menor al margen configurado (**3, 5 o 10 minutos**).
+1. **Agrupación Consecutiva**: Se agrupan dentro de una misma sesión las tomas donde el intervalo entre una toma y la anterior sea menor o igual al margen configurado (**3, 5 o 10 minutos**).
 2. **Sesiones de 2 tomas**: Si la 1ª toma es significativamente superior a la 2ª ($\ge 8$ mmHg sistólica / $\ge 4$ mmHg diastólica), se descarta la 1ª toma reteniendo la 2ª. En caso contrario, se promedian ambas.
 3. **Sesiones de 3 tomas**: Se descarta siempre la 1ª toma y se calcula la media con las 2 tomas restantes.
-4. **Sesiones de 4 o más tomas**: Se descarta la 1ª toma y se continúan descartando las siguientes tomas iniciales elevadas ($\ge 8$ mmHg sistólica / $\ge 4$ mmHg diastólica) respecto a la media de las restantes, siempre y cuando queden al menos 3 tomas válidas para calcular la media definitiva.
+4. **Sesiones de 4 o más tomas**: Se compara cada toma inicial con la media de todas las posteriores y se descarta mientras sea superior en al menos $8$ mmHg de sistólica o $4$ mmHg de diastólica. El proceso se detiene en la primera toma estable; puede conservar todas las tomas o una única toma final.
+
+El semáforo, los objetivos, los avisos, las tendencias y las exportaciones utilizan la media de las tomas efectivas. Las descartadas siguen visibles en el desglose de la sesión, pero no determinan esos resultados. Consulta la [matriz clínica de la versión 1.6.0](docs/reglas-clinicas-v1.6.0.md) para conocer las reglas completas y sus fuentes.
 
 ---
 

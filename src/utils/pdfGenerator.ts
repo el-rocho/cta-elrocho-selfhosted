@@ -9,12 +9,10 @@ import {
   getHealthAssessment,
   getHealthCategories,
   getHealthCategory,
-  getCulpritLabel,
-  getConfirmedPulsePressureAlerts,
   getGuidelineName,
   getHealthDisclaimer,
 } from './healthClassification';
-import { getEffectiveSessionReadings } from './whiteCoatAlgorithm';
+import { buildPDFMeasurementRowsHTML } from './pdfReportContent';
 
 export interface PDFGenerationResult {
   success: boolean;
@@ -49,16 +47,16 @@ export async function downloadPDFReport(
   const filtered = filterSessionsByDateRange(sessions, dateRange);
 
   if (filtered.length === 0) {
-    alert(isEn ? 'No blood pressure records found for selected period.' : 'No hay registros de tensiÃ³n en el periodo seleccionado.');
+    alert(isEn ? 'No blood pressure records found for selected period.' : 'No hay registros de tensión en el periodo seleccionado.');
     return { success: false };
   }
 
-  // Ordenar de mÃ¡s antiguo a mÃ¡s reciente para el grÃ¡fico de lÃ­neas
+  // Ordenar de más antiguo a más reciente para el gráfico de líneas
   const chronological = [...filtered].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
-  // EstadÃ­sticas para el resumen
+  // Estadísticas para el resumen
   const total = filtered.length;
   let sumSys = 0;
   let sumDia = 0;
@@ -96,7 +94,7 @@ export async function downloadPDFReport(
 
     const computedAge = options.patientAge || (options.patientBirthDate ? calculateAge(options.patientBirthDate) : '');
     if (computedAge !== '' && computedAge !== undefined && computedAge !== null) {
-      parts.push(`<strong>${isEn ? 'Age:' : 'Edad:'}</strong> ${computedAge} ${isEn ? 'years' : 'aÃ±os'}`);
+      parts.push(`<strong>${isEn ? 'Age:' : 'Edad:'}</strong> ${computedAge} ${isEn ? 'years' : 'años'}`);
     }
 
     if (options.patientSex) {
@@ -109,7 +107,7 @@ export async function downloadPDFReport(
         parts.push(`<strong>${sexLetter}</strong>`);
       }
     }
-    parts.push(`<strong>${isEn ? 'Antihypertensive medication:' : 'MedicaciÃ³n antihipertensiva:'}</strong> ${takesMedication ? (isEn ? 'Yes' : 'SÃ­') : 'No'}`);
+    parts.push(`<strong>${isEn ? 'Antihypertensive medication:' : 'Medicación antihipertensiva:'}</strong> ${takesMedication ? (isEn ? 'Yes' : 'Sí') : 'No'}`);
 
     patientInfoStr = parts.length > 0 ? parts.join(' | ') : '';
   }
@@ -125,27 +123,16 @@ export async function downloadPDFReport(
     .trim()
     || `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" style="width: 42px; height: 42px; flex-shrink: 0; color: #1f2937;" aria-hidden="true"><path d="${logoPath}" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"/></svg>`;
 
-  const renderAlertBadges = (alerts: ReturnType<typeof getHealthAssessment>['alerts']) =>
-    alerts
-      .map(
-        (alert) => `
-          <span title="${alert.description}" style="display:inline-block; padding:2px 6px; border-radius:9999px; font-size:8.5px; line-height:1.2; font-weight:600; background:${alert.badgeBg}; color:${alert.badgeText};">
-            ${alert.name}
-          </span>
-        `
-      )
-      .join('');
-
-  // Los avisos pueden ocupar mÃ¡s de una lÃ­nea; se reduce el nÃºmero de filas para evitar cortes.
+  // Los avisos pueden ocupar más de una línea; se reduce el número de filas para evitar cortes.
   const ROWS_PER_PAGE = 10;
   const tablePagesCount = Math.ceil(filtered.length / ROWS_PER_PAGE);
-  const totalPDFPages = 1 + tablePagesCount; // PÃ¡gina 1 = GrÃ¡ficos y Resumen
+  const totalPDFPages = 1 + tablePagesCount; // Página 1 = Gráficos y Resumen
 
-  // Generar HTML de los grÃ¡ficos para la PÃ¡gina 1
+  // Generar HTML de los gráficos para la Página 1
   const svgLineChartHtml = generateChartSVG(chronological, locale, isEn);
   const categoryDistributionHtml = generateCategoryDistributionHTML(filtered, lang, guidelineProfile);
 
-  // FunciÃ³n para construir la cabecera estÃ¡ndar de cualquier pÃ¡gina
+  // Función para construir la cabecera estándar de cualquier página
   const buildPageHeader = (pageTitle: string, pageNum: number) => `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 14px;">
       <div style="display: flex; align-items: center; gap: 12px;">
@@ -157,12 +144,12 @@ export async function downloadPDFReport(
       </div>
       <div style="text-align: right; font-size: 11px; color: #64748b;">
         <p style="margin:0;">${isEn ? 'Generated:' : 'Generado:'} ${new Date().toLocaleDateString(locale)} ${new Date().toLocaleTimeString(locale)}</p>
-        <p style="margin:4px 0 0 0; font-weight: 600; color: #3b82f6;">${isEn ? `Page ${pageNum} of ${totalPDFPages}` : `PÃ¡gina ${pageNum} de ${totalPDFPages}`}</p>
+        <p style="margin:4px 0 0 0; font-weight: 600; color: #3b82f6;">${isEn ? `Page ${pageNum} of ${totalPDFPages}` : `Página ${pageNum} de ${totalPDFPages}`}</p>
       </div>
     </div>
   `;
 
-  // Pie de pÃ¡gina estÃ¡ndar
+  // Pie de página estándar
   const buildPageFooter = () => `
     <div style="margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 10px; color: #94a3b8; text-align: center;">
       ${isEn ? 'Personal and private log document.' : 'Documento de registro personal y privado.'} ${getHealthDisclaimer(lang, guidelineProfile)}
@@ -173,7 +160,7 @@ export async function downloadPDFReport(
   const pageContainers: HTMLDivElement[] = [];
 
   // ==========================================
-  // PÃGINA 1: RESUMEN Y GRÃFICOS (evoluciÃ³n + categorÃ­as ESC 2024)
+  // PÁGINA 1: RESUMEN Y GRÁFICOS (evolución + categorías ESC 2024)
   // ==========================================
   const page1 = document.createElement('div');
   page1.style.position = 'absolute';
@@ -188,13 +175,13 @@ export async function downloadPDFReport(
   page1.style.boxSizing = 'border-box';
 
   page1.innerHTML = `
-    ${buildPageHeader(isEn ? 'Blood Pressure Clinical Report' : 'Informe ClÃ­nico de TensiÃ³n Arterial', 1)}
+    ${buildPageHeader(isEn ? 'Blood Pressure Clinical Report' : 'Informe Clínico de Tensión Arterial', 1)}
 
     ${
       options.reportNotes
         ? `
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 11.5px;">
-        <strong>${isEn ? 'Medical Remarks:' : 'Observaciones MÃ©dico-ClÃ­nicas:'}</strong>
+        <strong>${isEn ? 'Medical Remarks:' : 'Observaciones Médico-Clínicas:'}</strong>
         <p style="margin:2px 0 0 0; font-style:italic;">"${options.reportNotes}"</p>
       </div>
     `
@@ -204,11 +191,11 @@ export async function downloadPDFReport(
     <!-- Tarjetas KPI Resumen -->
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px;">
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center;">
-        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Systolic' : 'Promedio SistÃ³lico'}</div>
+        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Systolic' : 'Promedio Sistólico'}</div>
         <div style="font-size: 19px; font-weight: 800; color: #0f172a;">${avgSys} <span style="font-size: 11px; font-weight: 400; color: #64748b;">mmHg</span></div>
       </div>
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center;">
-        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Diastolic' : 'Promedio DiastÃ³lico'}</div>
+        <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 2px;">${isEn ? 'Avg Diastolic' : 'Promedio Diastólico'}</div>
         <div style="font-size: 19px; font-weight: 800; color: #0f172a;">${avgDia} <span style="font-size: 11px; font-weight: 400; color: #64748b;">mmHg</span></div>
       </div>
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; text-align: center;">
@@ -223,13 +210,13 @@ export async function downloadPDFReport(
       </div>
     </div>
 
-    <!-- 1. GrÃ¡fico de EvoluciÃ³n (ARRIBA - ANCHO COMPLETO 100%) -->
+    <!-- 1. Gráfico de Evolución (ARRIBA - ANCHO COMPLETO 100%) -->
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; width: 100%; box-sizing: border-box;">
       <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-        <span>${isEn ? 'Blood Pressure Evolution' : 'EvoluciÃ³n TensiÃ³n Arterial'}</span>
+        <span>${isEn ? 'Blood Pressure Evolution' : 'Evolución Tensión Arterial'}</span>
         <div style="display: flex; gap: 12px; font-size: 9.5px; font-weight: 500; color: #64748b;">
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#ef4444; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Systolic' : 'SistÃ³lica'}</span>
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#3b82f6; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Diastolic' : 'DiastÃ³lica'}</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#ef4444; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Systolic' : 'Sistólica'}</span>
+          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#3b82f6; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Diastolic' : 'Diastólica'}</span>
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#64748b; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Pulse' : 'Pulsaciones'}</span>
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:9px; height:7px; background:rgba(16, 185, 129, 0.15); border:1px solid rgba(16, 185, 129, 0.4); display:inline-block;"></span> ${isEn ? 'Healthy Range' : 'Rango Saludable'}</span>
         </div>
@@ -237,7 +224,7 @@ export async function downloadPDFReport(
       ${svgLineChartHtml}
     </div>
 
-    <!-- 2. GrÃ¡fico de distribuciÃ³n ESC 2024 -->
+    <!-- 2. Gráfico de distribución ESC 2024 -->
     ${categoryDistributionHtml}
 
     ${buildPageFooter()}
@@ -246,7 +233,7 @@ export async function downloadPDFReport(
   pageContainers.push(page1);
 
   // ==========================================
-  // PÃGINAS 2+: HISTORIAL DE MEDICIONES POR BLOQUES
+  // PÁGINAS 2+: HISTORIAL DE MEDICIONES POR BLOQUES
   // ==========================================
   for (let pageIdx = 0; pageIdx < tablePagesCount; pageIdx++) {
     const pageNum = pageIdx + 2;
@@ -265,53 +252,7 @@ export async function downloadPDFReport(
     pageContainer.style.padding = '20px';
     pageContainer.style.boxSizing = 'border-box';
 
-    const rowsHtml = pageSessions
-      .map((s, index) => {
-        const d = new Date(s.timestamp);
-        const dateStr = d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const timeStr = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-        const assessment = getHealthAssessment(
-          s.averageSystolic,
-          s.averageDiastolic,
-          s.averageHeartRate,
-          lang,
-          guidelineProfile
-        );
-        const sessionAlerts = [
-          ...assessment.safetyAlerts,
-          ...assessment.alerts,
-          ...getConfirmedPulsePressureAlerts(getEffectiveSessionReadings(s), lang),
-        ];
-        const cat = assessment.category;
-        const armLabel = s.arm === 'left' ? (isEn ? 'Left' : 'Izq') : (isEn ? 'Right' : 'Der');
-        const sessionTag = s.readings.length > 1 ? (isEn ? ` (Avg of ${s.readings.length} readings)` : ` (Media de ${s.readings.length} tomas)`) : '';
-        const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
-
-        return `
-        <tr style="background-color: ${bg};">
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;"><strong>${dateStr}</strong> ${timeStr}</td>
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;"><strong style="font-size:12px; color:#ef4444;">${s.averageSystolic}</strong> mmHg</td>
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;"><strong style="font-size:12px; color:#3b82f6;">${s.averageDiastolic}</strong> mmHg</td>
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;"><strong style="font-size:12px; color:#64748b;">${s.averageHeartRate}</strong> ${isEn ? 'BPM' : 'ppm'}</td>
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;">${armLabel}</td>
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;">
-            <span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:10px; font-weight:600; background:${cat.badgeBg}; color:${cat.badgeText};">
-              ${cat.name}
-            </span>
-            ${assessment.culprit !== 'none'
-              ? `<div style="font-size:8.5px; color:#475569; margin-top:3px;">${getCulpritLabel(assessment.culprit, assessment.category.direction, lang)}</div>`
-              : ''}
-            ${
-              sessionAlerts.length > 0
-                ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">${renderAlertBadges(sessionAlerts)}</div>`
-                : ''
-            }
-          </td>
-          <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;">${(s.notes || '') + sessionTag}</td>
-        </tr>
-      `;
-      })
-      .join('');
+    const rowsHtml = buildPDFMeasurementRowsHTML(pageSessions, lang, guidelineProfile);
 
     pageContainer.innerHTML = `
       ${buildPageHeader(isEn ? 'Measurement History' : 'Historial de Mediciones', pageNum)}
@@ -324,12 +265,12 @@ export async function downloadPDFReport(
         <thead>
           <tr style="background-color: #f1f5f9; color: #475569; text-align: left;">
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Date & Time' : 'Fecha y Hora'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Systolic' : 'SistÃ³lica'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Diastolic' : 'DiastÃ³lica'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Systolic' : 'Sistólica'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Diastolic' : 'Diastólica'}</th>
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Pulse' : 'Pulso'}</th>
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Arm' : 'Brazo'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'BP Category / Alerts' : 'CategorÃ­a PA / Avisos'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Notes / Session' : 'Notas / SesiÃ³n'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'BP Category / Alerts' : 'Categoría PA / Avisos'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Notes / Session' : 'Notas / Sesión'}</th>
           </tr>
         </thead>
         <tbody>
@@ -366,7 +307,7 @@ export async function downloadPDFReport(
     const pdfHeight = pdf.internal.pageSize.getHeight(); // 210 mm
     const imgWidth = pdfWidth - 16; // 8mm margen a cada lado
 
-    // Renderizar pÃ¡gina a pÃ¡gina
+    // Renderizar página a página
     for (let i = 0; i < pageContainers.length; i++) {
       const container = pageContainers[i];
       document.body.appendChild(container);
@@ -443,7 +384,7 @@ export function printPDFReport(
   downloadPDFReport(sessions, dateRange, options, lang);
 }
 
-// GrÃ¡fico de lÃ­neas (EvoluciÃ³n TensiÃ³n) a ancho completo (970px)
+// Gráfico de líneas (Evolución Tensión) a ancho completo (970px)
 function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale = 'es-ES', isEn = false): string {
   if (chronologicalSessions.length === 0) {
     return `<p style="text-align:center; color:#94a3b8; font-size:12px;">${isEn ? 'No data to chart in this period' : 'Sin datos para graficar en este periodo'}</p>`;
@@ -503,7 +444,7 @@ function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale 
         })
         .join('')}
 
-      <!-- LÃ­neas -->
+      <!-- Líneas -->
       <path d="${pulsePath}" fill="none" stroke="#64748b" stroke-width="0.8" stroke-linecap="round" stroke-dasharray="4 3" />
       <path d="${sysPath}" fill="none" stroke="#ef4444" stroke-width="1.2" stroke-linecap="round" />
       <path d="${diaPath}" fill="none" stroke="#3b82f6" stroke-width="1.2" stroke-linecap="round" />
@@ -526,7 +467,7 @@ function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale 
   `;
 }
 
-// GrÃ¡fico de barras verticales por categorÃ­as de la referencia seleccionada
+// Gráfico de barras verticales por categorías de la referencia seleccionada
 function generateCategoryDistributionHTML(
   sessions: BloodPressureSession[],
   lang: LanguageOption = 'es',
@@ -578,7 +519,7 @@ function generateCategoryDistributionHTML(
 
       return `
         <g>
-          <!-- Barra vertical por categorÃ­a de la referencia seleccionada -->
+          <!-- Barra vertical por categoría de la referencia seleccionada -->
           <rect
             x="${barX}"
             y="${barY}"
@@ -598,7 +539,7 @@ function generateCategoryDistributionHTML(
             font-weight="${count > 0 ? '700' : '400'}"
           >${labelText}</text>
 
-          <!-- Nombre de CategorÃ­a en Eje X -->
+          <!-- Nombre de Categoría en Eje X -->
           <text
             x="${groupCenterX}"
             y="${svgHeight - 12}"
@@ -615,12 +556,12 @@ function generateCategoryDistributionHTML(
   return `
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin: 0 auto; width: 780px; box-sizing: border-box; text-align: center;">
       <div style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-        <span>${isEn ? 'Distribution by BP Category' : 'DistribuciÃ³n por CategorÃ­as de PA'} Â· ${getGuidelineName(guidelineProfile, lang)}</span>
+        <span>${isEn ? 'Distribution by BP Category' : 'Distribución por Categorías de PA'} · ${getGuidelineName(guidelineProfile, lang)}</span>
         <span style="font-size: 10px; color: #64748b; font-weight: 500;">${total} ${isEn ? 'readings total' : 'tomas totales'}</span>
       </div>
 
       <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" style="width:100%; height:auto; overflow:visible; display:block; margin: 0 auto;">
-        <!-- LÃ­nea Base Eje X -->
+        <!-- Línea Base Eje X -->
         <line x1="${paddingLeft}" y1="${svgHeight - paddingBottom}" x2="${svgWidth - paddingRight}" y2="${svgHeight - paddingBottom}" stroke="#cbd5e1" stroke-width="1" />
 
         ${barsSvgHtml}

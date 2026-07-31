@@ -92,4 +92,34 @@ describe('initial sensitivity filter', () => {
       heartRate: 60,
     });
   });
+
+  it('does not mutate the input readings or reuse their object references', () => {
+    const input = [reading(0, 150, 90), reading(1, 130, 80)];
+    const snapshot = input.map((item) => ({ ...item }));
+
+    const { sessions, allReadings } = processReadingsIntoSessions(input, settings(true));
+
+    expect(input).toEqual(snapshot);
+    expect(input.every((item) => item.sessionId === undefined)).toBe(true);
+    expect(allReadings[0]).not.toBe(input[0]);
+    expect(sessions[0].readings[0]).not.toBe(input[0]);
+    expect(sessions[0].readings.every((item) => item.sessionId === sessions[0].id)).toBe(true);
+  });
+
+  it('generates unique session ids when stale ids are regrouped with another interval', () => {
+    const input = [
+      { ...reading(0, 140, 85), sessionId: 'stale-shared-session' },
+      { ...reading(4, 138, 84), sessionId: 'stale-shared-session' },
+      { ...reading(8, 136, 82), sessionId: 'stale-shared-session' },
+    ];
+    const regroupedSettings = { ...settings(true), whiteCoatIntervalMinutes: 3 };
+
+    const { sessions } = processReadingsIntoSessions(input, regroupedSettings);
+    const ids = sessions.map((session) => session.id);
+
+    expect(sessions).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids).not.toContain('stale-shared-session');
+    expect(input.every((item) => item.sessionId === 'stale-shared-session')).toBe(true);
+  });
 });

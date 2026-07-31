@@ -313,7 +313,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               onClick={() => setActiveTooltip(null)}
               aria-label={t('settings.close')}
             >
-              Ã—
+              ×
             </button>
           </div>
           <div className="tooltip-body">

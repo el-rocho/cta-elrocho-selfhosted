@@ -42,13 +42,12 @@ export function filterSessionsByDateRange(
   });
 }
 
-export function exportToCSV(
+export function buildCSVContent(
   sessions: BloodPressureSession[],
   dateRange: DateRange,
-  filenamePrefix = 'tension_arterial',
   options: ExportReportOptions = {},
   lang: LanguageOption = 'es'
-): void {
+): string {
   const filtered = filterSessionsByDateRange(sessions, dateRange);
 
   const isEn = lang === 'en';
@@ -99,8 +98,8 @@ export function exportToCSV(
   if (options.reportNotes) {
     metadataHeader += `# ${isEn ? 'Remarks' : 'Observaciones'}: ${options.reportNotes}\n`;
   }
-  metadataHeader += `# ${isEn ? 'Antihypertensive medication' : 'MedicaciÃ³n antihipertensiva'}: ${options.takesAntihypertensiveMedication ? (isEn ? 'Yes' : 'SÃ­') : 'No'}\n`;
-  metadataHeader += `# ${isEn ? 'Classification reference' : 'Referencia de clasificaciÃ³n'}: ${getGuidelineName(guidelineProfile, lang)}\n`;
+  metadataHeader += `# ${isEn ? 'Antihypertensive medication' : 'Medicación antihipertensiva'}: ${options.takesAntihypertensiveMedication ? (isEn ? 'Yes' : 'Sí') : 'No'}\n`;
+  metadataHeader += `# ${isEn ? 'Classification reference' : 'Referencia de clasificación'}: ${getGuidelineName(guidelineProfile, lang)}\n`;
   metadataHeader += `# ${isEn ? 'Notice' : 'Aviso'}: ${getHealthDisclaimer(lang, guidelineProfile)}\n`;
 
   const locale = isEn ? 'en-US' : 'es-ES';
@@ -160,6 +159,18 @@ export function exportToCSV(
   });
 
   const csvContent = '\uFEFFsep=;\n' + metadataHeader + headers.join(';') + '\n' + rows.join('\n');
+
+  return csvContent;
+}
+
+export function exportToCSV(
+  sessions: BloodPressureSession[],
+  dateRange: DateRange,
+  filenamePrefix = 'tension_arterial',
+  options: ExportReportOptions = {},
+  lang: LanguageOption = 'es'
+): void {
+  const csvContent = buildCSVContent(sessions, dateRange, options, lang);
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);

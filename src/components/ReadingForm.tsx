@@ -39,7 +39,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   const { t, language } = useLanguage();
   const [inputMode, setInputMode] = useState<InputMode>(settings.preferredInputMode || 'keyboard');
 
-  // Inicializar los valores centrados en la Ãºltima mediciÃ³n realizada o en valores medios por defecto (120 / 80 / 72)
+  // Inicializar los valores centrados en la última medición realizada o en valores medios por defecto (120 / 80 / 72)
   const initialSys = lastReading ? lastReading.systolic : 120;
   const initialDia = lastReading ? lastReading.diastolic : 80;
   const initialPulse = lastReading ? lastReading.heartRate : 72;
@@ -58,7 +58,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
-  // Sincronizar brazo y modo de entrada predeterminado si cambia la configuraciÃ³n
+  // Sincronizar brazo y modo de entrada predeterminado si cambia la configuración
   useEffect(() => {
     setArm(settings.defaultArm || 'left');
     if (settings.preferredInputMode) {
@@ -66,7 +66,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     }
   }, [settings.defaultArm, settings.preferredInputMode]);
 
-  // Actualizar valores iniciales cuando entra una nueva mediciÃ³n
+  // Actualizar valores iniciales cuando entra una nueva medición
   useEffect(() => {
     if (lastReading) {
       setSystolic(lastReading.systolic);
@@ -89,7 +89,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     ? assessTreatmentTarget(liveSystolic, liveDiastolic, settings)
     : null;
 
-  // Auto-seleccionar todo el texto al tocar/enfocar un campo numÃ©rico
+  // Auto-seleccionar todo el texto al tocar/enfocar un campo numérico
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select();
   };
@@ -154,7 +154,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             <h2>{t('form.title')}</h2>
           </div>
 
-          {/* Badge de clasificaciÃ³n en tiempo real */}
+          {/* Badge de clasificación en tiempo real */}
           <div className="classification-badges">
             <div
               className="live-category-badge"
@@ -193,7 +193,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             </div>
           </div>
 
-          {/* Conmutador discreto Modo Teclado vs Modo Ruleta RÃ¡pida */}
+          {/* Conmutador discreto Modo Teclado vs Modo Ruleta Rápida */}
           <div className="input-mode-toggle">
             <button
               type="button"
@@ -251,7 +251,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
       <form onSubmit={handleSubmit} className="bp-form">
         {activeInputMode === 'keyboard' ? (
-          /* Modo 1: IntroducciÃ³n mediante Teclado NumÃ©rico */
+          /* Modo 1: Introducción mediante Teclado Numérico */
           <div className="metrics-inputs-grid">
             <div className="input-group">
               <label htmlFor="systolic-input">
@@ -323,7 +323,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             </div>
           </div>
         ) : (
-          /* Modo 2: Ruleta TÃ¡ctil de SelecciÃ³n RÃ¡pida */
+          /* Modo 2: Ruleta Táctil de Selección Rápida */
           <div className="wheel-mode-container">
             <WheelPicker
               systolic={typeof systolic === 'number' ? systolic : 120}

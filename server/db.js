@@ -48,7 +48,7 @@ export async function getDB() {
   }
 }
 
-async function initSchema(db) {
+export async function initSchema(db) {
   // Tabla de Usuarios
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (

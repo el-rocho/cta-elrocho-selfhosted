@@ -27,8 +27,9 @@ export function getSessionSummaryReading(
 }
 
 /**
- * Agrupa una lista de lecturas en sesiones de mediciÃ³n continua respetando las opciones configuradas.
- * Aplica el filtro mÃ©dico de bata blanca para descartar picos de ansiedad iniciales (15-25 mmHg SistÃ³lica / 5-10 mmHg DiastÃ³lica).
+ * Agrupa una lista de lecturas en sesiones de medición continua respetando las opciones configuradas.
+ * Aplica las reglas de acomodación versionadas en docs/reglas-clinicas-v1.6.0.md
+ * (margen sistólico de 8 mmHg o diastólico de 4 mmHg cuando corresponde).
  */
 export function processReadingsIntoSessions(
   readings: BloodPressureReading[],
@@ -41,15 +42,18 @@ export function processReadingsIntoSessions(
     return { sessions: [], allReadings: [] };
   }
 
-  // Ordenar cronolÃ³gicamente ascendente para agrupar
-  const sorted = [...readings].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  // Copiar antes de ordenar: el cálculo de sesiones no debe modificar el estado
+  // ni reutilizar identificadores derivados por una agrupación anterior.
+  const sorted = readings
+    .map((reading) => ({ ...reading, sessionId: undefined }))
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  // Si el filtro de bata blanca estÃ¡ DESACTIVADO por el usuario, tratamos cada lectura como una sesiÃ³n individual
+  // Si el filtro de bata blanca está DESACTIVADO por el usuario, tratamos cada lectura como una sesión individual
   if (!settings.enableWhiteCoatFilter) {
     const individualSessions: BloodPressureSession[] = sorted.map((r) => ({
       id: `session-single-${r.id}`,
       timestamp: r.timestamp,
-      readings: [r],
+      readings: [{ ...r }],
       averageSystolic: r.systolic,
       averageDiastolic: r.diastolic,
       averageHeartRate: r.heartRate,
@@ -68,7 +72,7 @@ export function processReadingsIntoSessions(
     };
   }
 
-  // Umbral de tiempo dinÃ¡mico segÃºn la configuraciÃ³n del usuario (en milisegundos) entre tomas consecutivas
+  // Umbral de tiempo dinámico según la configuración del usuario (en milisegundos) entre tomas consecutivas
   const sessionThresholdMs = (settings.whiteCoatIntervalMinutes || 5) * 60 * 1000;
 
   const sessionGroups: BloodPressureReading[][] = [];
@@ -86,7 +90,7 @@ export function processReadingsIntoSessions(
       settings.takesAntihypertensiveMedication
     );
 
-    // Nunca mezclar en una misma media tomas realizadas bajo contextos clÃ­nicos distintos.
+    // Nunca mezclar en una misma media tomas realizadas bajo contextos clínicos distintos.
     if (
       currTime - prevTime <= sessionThresholdMs &&
       previousMedicationContext === currentMedicationContext
@@ -101,38 +105,35 @@ export function processReadingsIntoSessions(
     sessionGroups.push(currentGroup);
   }
 
-  // Procesar cada grupo de tomas consecutivas aplicando los criterios mÃ©dicos del filtro de bata blanca
+  // Procesar cada grupo de tomas consecutivas aplicando los criterios médicos del filtro de bata blanca
   const sessions: BloodPressureSession[] = sessionGroups.map((group, index) => {
-    const sessionId = group[0].sessionId || `session-${index}-${group[0].id}`;
+    const sessionId = `session-${index}-${group[0].id}`;
+    const sessionReadings = group.map((reading) => ({ ...reading, sessionId }));
 
-    group.forEach((r) => {
-      r.sessionId = sessionId;
-    });
-
-    let validReadingsForAvg = [...group];
+    let validReadingsForAvg = [...sessionReadings];
     let discardedCount = 0;
 
-    if (group.length === 2) {
-      // En 2 tomas: Si la 1Âª estÃ¡ significativamente elevada respecto a la 2Âª (efecto bata blanca inicial), se descarta la 1Âª
-      if (group[0].systolic >= group[1].systolic + 8 || group[0].diastolic >= group[1].diastolic + 4) {
-        validReadingsForAvg = [group[1]];
+    if (sessionReadings.length === 2) {
+      // En 2 tomas: Si la 1ª está significativamente elevada respecto a la 2ª (efecto bata blanca inicial), se descarta la 1ª
+      if (sessionReadings[0].systolic >= sessionReadings[1].systolic + 8 || sessionReadings[0].diastolic >= sessionReadings[1].diastolic + 4) {
+        validReadingsForAvg = [sessionReadings[1]];
         discardedCount = 1;
       }
-    } else if (group.length === 3) {
-      // En 3 tomas: La 1Âª toma se descarta siempre, manteniendo 2 tomas vÃ¡lidas para la media
-      validReadingsForAvg = group.slice(1);
+    } else if (sessionReadings.length === 3) {
+      // En 3 tomas: La 1ª toma se descarta siempre, manteniendo 2 tomas válidas para la media
+      validReadingsForAvg = sessionReadings.slice(1);
       discardedCount = 1;
-    } else if (group.length >= 4) {
+    } else if (sessionReadings.length >= 4) {
       // En usuarios muy sensibles el descenso puede prolongarse hasta la cuarta
-      // toma o mÃ¡s. Se elimina Ãºnicamente el prefijo que siga claramente por
+      // toma o más. Se elimina únicamente el prefijo que siga claramente por
       // encima de las tomas posteriores. Puede quedar una sola toma estable:
-      // el resultado de toda la sesiÃ³n seguirÃ¡ siendo una Ãºnica mediciÃ³n.
-      for (let i = 0; i < group.length - 1; i++) {
-        const remainingIfDiscarded = group.slice(i + 1);
+      // el resultado de toda la sesión seguirá siendo una única medición.
+      for (let i = 0; i < sessionReadings.length - 1; i++) {
+        const remainingIfDiscarded = sessionReadings.slice(i + 1);
         const avgSysRemaining = remainingIfDiscarded.reduce((acc, r) => acc + r.systolic, 0) / remainingIfDiscarded.length;
         const avgDiaRemaining = remainingIfDiscarded.reduce((acc, r) => acc + r.diastolic, 0) / remainingIfDiscarded.length;
 
-        if (group[i].systolic >= avgSysRemaining + 8 || group[i].diastolic >= avgDiaRemaining + 4) {
+        if (sessionReadings[i].systolic >= avgSysRemaining + 8 || sessionReadings[i].diastolic >= avgDiaRemaining + 4) {
           validReadingsForAvg = remainingIfDiscarded;
           discardedCount = i + 1;
         } else {
@@ -146,18 +147,18 @@ export function processReadingsIntoSessions(
     const sumPulse = validReadingsForAvg.reduce((acc, r) => acc + r.heartRate, 0);
 
     const count = validReadingsForAvg.length;
-    const notesList = group.map((r) => r.notes).filter(Boolean);
+    const notesList = sessionReadings.map((r) => r.notes).filter(Boolean);
     const combinedNotes = notesList.length > 0 ? Array.from(new Set(notesList)).join(' | ') : undefined;
 
     return {
       id: sessionId,
-      timestamp: group[0].timestamp,
-      readings: group,
+      timestamp: sessionReadings[0].timestamp,
+      readings: sessionReadings,
       averageSystolic: Math.round(sumSys / count),
       averageDiastolic: Math.round(sumDia / count),
       averageHeartRate: Math.round(sumPulse / count),
       discardedCount,
-      arm: group[group.length - 1].arm,
+      arm: sessionReadings[sessionReadings.length - 1].arm,
       notes: combinedNotes,
     };
   });
