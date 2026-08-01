@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, X, AlertTriangle, Lock } from 'lucide-react';
+import { ShieldCheck, X, AlertTriangle, Lock, DatabaseBackup } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import type { GuidelineProfile } from '../types/bloodPressure';
 import { getGuidelineName, getGuidelineSourceUrl } from '../utils/healthClassification';
@@ -15,7 +15,6 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
-  const isEn = language === 'en';
   const guidelineName = getGuidelineName(guidelineProfile, language);
 
   return (
@@ -32,60 +31,59 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
         </div>
 
         <div className="modal-body" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          {/* Exención de responsabilidad médica */}
           <div className="settings-subcard" style={{ marginBottom: '16px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
             <div className="field-label" style={{ color: '#d97706', margin: '0 0 8px 0', fontWeight: 'bold', fontSize: '14px', gap: '8px' }}>
               <AlertTriangle size={22} className="legal-icon-block" />
-              <span>{isEn ? 'Medical Disclaimer:' : 'Exención de responsabilidad médica:'}</span>
+              <span>{t('legal.medicalTitle')}</span>
             </div>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              {isEn
-                ? `This application is intended for the personal recording and monitoring of blood pressure values. Its comments and notices are informational interpretations based on ${guidelineName}; they are not a diagnosis or a literal reproduction of the guideline.`
-                : `Esta aplicación está destinada al registro y seguimiento personal de valores de tensión arterial. Sus comentarios y avisos son interpretaciones informativas basadas en ${guidelineName}; no constituyen un diagnóstico ni una reproducción literal de la guía.`}
+              {t('legal.medicalPurpose', { guideline: guidelineName })}
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               <a href={getGuidelineSourceUrl(guidelineProfile)} target="_blank" rel="noreferrer">
-                {isEn ? 'View reference source' : 'Consultar fuente de referencia'}
+                {t('legal.sourceLink')}
               </a>
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              {isEn
-                ? 'A single measurement does not diagnose or establish whether medication is excessive or insufficient. The application does not make diagnoses and does not replace the assessment, advice, or treatment indicated by a qualified healthcare professional.'
-                : 'Una medición aislada no diagnostica ni permite determinar si la medicación es excesiva o insuficiente. La aplicación no realiza diagnósticos y no sustituye la valoración, el consejo ni el tratamiento indicado por un profesional sanitario cualificado.'}
+              {t('legal.medicalLimits')}
             </p>
             <p style={{ margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>
-              <em>
-                {isEn
-                  ? 'Do not modify your medication or make medical decisions based on app data. Always consult your physician.'
-                  : 'No modifique su medicación ni tome decisiones médicas basándose en los datos de la aplicación. Consulte siempre con su médico.'}
-              </em>
+              <strong>{t('legal.medicationWarning')}</strong>{' '}
+              {t('legal.emergencyWarning')}
             </p>
           </div>
 
-          {/* Privacidad y protección de datos */}
           <div className="settings-subcard" style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
             <div className="field-label" style={{ color: '#059669', margin: '0 0 8px 0', fontWeight: 'bold', fontSize: '14px', gap: '8px' }}>
               <Lock size={22} className="legal-icon-block" />
-              <span>{isEn ? 'Privacy & Data Protection' : 'Privacidad y protección de datos'}</span>
+              <span>{t('legal.privacyTitle')}</span>
             </div>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              <strong>{isEn ? '100% Private:' : '100% Privado:'}</strong>{' '}
-              {isEn
-                ? 'All entered data (readings, patient profile, and notes) is processed and stored exclusively on the self-hosted private server. The application does not collect, transmit, or share data with third-party servers. It uses no cookies, analytics, advertising, or tracking tools.'
-                : 'Todos los datos introducidos (lecturas, perfil del paciente y notas) se procesan y almacenan exclusivamente en el servidor privado autoalojado. La aplicación no recopila, transmite ni comparte datos con servidores de terceros. Tampoco utiliza cookies, servicios de análisis, publicidad ni herramientas de seguimiento.'}
+              <strong>{t('legal.storageLabel')}</strong>{' '}
+              {t('legal.storageText')}
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              <strong>{isEn ? '100% Control:' : '100% Control:'}</strong>{' '}
-              {isEn
-                ? 'The user can consult, export, and erase data at any time. Exported files remain under user control and responsibility.'
-                : 'El usuario puede consultar, exportar y eliminar sus datos en cualquier momento. Los archivos exportados quedan bajo su control y responsabilidad.'}
+              <strong>{t('legal.networkLabel')}</strong>{' '}
+              {t('legal.networkText')}
             </p>
-            <p style={{ margin: '12px 0 0 0', fontStyle: 'italic', fontSize: '12px', lineHeight: '1.4' }}>
-              {isEn
-                ? 'Designed following Privacy by Design and Data Minimization principles set by EU GDPR.'
-                : 'La aplicación ha sido diseñada siguiendo los principios de privacidad de diseño y minimización de datos establecidos en el RGPD de la Unión Europea.'}
+            <p style={{ margin: 0, lineHeight: '1.5' }}>
+              <strong>{t('legal.controlLabel')}</strong>{' '}
+              {t('legal.controlText')}
             </p>
           </div>
+
+          <div className="settings-subcard" style={{ marginTop: '16px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+            <div className="field-label" style={{ color: '#2563eb', margin: '0 0 8px 0', fontWeight: 'bold', fontSize: '14px', gap: '8px' }}>
+              <DatabaseBackup size={22} className="legal-icon-block" />
+              <span>{t('legal.filesTitle')}</span>
+            </div>
+            <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>{t('legal.filesText')}</p>
+            <p style={{ margin: 0, lineHeight: '1.5' }}>{t('legal.restoreText')}</p>
+          </div>
+
+          <p style={{ margin: '14px 4px 0', fontStyle: 'italic', fontSize: '12px', lineHeight: '1.4' }}>
+            {t('legal.responsibilityNote')} · {t('legal.updated')}
+          </p>
         </div>
       </div>
     </div>
