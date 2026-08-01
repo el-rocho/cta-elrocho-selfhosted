@@ -1596,6 +1596,136 @@ body {
   margin-top: 6px;
 }
 
+.import-preview-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.import-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--text-primary);
+}
+
+.import-preview-heading svg {
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.import-preview-heading h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.import-preview-heading p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.import-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.import-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+}
+
+.import-summary-item strong {
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.import-summary-item span {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.import-preview-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.import-preview-note svg {
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.import-preview-note.warning {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.import-preview-note.warning svg {
+  color: #d97706;
+}
+
+.import-preview-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.btn-import-confirm,
+.btn-import-reselect {
+  min-height: 40px;
+  border-radius: var(--radius-sm);
+  padding: 9px 13px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-import-confirm {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #15803d;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.btn-import-confirm:hover {
+  background: #15803d;
+}
+
+.btn-import-reselect {
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.btn-import-reselect:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+
 
 
 @media (max-width: 640px) {
