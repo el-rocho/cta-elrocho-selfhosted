@@ -297,6 +297,18 @@ body {
   display: block;
 }
 
+.app-logo-variant.app-logo-dark {
+  display: none;
+}
+
+[data-theme='dark'] .app-logo-variant.app-logo-light {
+  display: none;
+}
+
+[data-theme='dark'] .app-logo-variant.app-logo-dark {
+  display: block;
+}
+
 .pulse-icon {
   animation: pulseBeat 2.5s infinite ease-in-out;
 }
