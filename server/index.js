@@ -910,6 +910,7 @@ app.get('/api/settings', requireAuth, async (req, res) => {
       backupFrequency: row?.backup_frequency || 'disabled',
       backupFolder: row?.backup_folder || 'Descargas/Copias_Tension_Arterial',
       lastBackupTimestamp: row?.last_backup_timestamp || undefined,
+      lastFullBackupTimestamp: row?.last_full_backup_timestamp || undefined,
     });
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener ajustes' });
@@ -927,8 +928,8 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         guideline_profile, treatment_target_mode, custom_target_systolic_min, custom_target_systolic_max,
         custom_target_diastolic_min, custom_target_diastolic_max,
         patient_name, patient_sex, patient_age, patient_birth_date, takes_antihypertensive_medication,
-        backup_frequency, backup_folder, last_backup_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        backup_frequency, backup_folder, last_backup_timestamp, last_full_backup_timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         language = excluded.language,
         enable_white_coat = excluded.enable_white_coat,
@@ -948,7 +949,8 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         takes_antihypertensive_medication = excluded.takes_antihypertensive_medication,
         backup_frequency = excluded.backup_frequency,
         backup_folder = excluded.backup_folder,
-        last_backup_timestamp = excluded.last_backup_timestamp;`,
+        last_backup_timestamp = excluded.last_backup_timestamp,
+        last_full_backup_timestamp = excluded.last_full_backup_timestamp;`,
       [
         req.user.id,
         s.language || 'es',
@@ -970,6 +972,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         s.backupFrequency || 'disabled',
         s.backupFolder || 'Descargas/Copias_Tension_Arterial',
         s.lastBackupTimestamp || null,
+        s.lastFullBackupTimestamp || null,
       ]
     );
 

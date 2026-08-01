@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   backupFrequency: 'disabled',
   backupFolder: 'Descargas/Copias_Tension_Arterial',
   lastBackupTimestamp: undefined,
+  lastFullBackupTimestamp: undefined,
 };
 
 export async function fetchReadingsFromServer(): Promise<BloodPressureReading[]> {

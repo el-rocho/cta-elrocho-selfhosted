@@ -102,11 +102,11 @@ const CATEGORY_PRESENTATION: Record<
   },
   aboveThreshold: {
     direction: 'high',
-    colorRole: 'orange',
+    colorRole: 'red',
     rank: 3,
-    colorHex: '#f97316',
-    badgeBg: 'rgba(249, 115, 22, 0.16)',
-    badgeText: '#c2410c',
+    colorHex: '#dc2626',
+    badgeBg: 'rgba(220, 38, 38, 0.16)',
+    badgeText: '#b91c1c',
   },
   extreme: {
     direction: 'extreme',

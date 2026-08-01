@@ -43,7 +43,7 @@ function discardedSession(): BloodPressureSession {
 const profiles: Array<[GuidelineProfile, string]> = [
   ['esc-2024', 'Presión elevada'],
   ['aha-acc-2025', 'Hipertensión fase 1'],
-  ['ish-2020', 'Por debajo del umbral'],
+  ['ish-2020', 'Presión normal'],
 ];
 
 describe('clinical CSV export', () => {

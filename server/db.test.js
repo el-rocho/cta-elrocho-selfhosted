@@ -86,6 +86,7 @@ describe('server treatment-target migration and persistence', () => {
           'custom_target_systolic_max',
           'custom_target_diastolic_min',
           'custom_target_diastolic_max',
+          'last_full_backup_timestamp',
         ])
       );
 

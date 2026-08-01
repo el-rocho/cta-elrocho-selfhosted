@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { AppSettings, BackupFrequency, GuidelineProfile, PatientSex, LanguageOption } from '../types/bloodPressure';
-import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, Save, Folder, CalendarCheck, User, Trash2, Globe, BookOpenCheck, Target, Info, ExternalLink } from 'lucide-react';
+import type { AppSettings, GuidelineProfile, PatientSex, LanguageOption } from '../types/bloodPressure';
+import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, User, Trash2, Globe, BookOpenCheck, Target, Info, ExternalLink, Repeat2, Gauge } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { calculateAge } from '../utils/pdfGenerator';
 import { FlagES, FlagGB } from './FlagIcons';
@@ -17,7 +17,6 @@ interface SettingsModalProps {
   onMedicationContextChange: (takesMedication: boolean, recalculateHistory: boolean) => boolean | Promise<boolean>;
   onResetDemoData: () => void;
   onClearAllData: () => void;
-  onTriggerManualBackup: () => void;
   onOpenTotpModal?: () => void;
   isTotpEnabled?: boolean;
 }
@@ -30,7 +29,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onMedicationContextChange,
   onResetDemoData,
   onClearAllData,
-  onTriggerManualBackup,
   onOpenTotpModal,
   isTotpEnabled = false,
 }) => {
@@ -40,6 +38,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [infoTopic, setInfoTopic] = useState<SettingsInfoTopic | null>(null);
 
   if (!isOpen) return null;
+
+  const detailedGuideline = infoTopic === 'esc-2024' || infoTopic === 'aha-acc-2025' || infoTopic === 'ish-2020'
+    ? infoTopic
+    : null;
+  const detailedGuidelineRanges = detailedGuideline === 'esc-2024'
+    ? [
+        { tone: 'normal', labelKey: 'nonElevatedLabel', valueKey: 'nonElevatedValue' },
+        { tone: 'elevated', labelKey: 'elevatedLabel', valueKey: 'elevatedValue' },
+        { tone: 'stage2', labelKey: 'hypertensionLabel', valueKey: 'hypertensionValue' },
+      ]
+    : detailedGuideline === 'aha-acc-2025'
+      ? [
+          { tone: 'normal', labelKey: 'normalLabel', valueKey: 'normalValue' },
+          { tone: 'elevated', labelKey: 'elevatedLabel', valueKey: 'elevatedValue' },
+          { tone: 'stage1', labelKey: 'stage1Label', valueKey: 'stage1Value' },
+          { tone: 'stage2', labelKey: 'stage2Label', valueKey: 'stage2Value' },
+        ]
+      : detailedGuideline === 'ish-2020'
+        ? [
+            { tone: 'normal', labelKey: 'belowThresholdLabel', valueKey: 'belowThresholdValue' },
+            { tone: 'stage2', labelKey: 'hypertensionLabel', valueKey: 'hypertensionValue' },
+          ]
+        : null;
+
+  const renderGuidelineDisclaimer = (text: string) => {
+    const highlightedTerm = t('settings.guidelineInfo.disclaimerHighlight');
+    const termIndex = text.indexOf(highlightedTerm);
+
+    if (termIndex === -1) return text;
+
+    return (
+      <>
+        {text.slice(0, termIndex)}
+        <strong className="guideline-disclaimer-highlight">{highlightedTerm}</strong>
+        {text.slice(termIndex + highlightedTerm.length)}
+      </>
+    );
+  };
 
   const currentWhiteCoatInterval = [3, 5, 10].includes(settings.whiteCoatIntervalMinutes)
     ? settings.whiteCoatIntervalMinutes
@@ -159,23 +195,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     });
   };
 
-  const handleChangeBackupFrequency = (freq: BackupFrequency) => {
-    onUpdateSettings({
-      ...settings,
-      backupFrequency: freq,
-    });
-  };
-
-  const locale = settings.language === 'en' ? 'en-US' : 'es-ES';
-  const lastBackupStr = settings.lastBackupTimestamp
-    ? new Date(settings.lastBackupTimestamp).toLocaleDateString(locale, {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : t('settings.lastBackupNone');
   const activeTreatmentTarget = getTreatmentTarget(settings);
   const targetFieldValues = {
     customTargetSystolicMin: settings.treatmentTargetMode === 'custom' ? (settings.customTargetSystolicMin || '') : (activeTreatmentTarget.systolicMin ?? ''),
@@ -336,83 +355,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-
-          {/* Opción 2: Copias de Seguridad Automáticas CSV */}
-          <div className="settings-section border-top">
-            <div className="field-label">
-              <Save size={22} className="text-blue settings-field-icon" />
-              <span>{t('settings.backupTitle')}</span>
-            </div>
-            <p className="settings-desc" style={{ marginBottom: '10px' }}>
-              {t('settings.backupDesc')}
-            </p>
-
-            <div className="chip-options-row" style={{ marginBottom: '12px' }}>
-              <button
-                type="button"
-                className={`chip-select ${settings.backupFrequency === 'daily' ? 'active' : ''}`}
-                onClick={() => handleChangeBackupFrequency('daily')}
-              >
-                {t('settings.backupDaily')}
-              </button>
-              <button
-                type="button"
-                className={`chip-select ${settings.backupFrequency === 'weekly' ? 'active' : ''}`}
-                onClick={() => handleChangeBackupFrequency('weekly')}
-              >
-                {t('settings.backupWeekly')}
-              </button>
-              <button
-                type="button"
-                className={`chip-select ${settings.backupFrequency === 'monthly' ? 'active' : ''}`}
-                onClick={() => handleChangeBackupFrequency('monthly')}
-              >
-                {t('settings.backupMonthly')}
-              </button>
-              <button
-                type="button"
-                className={`chip-select ${settings.backupFrequency === 'disabled' ? 'active' : ''}`}
-                onClick={() => handleChangeBackupFrequency('disabled')}
-              >
-                {t('settings.backupDisabled')}
-              </button>
-            </div>
-
-            <div className="settings-subcard">
-              <div className="field-label" style={{ fontSize: '12px' }}>
-                <Folder size={20} className="text-blue settings-field-icon" />
-                <span>{t('settings.storageTitle')}</span>
-              </div>
-              <p className="settings-desc" style={{ marginTop: '4px', fontSize: '11px', lineHeight: '1.4' }}>
-                {t('settings.storageDesc')}
-              </p>
-
-              <div className="backup-meta-row" style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: 'var(--text-muted)' }}>
-                <span>
-                  <CalendarCheck size={12} className="inline-icon" /> {t('settings.lastBackup')} <strong>{lastBackupStr}</strong>
-                </span>
-                <button
-                  type="button"
-                  className="btn-download-backup"
-                  onClick={onTriggerManualBackup}
-                  style={{
-                    backgroundColor: 'var(--primary-color, #6d28d9)',
-                    color: '#ffffff',
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    fontWeight: 600,
-                    fontSize: '12px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {t('settings.downloadBackup')}
-                </button>
               </div>
             </div>
           </div>
@@ -595,11 +537,77 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-body settings-info-body">
+            <div className={`modal-body settings-info-body ${infoTopic === 'white-coat' ? 'measurement-guide-body white-coat-info-body' : detailedGuideline ? 'measurement-guide-body guideline-detail-body' : ''}`}>
               {infoTopic === 'white-coat' ? (
                 <>
-                  <p>{t('settings.whiteCoatDesc')}</p>
-                  <p>{t('settings.whiteCoatInfoUsage')}</p>
+                  <div className="settings-subcard measurement-guide-main-card white-coat-info-card">
+                    <ShieldAlert size={22} className="legal-icon-block white-coat-info-icon" />
+                    <p>{t('settings.whiteCoatInfoIntro')}</p>
+                  </div>
+                  <div className="settings-subcard measurement-guide-advice-card white-coat-info-card">
+                    <Repeat2 size={22} className="legal-icon-block white-coat-info-icon" />
+                    <div>
+                      <p>{t('settings.whiteCoatInfoMechanism')}</p>
+                      <p>{t('settings.whiteCoatInfoResult')}</p>
+                    </div>
+                  </div>
+                </>
+              ) : detailedGuideline && detailedGuidelineRanges ? (
+                <>
+                  <div className="settings-subcard measurement-guide-main-card guideline-ranges-card">
+                    <div className="field-label guideline-info-section-title">
+                      <Gauge size={22} className="legal-icon-block" />
+                      <span>{t(`settings.guidelineInfo.${detailedGuideline}.homeIntro`)}</span>
+                    </div>
+                    <ul className="guideline-range-list">
+                      {detailedGuidelineRanges.map((range) => (
+                        <li key={range.labelKey} className={range.tone}>
+                          <span className="guideline-range-dot" aria-hidden="true" />
+                          <span>
+                            <strong>{t(`settings.guidelineInfo.${detailedGuideline}.${range.labelKey}`)}</strong>{' '}
+                            {t(`settings.guidelineInfo.${detailedGuideline}.${range.valueKey}`)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="settings-subcard measurement-guide-advice-card guideline-target-card">
+                    <Target size={22} className="legal-icon-block" />
+                    {detailedGuideline === 'ish-2020' ? (
+                      <div className="guideline-target-content">
+                        <p>{t('settings.guidelineInfo.ish-2020.targetIntro')}</p>
+                        <ul className="guideline-target-list">
+                          <li>
+                            <strong>{t('settings.guidelineInfo.ish-2020.under65Label')}</strong>{' '}
+                            {t('settings.guidelineInfo.ish-2020.under65Value')}
+                          </li>
+                          <li>
+                            <strong>{t('settings.guidelineInfo.ish-2020.from65Label')}</strong>{' '}
+                            {t('settings.guidelineInfo.ish-2020.from65Value')}
+                          </li>
+                        </ul>
+                        <p className="guideline-fragility-note">
+                          {t('settings.guidelineInfo.ish-2020.fragility')}
+                        </p>
+                      </div>
+                    ) : (
+                      <p>{t(`settings.guidelineInfo.${detailedGuideline}.target`)}</p>
+                    )}
+                  </div>
+                  <div className="settings-info-note guideline-info-disclaimer">
+                    <Info size={18} />
+                    <p>
+                      {renderGuidelineDisclaimer(t(`settings.guidelineInfo.${detailedGuideline}.disclaimer`))}
+                    </p>
+                  </div>
+                  <a
+                    className="settings-info-source"
+                    href={getGuidelineSourceUrl(infoTopic)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t('settings.guidelineSource')} <ExternalLink size={14} />
+                  </a>
                 </>
               ) : (
                 <>

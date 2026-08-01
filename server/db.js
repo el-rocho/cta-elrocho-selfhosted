@@ -148,6 +148,7 @@ export async function initSchema(db) {
       backup_frequency TEXT DEFAULT 'disabled',
       backup_folder TEXT DEFAULT 'Descargas/Copias_Tension_Arterial',
       last_backup_timestamp TEXT,
+      last_full_backup_timestamp TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
@@ -169,6 +170,7 @@ export async function initSchema(db) {
     'ALTER TABLE settings ADD COLUMN custom_target_systolic_max INTEGER NOT NULL DEFAULT 129;',
     'ALTER TABLE settings ADD COLUMN custom_target_diastolic_min INTEGER NOT NULL DEFAULT 70;',
     'ALTER TABLE settings ADD COLUMN custom_target_diastolic_max INTEGER NOT NULL DEFAULT 79;',
+    'ALTER TABLE settings ADD COLUMN last_full_backup_timestamp TEXT;',
   ];
   for (const migration of treatmentTargetMigrations) {
     try {

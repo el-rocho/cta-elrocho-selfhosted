@@ -58,10 +58,12 @@ export interface AppSettings {
   patientBirthDate?: string; // Formato YYYY-MM-DD
   takesAntihypertensiveMedication: boolean;
 
-  // Copias de seguridad automáticas CSV
+  // Recordatorios para crear copias completas
   backupFrequency: BackupFrequency;
   backupFolder: string;
+  // Marca heredada de las antiguas copias CSV.
   lastBackupTimestamp?: string;
+  lastFullBackupTimestamp?: string;
 }
 
 export interface ExportReportOptions {
