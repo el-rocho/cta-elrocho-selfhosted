@@ -1,4 +1,4 @@
-const CACHE_NAME = 'control-tension-v1.6.0-beta.1';
+const CACHE_NAME = 'control-tension-v1.6.0-beta.1-cache-2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -35,6 +35,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET' || url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Las respuestas de la API dependen del usuario autenticado. Nunca deben
+  // entrar en la caché compartida de la aplicación ni servirse sin conexión.
+  if (url.pathname.startsWith('/api/')) {
     return;
   }
 

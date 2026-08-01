@@ -31,6 +31,18 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 
+// Los datos de salud y de sesión nunca deben reutilizarse entre usuarios.
+// Esto también protege a clientes PWA y proxies intermedios que, de otro modo,
+// podrían almacenar una respuesta GET autenticada usando únicamente la URL.
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.vary('x-session-token');
+  res.vary('Cookie');
+  next();
+});
+
 // Tokens temporales para flujo 2FA durante el login (validez 5 minutos)
 const pendingTotpLogins = new Map();
 

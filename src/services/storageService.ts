@@ -1,5 +1,12 @@
 import type { BloodPressureReading, AppSettings } from '../types/bloodPressure';
 
+let freshRequestSequence = 0;
+
+function freshApiUrl(path: string): string {
+  freshRequestSequence += 1;
+  return `${path}?fresh=${Date.now()}-${freshRequestSequence}`;
+}
+
 export const DEFAULT_SETTINGS: AppSettings = {
   language: 'es',
   enableWhiteCoatFilter: false,
@@ -24,7 +31,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export async function fetchReadingsFromServer(): Promise<BloodPressureReading[]> {
   try {
-    const res = await fetch('/api/readings', { credentials: 'include' });
+    const res = await fetch(freshApiUrl('/api/readings'), {
+      credentials: 'include',
+      cache: 'no-store',
+    });
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
@@ -155,7 +165,10 @@ export async function importReadingsToServer(imported: Omit<BloodPressureReading
 
 export async function fetchSettingsFromServer(): Promise<AppSettings> {
   try {
-    const res = await fetch('/api/settings', { credentials: 'include' });
+    const res = await fetch(freshApiUrl('/api/settings'), {
+      credentials: 'include',
+      cache: 'no-store',
+    });
     if (!res.ok) return DEFAULT_SETTINGS;
     const data = await res.json();
     return { ...DEFAULT_SETTINGS, ...data };

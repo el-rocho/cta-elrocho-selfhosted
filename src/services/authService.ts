@@ -1,5 +1,12 @@
 import type { AuthStatusResponse, AuthUser, PatientSex } from '../types/bloodPressure';
 
+let freshRequestSequence = 0;
+
+function freshApiUrl(path: string): string {
+  freshRequestSequence += 1;
+  return `${path}?fresh=${Date.now()}-${freshRequestSequence}`;
+}
+
 function getAuthHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = { ...extraHeaders };
   const token = localStorage.getItem('cta_session_token');
@@ -17,9 +24,10 @@ function saveToken(token?: string) {
 
 export async function getAuthStatus(): Promise<AuthStatusResponse> {
   try {
-    const res = await fetch('/api/auth/status', {
+    const res = await fetch(freshApiUrl('/api/auth/status'), {
       headers: getAuthHeaders(),
       credentials: 'include',
+      cache: 'no-store',
     });
     if (!res.ok) throw new Error('Error al consultar estado de autenticación');
     return await res.json();
@@ -167,9 +175,10 @@ export async function disableTotp(): Promise<boolean> {
 // Administración de usuarios (Solo Admin)
 export async function listUsers(): Promise<AuthUser[]> {
   try {
-    const res = await fetch('/api/users', {
+    const res = await fetch(freshApiUrl('/api/users'), {
       headers: getAuthHeaders(),
       credentials: 'include',
+      cache: 'no-store',
     });
     if (!res.ok) return [];
     return await res.json();
