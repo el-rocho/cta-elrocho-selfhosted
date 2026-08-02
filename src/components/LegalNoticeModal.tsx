@@ -2,7 +2,6 @@ import React from 'react';
 import { ShieldCheck, X, AlertTriangle, Lock, DatabaseBackup } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import type { GuidelineProfile } from '../types/bloodPressure';
-import { getGuidelineName, getGuidelineSourceUrl } from '../utils/healthClassification';
 
 interface LegalNoticeModalProps {
   isOpen: boolean;
@@ -10,12 +9,10 @@ interface LegalNoticeModalProps {
   guidelineProfile: GuidelineProfile;
 }
 
-export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onClose, guidelineProfile }) => {
-  const { t, language } = useLanguage();
+export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useLanguage();
 
   if (!isOpen) return null;
-
-  const guidelineName = getGuidelineName(guidelineProfile, language);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -37,17 +34,20 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
               <span>{t('legal.medicalTitle')}</span>
             </div>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              {t('legal.medicalPurpose', { guideline: guidelineName })}
+              {t('legal.medicalPurpose')}
             </p>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
-              <a href={getGuidelineSourceUrl(guidelineProfile)} target="_blank" rel="noreferrer">
-                {t('legal.sourceLink')}
-              </a>
+              {t('legal.profilesIntro')}
             </p>
+            <ul style={{ margin: '0 0 8px 20px', padding: 0, lineHeight: '1.5' }}>
+              <li>{t('legal.profileEsc')}</li>
+              <li>{t('legal.profileAha')}</li>
+              <li>{t('legal.profileIsh')}</li>
+            </ul>
             <p style={{ margin: '0 0 8px 0', lineHeight: '1.5' }}>
               {t('legal.medicalLimits')}
             </p>
-            <p style={{ margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>
+            <p style={{ margin: 0, lineHeight: '1.5' }}>
               <strong>{t('legal.medicationWarning')}</strong>{' '}
               {t('legal.emergencyWarning')}
             </p>
@@ -82,7 +82,7 @@ export const LegalNoticeModal: React.FC<LegalNoticeModalProps> = ({ isOpen, onCl
           </div>
 
           <p style={{ margin: '14px 4px 0', fontStyle: 'italic', fontSize: '12px', lineHeight: '1.4' }}>
-            {t('legal.responsibilityNote')} · {t('legal.updated')}
+            {t('legal.responsibilityNote')}
           </p>
         </div>
       </div>
