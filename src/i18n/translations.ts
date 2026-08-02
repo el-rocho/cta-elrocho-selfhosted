@@ -72,7 +72,7 @@ export const translations = {
     // Gráfico y Estadísticas
     trend: {
       title: 'Evolución',
-      range28Days: '4 semanas',
+      range1Month: '1 mes',
       range3Months: '3 meses',
       range6Months: '6 meses',
       range1Year: '1 año',
@@ -538,7 +538,7 @@ export const translations = {
     // Trend & Stats
     trend: {
       title: 'Evolution',
-      range28Days: '4 weeks',
+      range1Month: '1 month',
       range3Months: '3 months',
       range6Months: '6 months',
       range1Year: '1 year',

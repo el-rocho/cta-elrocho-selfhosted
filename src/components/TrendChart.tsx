@@ -14,7 +14,7 @@ interface TrendChartProps {
 }
 
 const RANGE_TRANSLATION_KEYS: Record<LongTermTrendRange, string> = {
-  '28days': 'trend.range28Days',
+  '1month': 'trend.range1Month',
   '3months': 'trend.range3Months',
   '6months': 'trend.range6Months',
   '1year': 'trend.range1Year',
@@ -25,7 +25,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   guidelineProfile,
 }) => {
   const { t, language } = useLanguage();
-  const [range, setRange] = useState<LongTermTrendRange>('28days');
+  const [range, setRange] = useState<LongTermTrendRange>('1month');
   const [activeTooltip, setActiveTooltip] = useState<DailyAverage | null>(null);
   const series = useMemo(
     () => buildDailyTrendSeries(sessions, range),
@@ -106,7 +106,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           : `${path} L ${point.x} ${point.y}`,
       ''
     );
-  const axisTickCount = range === '28days' ? 5 : 6;
+  const axisTickCount = range === '1month' ? 5 : 6;
   const axisTicks = Array.from({ length: axisTickCount }, (_, index) => {
     const ratio = index / (axisTickCount - 1);
     const timestamp = rangeStartTime + timeSpan * ratio;
@@ -114,7 +114,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
       x: paddingLeft + chartWidth * ratio,
       label: new Date(timestamp).toLocaleDateString(
         locale,
-        range === '28days'
+        range === '1month'
           ? { day: '2-digit', month: '2-digit' }
           : { month: 'short', year: '2-digit' }
       ),

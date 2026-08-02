@@ -5,7 +5,8 @@ export const TREND_WINDOW_DAYS = 28;
 export const MIN_TREND_SESSIONS = 3;
 export const MIN_TREND_DAYS = 3;
 
-export type LongTermTrendRange = '28days' | '3months' | '6months' | '1year';
+export type LongTermTrendRange = '1month' | '3months' | '6months' | '1year';
+type DailyTrendRange = '28days' | LongTermTrendRange;
 export type TrendAnalysisStatus = 'insufficient' | 'ready';
 export type ComparisonCoverage = 'sparse' | 'supported';
 
@@ -81,16 +82,30 @@ function getLatestSession(sessions: BloodPressureSession[]): BloodPressureSessio
   }, undefined);
 }
 
-function getRangeStart(latestTimestamp: string, range: LongTermTrendRange): Date {
+function subtractCalendarMonthsClamped(date: Date, months: number): void {
+  const originalDay = date.getDate();
+  date.setDate(1);
+  date.setMonth(date.getMonth() - months);
+  const lastDayOfTargetMonth = new Date(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    0
+  ).getDate();
+  date.setDate(Math.min(originalDay, lastDayOfTargetMonth));
+}
+
+function getRangeStart(latestTimestamp: string, range: DailyTrendRange): Date {
   const start = startOfLocalDay(latestTimestamp);
   if (range === '28days') {
     start.setDate(start.getDate() - 27);
+  } else if (range === '1month') {
+    subtractCalendarMonthsClamped(start, 1);
   } else if (range === '3months') {
-    start.setMonth(start.getMonth() - 3);
+    subtractCalendarMonthsClamped(start, 3);
   } else if (range === '6months') {
-    start.setMonth(start.getMonth() - 6);
+    subtractCalendarMonthsClamped(start, 6);
   } else {
-    start.setFullYear(start.getFullYear() - 1);
+    subtractCalendarMonthsClamped(start, 12);
   }
   return start;
 }
@@ -149,7 +164,7 @@ export function buildDailyAverages(sessions: BloodPressureSession[]): DailyAvera
 
 export function buildDailyTrendSeries(
   sessions: BloodPressureSession[],
-  range: LongTermTrendRange
+  range: DailyTrendRange
 ): DailyTrendSeries {
   const latestSession = getLatestSession(sessions);
   if (!latestSession) return { dailyAverages: [] };

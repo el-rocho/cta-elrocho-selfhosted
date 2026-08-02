@@ -34,6 +34,24 @@ function session(
   };
 }
 
+function datedSession(
+  year: number,
+  month: number,
+  day: number,
+  id: string
+): BloodPressureSession {
+  return {
+    id,
+    timestamp: new Date(year, month, day, 8).toISOString(),
+    readings: [],
+    averageSystolic: 120,
+    averageDiastolic: 75,
+    averageHeartRate: 70,
+    discardedCount: 0,
+    arm: 'left',
+  };
+}
+
 function repeatedSessions(systolic: number, diastolic: number): BloodPressureSession[] {
   return [
     session(1, 8, systolic, diastolic),
@@ -69,6 +87,38 @@ function settings(): AppSettings {
     whiteCoatIntervalMinutes: 5,
   };
 }
+
+describe('long-term calendar ranges', () => {
+  it.each([
+    ['1month', 2026, 2, 31, 2026, 1, 28],
+    ['3months', 2026, 4, 31, 2026, 1, 28],
+    ['6months', 2026, 7, 31, 2026, 1, 28],
+    ['1year', 2024, 1, 29, 2023, 1, 28],
+  ] as const)(
+    'clamps %s to the last valid day of the target month',
+    (range, latestYear, latestMonth, latestDay, startYear, startMonth, startDay) => {
+      const expectedStart = datedSession(startYear, startMonth, startDay, 'expected-start');
+      const dayBeforeStart = datedSession(startYear, startMonth, startDay - 1, 'day-before-start');
+      const latest = datedSession(latestYear, latestMonth, latestDay, 'latest');
+
+      const series = buildDailyTrendSeries(
+        [dayBeforeStart, expectedStart, latest],
+        range
+      );
+      const rangeStart = new Date(series.rangeStart!);
+
+      expect([
+        rangeStart.getFullYear(),
+        rangeStart.getMonth(),
+        rangeStart.getDate(),
+      ]).toEqual([startYear, startMonth, startDay]);
+      expect(
+        series.dailyAverages.flatMap((day) => day.sessions.map((item) => item.id))
+      ).toEqual(['expected-start', 'latest']);
+    }
+  );
+});
+
 
 describe('trend data sufficiency', () => {
   it('requires enough effective sessions and distinct days', () => {
