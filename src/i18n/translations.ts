@@ -109,7 +109,7 @@ export const translations = {
         categories: {
           normal: { name: 'Presión no elevada', desc: 'Sistólica < 120 y diastólica < 70 mmHg.' },
           elevated: { name: 'Presión elevada', desc: 'Sistólica 120–134 o diastólica 70–84 mmHg.' },
-          hypertension: { name: 'Sobre el umbral domiciliario', desc: 'Sistólica ≥ 135 o diastólica ≥ 85 mmHg.' },
+          hypertension: { name: 'Hipertensión', desc: 'Sistólica ≥ 135 o diastólica ≥ 85 mmHg.' },
         },
       },
       ahaAcc2025: {
@@ -190,12 +190,15 @@ export const translations = {
 
     // Lista de lecturas
     list: {
-      title: 'Historial de Mediciones',
+      title: 'Historial mediciones',
       editHint: 'Para modificar datos mantener pulsado',
-      preset7Days: '7 Días',
-      preset30Days: '30 Días',
-      preset90Days: '90 Días',
+      preset7Days: '7 días',
+      preset1Month: '1 mes',
+      preset3Months: '3 meses',
       presetAll: 'Todo',
+      expandReadings: 'Ver todas las tomas',
+      collapseReadings: 'Plegar tomas',
+      deleteSession: 'Eliminar sesión',
       readingsCount: '{count} toma(s)',
       whiteCoatDiscarded: 'Descartadas por Bata Blanca: {count}',
       arm: 'Brazo',
@@ -576,7 +579,7 @@ export const translations = {
         categories: {
           normal: { name: 'Non-elevated BP', desc: 'Systolic < 120 and diastolic < 70 mmHg.' },
           elevated: { name: 'Elevated BP', desc: 'Systolic 120–134 or diastolic 70–84 mmHg.' },
-          hypertension: { name: 'Above home threshold', desc: 'Systolic ≥ 135 or diastolic ≥ 85 mmHg.' },
+          hypertension: { name: 'Hypertension', desc: 'Systolic ≥ 135 or diastolic ≥ 85 mmHg.' },
         },
       },
       ahaAcc2025: {
@@ -657,12 +660,15 @@ export const translations = {
 
     // Reading List
     list: {
-      title: 'Measurement History',
+      title: 'Measurement history',
       editHint: 'To modify data hold press',
-      preset7Days: '7 Days',
-      preset30Days: '30 Days',
-      preset90Days: '90 Days',
+      preset7Days: '7 days',
+      preset1Month: '1 month',
+      preset3Months: '3 months',
       presetAll: 'All',
+      expandReadings: 'View all readings',
+      collapseReadings: 'Collapse readings',
+      deleteSession: 'Delete session',
       readingsCount: '{count} reading(s)',
       whiteCoatDiscarded: 'Discarded by White Coat: {count}',
       arm: 'Arm',

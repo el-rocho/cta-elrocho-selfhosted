@@ -104,11 +104,19 @@ describe('universal safety and precedence', () => {
     expect(assessment.culprit).toBe('diastolic');
   });
 
-  it('keeps non-extreme hypertension orange', () => {
+  it('shows non-extreme hypertension in red without treating it as an urgent alert', () => {
     const assessment = getHealthAssessment(150, 95, 70, 'es', 'aha-acc-2025');
     expect(assessment.category.key).toBe('stage2');
-    expect(assessment.category.colorRole).toBe('orange');
+    expect(assessment.category.colorRole).toBe('red');
     expect(assessment.safetyAlerts).toHaveLength(0);
+  });
+
+  it('uses the concise red ESC hypertension label in both languages', () => {
+    const spanish = getHealthAssessment(135, 85, 70, 'es', 'esc-2024').category;
+    const english = getHealthAssessment(135, 85, 70, 'en', 'esc-2024').category;
+    expect(spanish.name).toBe('Hipertensión');
+    expect(english.name).toBe('Hypertension');
+    expect(spanish.colorRole).toBe('red');
   });
 });
 

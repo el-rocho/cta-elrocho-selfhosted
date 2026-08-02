@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   BloodPressureReading,
   BloodPressureSession,
   GuidelineProfile,
 } from '../types/bloodPressure';
-import { buildCSVContent } from './exportCsv';
+import { buildCSVContent, filterSessionsByDateRange } from './exportCsv';
 import { buildPDFMeasurementRowsHTML } from './pdfReportContent';
 
 function discardedSession(): BloodPressureSession {
@@ -45,6 +45,23 @@ const profiles: Array<[GuidelineProfile, string]> = [
   ['aha-acc-2025', 'Hipertensión fase 1'],
   ['ish-2020', 'Presión normal'],
 ];
+
+afterEach(() => vi.useRealTimers());
+
+describe('history date filters', () => {
+  it('uses clamped calendar months instead of fixed 30- and 90-day periods', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 2, 31, 12, 0));
+    const sessionAt = (id: string, timestamp: Date): BloodPressureSession => ({ ...discardedSession(), id, timestamp: timestamp.toISOString() });
+    const sessions = [
+      sessionAt('one-month-boundary', new Date(2026, 1, 28, 12, 0)),
+      sessionAt('older-than-one-month', new Date(2026, 1, 28, 11, 59)),
+      sessionAt('three-month-boundary', new Date(2025, 11, 31, 12, 0)),
+    ];
+    expect(filterSessionsByDateRange(sessions, { preset: '1month' }).map(({ id }) => id)).toEqual(['one-month-boundary']);
+    expect(filterSessionsByDateRange(sessions, { preset: '3months' }).map(({ id }) => id)).toEqual(['one-month-boundary', 'older-than-one-month', 'three-month-boundary']);
+  });
+});
 
 describe('clinical CSV export', () => {
   it.each(profiles)(

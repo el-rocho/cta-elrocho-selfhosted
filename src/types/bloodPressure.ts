@@ -127,7 +127,7 @@ export interface HealthAssessment {
   culprit: HealthCulprit;
 }
 
-export type DateFilterPreset = 'all' | '7days' | '30days' | '90days' | 'custom';
+export type DateFilterPreset = 'all' | '7days' | '1month' | '3months' | 'custom';
 
 export interface DateRange {
   preset: DateFilterPreset;

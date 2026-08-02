@@ -92,16 +92,16 @@ const BreakdownRow: React.FC<{
       onContextMenu={(e) => { e.preventDefault(); cancelTimer(); onEditReading(reading); }}
       style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
     >
-      <td>#{index + 1}</td>
-      <td>{rTime}</td>
-      <td>
+      <td data-label="#">#{index + 1}</td>
+      <td data-label={language === 'en' ? 'Time' : 'Hora'}>{rTime}</td>
+      <td data-label={language === 'en' ? 'Values' : 'Medición'}>
         <strong>{reading.systolic}</strong> / <strong>{reading.diastolic}</strong> / <strong>{reading.heartRate}</strong>
         <div className="breakdown-classification">
           <span className="category-pill compact" style={{ backgroundColor: readingCategory.badgeBg, color: readingCategory.badgeText }}>
             {readingCategory.name}
           </span>
           {readingCulprit !== 'none' && (
-            <span className="culprit-pill">{getCulpritLabel(readingCulprit, readingCategory.direction, language)}</span>
+            <span className="breakdown-info-text">{getCulpritLabel(readingCulprit, readingCategory.direction, language)}</span>
           )}
           {treatmentTargetAssessment && <TreatmentTargetBadge assessment={treatmentTargetAssessment} compact />}
         </div>
@@ -110,8 +110,7 @@ const BreakdownRow: React.FC<{
             {[...readingSafetyAlerts, ...readingAlerts].map((alert) => (
               <span
                 key={alert.key}
-                className="clinical-alert-pill compact"
-                style={{ backgroundColor: alert.badgeBg, color: alert.badgeText }}
+                className="breakdown-info-text"
                 title={alert.description}
               >
                 {alert.name}
@@ -120,7 +119,7 @@ const BreakdownRow: React.FC<{
           </div>
         )}
       </td>
-      <td>
+      <td data-label={language === 'en' ? 'Status' : 'Estado'}>
         {isDiscarded ? (
           <span className="status-discarded">
             {language === 'en' ? 'Discarded' : 'Descartada'}
@@ -131,7 +130,7 @@ const BreakdownRow: React.FC<{
           </span>
         )}
       </td>
-      <td>
+      <td data-label={language === 'en' ? 'Actions' : 'Acciones'}>
         <div className="table-actions-cell" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
@@ -248,27 +247,26 @@ const SessionCardItem: React.FC<{
       style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
     >
       <div className="session-main-row">
-        {/* Fecha y Hora */}
-        <div className="session-time-col">
-          <div className="session-date">{dateStr}</div>
-          <div className="session-time">
-            <Clock size={12} /> {timeStr}
+        <div className="session-block session-primary-block">
+          <div className="session-primary-content">
+            <div className="session-time-col">
+              <div className="session-date">{dateStr}</div>
+              <div className="session-time"><Clock size={12} /> {timeStr}</div>
+            </div>
+            <div className="session-metrics-col">
+              <div className="bp-reading-display">
+                <span className="sys-num">{session.averageSystolic}</span><span className="slash">/</span><span className="dia-num">{session.averageDiastolic}</span><span className="slash">/</span><span className="pulse-num">{session.averageHeartRate}</span>
+              </div>
+            </div>
           </div>
+          {isMulti && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); onToggleExpand(session.id); }} className="session-readings-toggle" title={isExpanded ? t('list.collapseReadings') : t('list.expandReadings')}>
+              <ShieldCheck size={12} /><span>{t('list.readingsCount', { count: session.readings.length })}</span>{isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+          )}
         </div>
 
-        {/* Cifras Principales: Sistólica / Diastólica / Pulsaciones */}
-        <div className="session-metrics-col">
-          <div className="bp-reading-display">
-            <span className="sys-num">{session.averageSystolic}</span>
-            <span className="slash">/</span>
-            <span className="dia-num">{session.averageDiastolic}</span>
-            <span className="slash">/</span>
-            <span className="pulse-num">{session.averageHeartRate}</span>
-          </div>
-        </div>
-
-        {/* Categoría principal ESC 2024 */}
-        <div className="session-badge-col">
+        <div className="session-block session-guideline-block">
           <span
             className="category-pill"
             style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
@@ -277,65 +275,29 @@ const SessionCardItem: React.FC<{
             <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
             {category.name}
           </span>
-          {culprit !== 'none' && (
-            <span className="culprit-pill">{getCulpritLabel(culprit, category.direction, language)}</span>
-          )}
-          {treatmentTargetAssessment && <TreatmentTargetBadge assessment={treatmentTargetAssessment} />}
-
-          {healthAlerts.length > 0 && (
-            <div className="session-health-alerts">
+          {(culprit !== 'none' || healthAlerts.length > 0 || safetyAlerts.length > 0) && (
+            <div className="session-info-lines">
+              {culprit !== 'none' && <span className="session-info-line">{getCulpritLabel(culprit, category.direction, language)}</span>}
               {healthAlerts.map((alert) => (
-                <span
-                  key={alert.key}
-                  className="clinical-alert-pill compact"
-                  style={{ backgroundColor: alert.badgeBg, color: alert.badgeText }}
-                  title={alert.description}
-                >
-                  {alert.name}
-                </span>
+                <span key={alert.key} className="session-info-line" title={alert.description}>{alert.name}</span>
+              ))}
+              {safetyAlerts.map((alert) => (
+                <span key={alert.key} className="session-info-line session-safety-text" role="alert"><strong>{alert.name}</strong><span>{alert.description}</span></span>
               ))}
             </div>
           )}
-
-          {safetyAlerts.map((alert) => (
-            <div key={alert.key} className="session-safety-alert" role="alert">
-              <strong>{alert.name}</strong>
-              <span>{alert.description}</span>
-            </div>
-          ))}
-
-          {/* Badge de Bata Blanca */}
-          {isMulti && (
-            <span className="white-coat-pill">
-              <ShieldCheck size={12} /> {t('list.readingsCount', { count: session.readings.length })}
-            </span>
-          )}
         </div>
 
-        {/* Brazo y Notas */}
-        <div className="session-details-col">
+        {treatmentTargetAssessment && <div className="session-block session-target-block"><TreatmentTargetBadge assessment={treatmentTargetAssessment} /></div>}
+
+        <div className="session-block session-details-col">
           <span className="arm-badge">
             <Armchair size={12} /> {t('list.arm')}: {session.arm === 'left' ? t('form.armLeft') : t('form.armRight')}
           </span>
           {session.notes && <span className="notes-preview">"{session.notes}"</span>}
         </div>
 
-        {/* Acciones */}
-        <div className="session-actions-col" onClick={(e) => e.stopPropagation()}>
-          {isMulti && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand(session.id);
-              }}
-              className="btn-icon-subtle"
-              title={isExpanded ? 'Plegar tomas' : 'Ver todas las tomas'}
-            >
-              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            </button>
-          )}
-
+        <div className="session-block session-actions-col" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={(e) => {
@@ -343,8 +305,8 @@ const SessionCardItem: React.FC<{
               onDeleteSession(session);
             }}
             className="btn-icon-delete"
-            title={language === 'en' ? 'Delete session' : 'Eliminar sesión'}
-            aria-label={language === 'en' ? 'Delete session' : 'Eliminar sesión'}
+            title={t('list.deleteSession')}
+            aria-label={t('list.deleteSession')}
           >
             <Trash2 size={16} />
           </button>
@@ -447,17 +409,17 @@ export const ReadingList: React.FC<ReadingListProps> = ({
           </button>
           <button
             type="button"
-            className={`chip ${dateRange.preset === '30days' ? 'active' : ''}`}
-            onClick={() => onDateRangeChange({ preset: '30days' })}
+            className={`chip ${dateRange.preset === '1month' ? 'active' : ''}`}
+            onClick={() => onDateRangeChange({ preset: '1month' })}
           >
-            {t('list.preset30Days')}
+            {t('list.preset1Month')}
           </button>
           <button
             type="button"
-            className={`chip ${dateRange.preset === '90days' ? 'active' : ''}`}
-            onClick={() => onDateRangeChange({ preset: '90days' })}
+            className={`chip ${dateRange.preset === '3months' ? 'active' : ''}`}
+            onClick={() => onDateRangeChange({ preset: '3months' })}
           >
-            {t('list.preset90Days')}
+            {t('list.preset3Months')}
           </button>
           <button
             type="button"

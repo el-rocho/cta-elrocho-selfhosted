@@ -3284,3 +3284,251 @@ input:checked + .toggle-slider:before {
     justify-content: flex-start;
   }
 }
+
+
+
+/* Historial de mediciones: bloques compactos y adaptables */
+.session-main-row {
+  display: grid;
+  grid-template-columns:
+    minmax(205px, 1.35fr)
+    minmax(135px, 1fr)
+    minmax(115px, 0.75fr)
+    minmax(125px, 1fr)
+    min-content;
+  grid-template-areas: "primary guideline target details actions";
+  align-items: start;
+  gap: 10px 14px;
+}
+
+.session-block {
+  min-width: 0;
+}
+
+.session-primary-block {
+  grid-area: primary;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.session-primary-content {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.session-time-col {
+  min-width: 0;
+}
+
+.session-date,
+.notes-preview,
+.session-info-line,
+.breakdown-info-text {
+  overflow-wrap: anywhere;
+}
+
+.session-metrics-col {
+  flex: 0 0 auto;
+}
+
+.session-guideline-block {
+  grid-area: guideline;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.session-guideline-block > .category-pill {
+  width: fit-content;
+  max-width: 100%;
+  height: auto;
+  min-height: 24px;
+  padding-block: 5px;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.session-target-block {
+  grid-area: target;
+  display: flex;
+  align-items: flex-start;
+}
+
+.session-target-block > .treatment-target-badge {
+  width: fit-content;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.session-details-col {
+  grid-area: details;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.session-actions-col {
+  grid-area: actions;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.session-info-lines {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+}
+
+.session-info-line,
+.breakdown-info-text {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.session-safety-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-safety-text strong {
+  color: #b91c1c;
+}
+
+.session-readings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-readings-toggle:hover {
+  color: var(--text-primary);
+}
+
+.breakdown-alerts {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+@media (max-width: 900px) {
+  .session-main-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "primary guideline"
+      "target details"
+      "actions actions";
+  }
+}
+
+@media (max-width: 640px) {
+  .list-header {
+    align-items: flex-start;
+  }
+
+  .list-header .filter-chips {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .list-header .chip {
+    min-width: 0;
+    padding-inline: 5px;
+    text-align: center;
+  }
+
+  .session-item {
+    padding: 12px;
+  }
+
+  .session-main-row {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "primary"
+      "guideline"
+      "target"
+      "details"
+      "actions";
+    gap: 11px;
+  }
+
+  .session-block,
+  .session-primary-content {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .session-primary-content {
+    flex-wrap: wrap;
+  }
+
+  .session-actions-col {
+    justify-content: flex-start;
+  }
+
+  .session-expanded-details {
+    overflow-x: visible;
+  }
+
+  .expanded-readings-table,
+  .expanded-readings-table tbody,
+  .expanded-readings-table tr,
+  .expanded-readings-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .expanded-readings-table thead {
+    display: none;
+  }
+
+  .expanded-readings-table tr {
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+  }
+
+  .expanded-readings-table td {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 68px minmax(0, 1fr);
+    gap: 8px;
+    padding: 5px 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .expanded-readings-table td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .table-actions-cell {
+    justify-content: flex-start;
+  }
+}

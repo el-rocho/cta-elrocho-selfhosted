@@ -73,7 +73,7 @@ En todas las tablas se presupone que no se ha activado antes la regla extrema un
 | `low` | Lectura baja | Rango de ambas dimensiones neutro y `SYS < 90 OR DIA < 60` | Azul |
 | `normal` | Presión no elevada | `SYS < 120 AND DIA < 70` | Verde |
 | `elevated` | Presión elevada | (`SYS 120–134 OR DIA 70–84`) y ninguna dimensión alcanza el umbral superior | Amarillo/ámbar |
-| `hypertension` | Sobre el umbral domiciliario | `SYS >= 135 OR DIA >= 85` | Naranja |
+| `hypertension` | Hipertensión | `SYS >= 135 OR DIA >= 85` | Rojo |
 | `extreme` | Lectura muy alta | `SYS >= 180 OR DIA >= 120` | Rojo |
 
 **Adaptación aplicada:** la ESC 2024 define en consulta presión elevada como `SYS 120–139 OR DIA 70–89` e hipertensión como `SYS >= 140 OR DIA >= 90`. La aplicación conserva el límite inferior ESC (`120/70`), pero sustituye el corte superior de consulta por el umbral domiciliario `135/85`. Por tanto, las etiquetas entre `135/85` y `139/89` son una **adaptación domiciliaria**, no una reproducción literal de las categorías de consulta.
@@ -86,7 +86,7 @@ En todas las tablas se presupone que no se ha activado antes la regla extrema un
 | `normal` | Presión normal | `SYS < 120 AND DIA < 80` | Verde |
 | `elevated` | Presión elevada | `SYS 120–129 AND DIA < 80` | Amarillo/ámbar |
 | `stage1` | Hipertensión fase 1 | `SYS 130–139 OR DIA 80–89`, salvo que la otra dimensión sea fase 2 | Naranja |
-| `stage2` | Hipertensión fase 2 | `SYS >= 140 OR DIA >= 90` | Naranja oscuro |
+| `stage2` | Hipertensión fase 2 | `SYS >= 140 OR DIA >= 90` | Rojo |
 | `extreme` | Lectura muy alta | `SYS >= 180 OR DIA >= 120` | Rojo |
 
 **Adaptación aplicada:** se muestran las categorías AHA/ACC también sobre registros domiciliarios. La guía fomenta la monitorización domiciliaria, pero estas bandas son su marco general de clasificación; la aplicación no calcula equivalencias domiciliarias alternativas para este perfil.
@@ -96,8 +96,8 @@ En todas las tablas se presupone que no se ha activado antes la regla extrema un
 | Clave | Etiqueta española | Condición exacta aplicada al valor domiciliario | Color |
 |---|---|---|---|
 | `low` | Lectura baja | Rango de ambas dimensiones neutro y `SYS < 90 OR DIA < 60` | Azul |
-| `belowThreshold` | Por debajo del umbral domiciliario | `SYS < 135 AND DIA < 85` | Verde |
-| `aboveThreshold` | Sobre el umbral domiciliario | `SYS >= 135 OR DIA >= 85` | Naranja |
+| `belowThreshold` | Presión normal | `SYS < 135 AND DIA < 85` | Verde |
+| `aboveThreshold` | Presión elevada | `SYS >= 135 OR DIA >= 85` | Rojo |
 | `extreme` | Lectura muy alta | `SYS >= 180 OR DIA >= 120` | Rojo |
 
 **Adaptación aplicada:** la guía ISH utiliza `135/85` como umbral de hipertensión en medición domiciliaria. La aplicación lo simplifica a dos estados informativos, además de las reglas universales de lectura baja y extrema; no muestra los grados de presión de consulta de ISH.
@@ -186,8 +186,9 @@ La aplicación no pregunta síntomas, no diagnostica y no hace triaje. La regla 
 | `normal`, `belowThreshold` | Verde | 0 | `#10b981` | `rgba(16,185,129,0.15)` | `#047857` |
 | `low` | Azul | 1 | `#2563eb` | `rgba(37,99,235,0.14)` | `#1d4ed8` |
 | `elevated` | Ámbar | 2 | `#d97706` | `rgba(217,119,6,0.16)` | `#a16207` |
-| `hypertension`, `stage1`, `aboveThreshold` | Naranja | 3 | `#f97316` | `rgba(249,115,22,0.16)` | `#c2410c` |
-| `stage2` | Naranja oscuro | 4 | `#ea580c` | `rgba(234,88,12,0.17)` | `#9a3412` |
+| `stage1` | Naranja | 3 | `#f97316` | `rgba(249,115,22,0.16)` | `#c2410c` |
+| `hypertension`, `aboveThreshold` | Rojo | 3 | `#dc2626` | `rgba(220,38,38,0.16)` | `#b91c1c` |
+| `stage2` | Rojo | 4 | `#dc2626` | `rgba(220,38,38,0.16)` | `#b91c1c` |
 | `extreme` | Rojo | 5 | `#dc2626` | `rgba(220,38,38,0.16)` | `#b91c1c` |
 
 Los rangos de color sirven para resolver la dimensión más desfavorable; no son puntuaciones clínicas ni se suman.

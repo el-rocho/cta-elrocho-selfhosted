@@ -68,7 +68,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onNotify,
 }) => {
   const { t, language } = useLanguage();
-  const [preset, setPreset] = useState<DateFilterPreset>('30days');
+  const [preset, setPreset] = useState<DateFilterPreset>('1month');
   const [reportNotes, setReportNotes] = useState('');
   const [hidePatientData, setHidePatientData] = useState(false);
   const [activeTab, setActiveTab] = useState<DataTab>('backup');
@@ -435,14 +435,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   <span>{t('export.filterRangeLabel')}</span>
                 </label>
                 <div className="range-options-grid">
-                  {(['7days', '30days', '90days', 'all'] as const).map((rangePreset) => (
+                  {(['7days', '1month', '3months', 'all'] as const).map((rangePreset) => (
                     <button
                       key={rangePreset}
                       type="button"
                       className={`range-option ${preset === rangePreset ? 'selected' : ''}`}
                       onClick={() => setPreset(rangePreset)}
                     >
-                      {t(`list.preset${rangePreset === 'all' ? 'All' : rangePreset === '7days' ? '7Days' : rangePreset === '30days' ? '30Days' : '90Days'}`)}
+                      {t(`list.preset${rangePreset === 'all' ? 'All' : rangePreset === '7days' ? '7Days' : rangePreset === '1month' ? '1Month' : '3Months'}`)}
                     </button>
                   ))}
                 </div>

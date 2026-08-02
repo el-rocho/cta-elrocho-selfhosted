@@ -50,7 +50,7 @@ export function App() {
   const [isTotpModalOpen, setIsTotpModalOpen] = useState<boolean>(false);
   const [isUserMgmtModalOpen, setIsUserMgmtModalOpen] = useState<boolean>(false);
 
-  const [dateRange, setDateRange] = useState<DateRange>({ preset: '30days' });
+  const [dateRange, setDateRange] = useState<DateRange>({ preset: '1month' });
   const [readingToEdit, setReadingToEdit] = useState<BloodPressureReading | null>(null);
   const [notificationMsg, setNotificationMsg] = useState<string | ToastNotification | null>(null);
   const backupReminderKeyRef = useRef<string | null>(null);

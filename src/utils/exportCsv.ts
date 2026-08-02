@@ -2,6 +2,16 @@ import type { BloodPressureSession, DateRange, ExportReportOptions, LanguageOpti
 import { getConfirmedPulsePressureAlerts, getCulpritLabel, getGuidelineName, getHealthAssessment, getHealthDisclaimer, getSessionMedicationContext } from './healthClassification';
 import { getEffectiveSessionReadings } from './whiteCoatAlgorithm';
 
+function subtractCalendarMonthsClamped(date: Date, months: number): Date {
+  const result = new Date(date);
+  const originalDay = result.getDate();
+  result.setDate(1);
+  result.setMonth(result.getMonth() - months);
+  const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+  result.setDate(Math.min(originalDay, lastDay));
+  return result;
+}
+
 export function filterSessionsByDateRange(
   sessions: BloodPressureSession[],
   dateRange: DateRange
@@ -18,14 +28,12 @@ export function filterSessionsByDateRange(
       return diffMs <= 7 * 24 * 60 * 60 * 1000;
     }
 
-    if (dateRange.preset === '30days') {
-      const diffMs = now.getTime() - sDate.getTime();
-      return diffMs <= 30 * 24 * 60 * 60 * 1000;
+    if (dateRange.preset === '1month') {
+      return sDate >= subtractCalendarMonthsClamped(now, 1) && sDate <= now;
     }
 
-    if (dateRange.preset === '90days') {
-      const diffMs = now.getTime() - sDate.getTime();
-      return diffMs <= 90 * 24 * 60 * 60 * 1000;
+    if (dateRange.preset === '3months') {
+      return sDate >= subtractCalendarMonthsClamped(now, 3) && sDate <= now;
     }
 
     if (dateRange.preset === 'custom') {

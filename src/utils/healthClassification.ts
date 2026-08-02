@@ -78,11 +78,11 @@ const CATEGORY_PRESENTATION: Record<
   },
   hypertension: {
     direction: 'high',
-    colorRole: 'orange',
+    colorRole: 'red',
     rank: 3,
-    colorHex: '#f97316',
-    badgeBg: 'rgba(249, 115, 22, 0.16)',
-    badgeText: '#c2410c',
+    colorHex: '#dc2626',
+    badgeBg: 'rgba(220, 38, 38, 0.16)',
+    badgeText: '#b91c1c',
   },
   stage1: {
     direction: 'high',
@@ -94,11 +94,11 @@ const CATEGORY_PRESENTATION: Record<
   },
   stage2: {
     direction: 'high',
-    colorRole: 'orange',
+    colorRole: 'red',
     rank: 4,
-    colorHex: '#ea580c',
-    badgeBg: 'rgba(234, 88, 12, 0.17)',
-    badgeText: '#9a3412',
+    colorHex: '#dc2626',
+    badgeBg: 'rgba(220, 38, 38, 0.16)',
+    badgeText: '#b91c1c',
   },
   aboveThreshold: {
     direction: 'high',
