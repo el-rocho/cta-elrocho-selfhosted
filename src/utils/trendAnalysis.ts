@@ -1,13 +1,11 @@
-import type { BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
+import type { BloodPressureSession, GuidelineProfile, HealthSeverity } from '../types/bloodPressure';
 import { getHealthCategory } from './healthClassification';
 
 export const TREND_WINDOW_DAYS = 28;
 export const MIN_TREND_SESSIONS = 3;
 export const MIN_TREND_DAYS = 3;
-export const MIN_PERSISTENCE_RATIO = 2 / 3;
 
 export type LongTermTrendRange = '28days' | '3months' | '6months' | '1year';
-export type TrendInsightKey = 'repeatedAboveThreshold' | 'repeatedLow';
 export type TrendAnalysisStatus = 'insufficient' | 'ready';
 export type ComparisonCoverage = 'sparse' | 'supported';
 
@@ -27,12 +25,10 @@ export interface DailyTrendSeries {
   rangeEnd?: string;
 }
 
-export interface TrendInsight {
-  key: TrendInsightKey;
+export interface TrendPattern {
+  categoryKey: HealthSeverity;
   matchingDays: number;
   totalDays: number;
-  averageSystolic: number;
-  averageDiastolic: number;
 }
 
 export interface FortnightComparison {
@@ -59,7 +55,7 @@ export interface TrendAnalysis {
   averageSystolic?: number;
   averageDiastolic?: number;
   comparison?: FortnightComparison;
-  insights: TrendInsight[];
+  pattern?: TrendPattern;
 }
 
 function getLocalDayKey(timestamp: string): string {
@@ -173,20 +169,6 @@ export function buildDailyTrendSeries(
   };
 }
 
-function isAboveSelectedThreshold(
-  systolic: number,
-  diastolic: number,
-  guidelineProfile: GuidelineProfile
-): boolean {
-  const category = getHealthCategory(systolic, diastolic, 'es', guidelineProfile);
-  if (category.key === 'extreme') return true;
-  if (guidelineProfile === 'esc-2024') return category.key === 'hypertension';
-  if (guidelineProfile === 'aha-acc-2025') {
-    return category.key === 'stage1' || category.key === 'stage2';
-  }
-  return category.key === 'aboveThreshold';
-}
-
 function average(values: number[]): number {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
@@ -251,47 +233,32 @@ export function analyzeBloodPressureTrends(
     return {
       status: 'insufficient',
       ...base,
-      insights: [],
     };
   }
 
   const averageSystolic = roundedAverage(dailyAverages, 'averageSystolic');
   const averageDiastolic = roundedAverage(dailyAverages, 'averageDiastolic');
-  const requiredMatchingDays = Math.max(
-    MIN_TREND_DAYS,
-    Math.ceil(dailyAverages.length * MIN_PERSISTENCE_RATIO)
-  );
-  const aboveDays = dailyAverages.filter((day) =>
-    isAboveSelectedThreshold(
+  const categoryCounts = new Map<HealthSeverity, number>();
+  dailyAverages.forEach((day) => {
+    const categoryKey = getHealthCategory(
       day.averageSystolic,
       day.averageDiastolic,
+      'es',
       guidelineProfile
-    )
+    ).key;
+    categoryCounts.set(categoryKey, (categoryCounts.get(categoryKey) ?? 0) + 1);
+  });
+  const highestCount = Math.max(...categoryCounts.values());
+  const dominantCategories = [...categoryCounts.entries()].filter(
+    ([, count]) => count === highestCount
   );
-  const lowDays = dailyAverages.filter(
-    (day) => day.averageSystolic < 90 || day.averageDiastolic < 60
-  );
-  const insights: TrendInsight[] = [];
-
-  if (aboveDays.length >= requiredMatchingDays) {
-    insights.push({
-      key: 'repeatedAboveThreshold',
-      matchingDays: aboveDays.length,
-      totalDays: dailyAverages.length,
-      averageSystolic,
-      averageDiastolic,
-    });
-  }
-
-  if (lowDays.length >= requiredMatchingDays) {
-    insights.push({
-      key: 'repeatedLow',
-      matchingDays: lowDays.length,
-      totalDays: dailyAverages.length,
-      averageSystolic,
-      averageDiastolic,
-    });
-  }
+  const pattern = dominantCategories.length === 1
+    ? {
+        categoryKey: dominantCategories[0][0],
+        matchingDays: dominantCategories[0][1],
+        totalDays: dailyAverages.length,
+      }
+    : undefined;
 
   return {
     status: 'ready',
@@ -302,6 +269,6 @@ export function analyzeBloodPressureTrends(
       dailyAverages,
       series.rangeEnd ?? dailyAverages[dailyAverages.length - 1].timestamp
     ),
-    insights,
+    pattern,
   };
 }

@@ -1,16 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
-  ArrowDownFromLine,
-  ArrowRightLeft,
-  ArrowUpFromLine,
-  CalendarDays,
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
   ChartNoAxesColumnIncreasing,
-  CircleCheck,
   Info,
+  Tags,
+  TrendingUp,
+  X,
 } from 'lucide-react';
 import type { BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
 import { useLanguage } from '../i18n/useLanguage';
-import { getGuidelineName } from '../utils/healthClassification';
+import { getGuidelineName, getHealthCategoriesMap } from '../utils/healthClassification';
 import { analyzeBloodPressureTrends } from '../utils/trendAnalysis';
 
 interface TrendInsightsProps {
@@ -23,180 +25,140 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
   guidelineProfile,
 }) => {
   const { t, language } = useLanguage();
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const analysis = useMemo(
     () => analyzeBloodPressureTrends(sessions, guidelineProfile),
     [sessions, guidelineProfile]
   );
-  const locale = language === 'en' ? 'en-US' : 'es-ES';
-  const formatDate = (timestamp?: string) =>
-    timestamp
-      ? new Date(timestamp).toLocaleDateString(locale, {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        })
-      : '';
-  const formatDifference = (value: number) => `${value > 0 ? '+' : ''}${value}`;
+  const comparison = analysis.status === 'ready' && analysis.comparison?.coverage === 'supported'
+    ? analysis.comparison
+    : undefined;
+  const systolicDifference = comparison?.systolicDifference ?? 0;
+  const diastolicDifference = comparison?.diastolicDifference ?? 0;
+  const SystolicArrow = systolicDifference > 0
+    ? ArrowUp
+    : systolicDifference < 0
+      ? ArrowDown
+      : ArrowRight;
+  const DiastolicArrow = diastolicDifference > 0
+    ? ArrowUp
+    : diastolicDifference < 0
+      ? ArrowDown
+      : ArrowRight;
+  const patternCategory = analysis.status === 'ready' && analysis.pattern
+    ? getHealthCategoriesMap(language, guidelineProfile)[analysis.pattern.categoryKey]
+    : undefined;
 
   return (
     <section className="card trend-insights-card" aria-labelledby="trend-insights-title">
       <div className="trend-insights-header">
         <div className="trend-insights-heading">
           <ChartNoAxesColumnIncreasing size={24} />
-          <div>
-            <h2 id="trend-insights-title">{t('trendInsights.title')}</h2>
-          </div>
+          <h2 id="trend-insights-title">{t('trendInsights.title')}</h2>
         </div>
+        {comparison ? (
+          <div className="trend-month-values">
+            <span className="trend-month-value systolic">
+              <span>{t('form.systolic')}</span>
+              <SystolicArrow size={15} aria-hidden="true" />
+              <strong>{Math.abs(systolicDifference)}</strong>
+              <small>mmHg</small>
+            </span>
+            <span className="trend-month-value diastolic">
+              <span>{t('form.diastolic')}</span>
+              <DiastolicArrow size={15} aria-hidden="true" />
+              <strong>{Math.abs(diastolicDifference)}</strong>
+              <small>mmHg</small>
+            </span>
+          </div>
+        ) : (
+          <span className="trend-insufficient-badge">
+            {t('trendInsights.insufficientTitle')}
+          </span>
+        )}
+        {analysis.status === 'ready' && (
+          <div className="trend-pattern-row">
+            <strong>{t('trendInsights.patternTitle')}</strong>
+            {patternCategory ? (
+              <span
+                className="trend-pattern-category"
+                style={{
+                  backgroundColor: patternCategory.badgeBg,
+                  color: patternCategory.badgeText,
+                }}
+              >
+                {patternCategory.name}
+              </span>
+            ) : (
+              <span className="trend-pattern-none">{t('trendInsights.noPatternTitle')}</span>
+            )}
+          </div>
+        )}
         <span className="trend-guideline-badge">
           {getGuidelineName(guidelineProfile, language)}
         </span>
+        <button
+          type="button"
+          className="settings-info-button trend-info-button"
+          title={t('trendInsights.infoTooltip')}
+          aria-label={t('trendInsights.infoTooltip')}
+          onClick={() => setIsInfoOpen(true)}
+        >
+          <Info size={17} />
+        </button>
       </div>
-
-      {analysis.status === 'insufficient' ? (
-        <div className="trend-status-card insufficient">
-          <CalendarDays size={22} />
-          <div>
-            <strong>{t('trendInsights.insufficientTitle')}</strong>
-            <p>
-              {t('trendInsights.insufficientDesc', {
-                requiredSessions: analysis.requiredSessions,
-                requiredDays: analysis.requiredDays,
-                sessions: analysis.sessionsUsed,
-                days: analysis.daysUsed,
-              })}
-            </p>
+      {isInfoOpen && createPortal(
+        <div
+          className="modal-overlay settings-info-overlay"
+          onClick={() => setIsInfoOpen(false)}
+        >
+          <div
+            className="modal-content settings-info-dialog trend-info-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trend-info-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <Info size={24} className="modal-icon text-blue legal-icon-main" />
+                <h2 id="trend-info-title" className="settings-info-title">
+                  {t('trendInsights.infoTitle')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="btn-close-modal"
+                aria-label={t('settings.close')}
+                onClick={() => setIsInfoOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body settings-info-body measurement-guide-body trend-info-body">
+              <div className="settings-subcard measurement-guide-main-card trend-info-card">
+                <TrendingUp size={22} className="legal-icon-block trend-info-icon" />
+                <div>
+                  <strong>{t('trendInsights.infoTrendTitle')}</strong>
+                  <p>{t('trendInsights.infoTrendText')}</p>
+                </div>
+              </div>
+              <div className="settings-subcard measurement-guide-advice-card trend-info-card">
+                <Tags size={22} className="legal-icon-block trend-info-icon" />
+                <div>
+                  <strong>{t('trendInsights.infoPatternTitle')}</strong>
+                  <p>{t('trendInsights.infoPatternText')}</p>
+                </div>
+              </div>
+              <div className="settings-info-note trend-info-note">
+                <p>{t('trendInsights.infoDailyAverages')}</p>
+                <p>{t('trendInsights.infoCaution')}</p>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : (
-        <>
-          <div className="trend-analysis-meta">
-            <span>
-              {t('trendInsights.readySummary', {
-                sessions: analysis.sessionsUsed,
-                days: analysis.daysUsed,
-                systolic: analysis.averageSystolic ?? 0,
-                diastolic: analysis.averageDiastolic ?? 0,
-              })}
-            </span>
-            <span>
-              {t('trendInsights.period', {
-                start: formatDate(analysis.periodStart),
-                end: formatDate(analysis.periodEnd),
-              })}
-            </span>
-          </div>
-
-          {analysis.comparison && (
-            <div className="trend-fortnight-comparison">
-              <div className="trend-comparison-header">
-                <div>
-                  <ArrowRightLeft size={18} />
-                  <strong>{t('trendInsights.comparisonTitle')}</strong>
-                </div>
-                <span className={`trend-coverage-badge ${analysis.comparison.coverage}`}>
-                  {t(
-                    analysis.comparison.coverage === 'supported'
-                      ? 'trendInsights.coverageSupported'
-                      : 'trendInsights.coverageSparse'
-                  )}
-                </span>
-              </div>
-              <div className="trend-comparison-grid">
-                <div>
-                  <span>{t('trendInsights.firstFortnight')}</span>
-                  <strong>
-                    {analysis.comparison.firstAverageSystolic}/
-                    {analysis.comparison.firstAverageDiastolic}
-                  </strong>
-                  <small>
-                    {t('trendInsights.daysWithData', {
-                      days: analysis.comparison.firstDays,
-                    })}
-                  </small>
-                </div>
-                <div>
-                  <span>{t('trendInsights.lastFortnight')}</span>
-                  <strong>
-                    {analysis.comparison.lastAverageSystolic}/
-                    {analysis.comparison.lastAverageDiastolic}
-                  </strong>
-                  <small>
-                    {t('trendInsights.daysWithData', {
-                      days: analysis.comparison.lastDays,
-                    })}
-                  </small>
-                </div>
-                <div className="trend-comparison-difference">
-                  <span>{t('trendInsights.difference')}</span>
-                  <strong>
-                    {formatDifference(analysis.comparison.systolicDifference)}/
-                    {formatDifference(analysis.comparison.diastolicDifference)}
-                  </strong>
-                  <small>mmHg</small>
-                </div>
-              </div>
-              {analysis.comparison.coverage === 'sparse' && (
-                <p>{t('trendInsights.sparseExplanation')}</p>
-              )}
-            </div>
-          )}
-
-          {analysis.insights.length === 0 ? (
-            <div className="trend-status-card no-pattern">
-              <CircleCheck size={22} />
-              <div>
-                <strong>{t('trendInsights.noPatternTitle')}</strong>
-                <p>{t('trendInsights.noPatternDesc')}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="trend-insight-list">
-              {analysis.insights.map((insight) => {
-                const isHigh = insight.key === 'repeatedAboveThreshold';
-                return (
-                  <article
-                    key={insight.key}
-                    className={`trend-insight-item ${isHigh ? 'high' : 'low'}`}
-                  >
-                    {isHigh ? (
-                      <ArrowUpFromLine size={22} />
-                    ) : (
-                      <ArrowDownFromLine size={22} />
-                    )}
-                    <div>
-                      <strong>
-                        {t(
-                          isHigh
-                            ? 'trendInsights.aboveTitle'
-                            : 'trendInsights.lowTitle'
-                        )}
-                      </strong>
-                      <p>
-                        {t(
-                          isHigh
-                            ? 'trendInsights.aboveDesc'
-                            : 'trendInsights.lowDesc',
-                          {
-                            matchingDays: insight.matchingDays,
-                            totalDays: insight.totalDays,
-                            systolic: insight.averageSystolic,
-                            diastolic: insight.averageDiastolic,
-                          }
-                        )}
-                      </p>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </>
+        </div>,
+        document.body
       )}
-
-      <p className="trend-insights-disclaimer">
-        <Info size={15} />
-        <span>{t('trendInsights.disclaimer')}</span>
-      </p>
     </section>
   );
 };

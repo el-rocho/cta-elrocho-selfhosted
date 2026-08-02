@@ -120,31 +120,32 @@ describe('trend data sufficiency', () => {
     });
   });
 
-  it('does not turn one isolated high day into a repeated pattern', () => {
+  it('does not let one isolated high day replace the most frequent category', () => {
     const sessions = repeatedSessions(120, 75);
     sessions[0] = session(1, 8, 180, 100);
     const analysis = analyzeBloodPressureTrends(sessions, 'esc-2024');
 
     expect(analysis.status).toBe('ready');
-    expect(analysis.insights).toHaveLength(0);
+    expect(analysis.pattern).toMatchObject({
+      categoryKey: 'elevated',
+      matchingDays: 2,
+      totalDays: 3,
+    });
   });
 });
 
-describe('persistent threshold patterns', () => {
+describe('predominant daily category patterns', () => {
   it.each([
-    ['esc-2024', 140, 90],
-    ['aha-acc-2025', 132, 82],
-    ['ish-2020', 140, 90],
-  ] as const)('detects repeated values for %s', (profile, systolic, diastolic) => {
+    ['esc-2024', 140, 90, 'hypertension'],
+    ['aha-acc-2025', 132, 82, 'stage1'],
+    ['ish-2020', 140, 90, 'aboveThreshold'],
+  ] as const)('uses the most frequent category for %s', (profile, systolic, diastolic, categoryKey) => {
     const analysis = analyzeBloodPressureTrends(
       repeatedSessions(systolic, diastolic),
       profile
     );
 
-    expect(analysis.insights.map((insight) => insight.key)).toContain(
-      'repeatedAboveThreshold'
-    );
-    expect(analysis.insights[0].matchingDays).toBe(3);
+    expect(analysis.pattern).toMatchObject({ categoryKey, matchingDays: 3, totalDays: 3 });
   });
 
   it('recalculates the pattern when the selected guideline changes', () => {
@@ -152,18 +153,27 @@ describe('persistent threshold patterns', () => {
     const esc = analyzeBloodPressureTrends(sessions, 'esc-2024');
     const aha = analyzeBloodPressureTrends(sessions, 'aha-acc-2025');
 
-    expect(esc.insights).toHaveLength(0);
-    expect(aha.insights.map((insight) => insight.key)).toContain(
-      'repeatedAboveThreshold'
-    );
+    expect(esc.pattern?.categoryKey).toBe('elevated');
+    expect(aha.pattern?.categoryKey).toBe('stage1');
   });
 
   it('detects repeated low daily averages independently of the guideline', () => {
     const profiles: GuidelineProfile[] = ['esc-2024', 'aha-acc-2025', 'ish-2020'];
     profiles.forEach((profile) => {
       const analysis = analyzeBloodPressureTrends(repeatedSessions(88, 58), profile);
-      expect(analysis.insights.map((insight) => insight.key)).toContain('repeatedLow');
+      expect(analysis.pattern?.categoryKey).toBe('low');
     });
+  });
+
+  it('does not choose a pattern when the most frequent categories are tied', () => {
+    const analysis = analyzeBloodPressureTrends([
+      session(1, 8, 110, 65),
+      session(2, 8, 125, 75),
+      session(3, 8, 140, 90),
+    ], 'esc-2024');
+
+    expect(analysis.status).toBe('ready');
+    expect(analysis.pattern).toBeUndefined();
   });
 });
 
@@ -200,7 +210,7 @@ describe('white-coat preprocessing and daily weighting', () => {
     expect(sessions).toHaveLength(6);
     expect(sessions.every((item) => item.averageSystolic === 125)).toBe(true);
     expect(analysis.status).toBe('ready');
-    expect(analysis.insights).toHaveLength(0);
+    expect(analysis.pattern).toMatchObject({ categoryKey: 'elevated', matchingDays: 3 });
   });
 
   it('weights each day equally even when one day contains more sessions', () => {
@@ -215,7 +225,7 @@ describe('white-coat preprocessing and daily weighting', () => {
     const analysis = analyzeBloodPressureTrends(sessions, 'esc-2024');
 
     expect(analysis.status).toBe('ready');
-    expect(analysis.insights).toHaveLength(0);
+    expect(analysis.pattern).toMatchObject({ categoryKey: 'elevated', matchingDays: 2 });
     expect(analysis.averageSystolic).toBe(133);
   });
 

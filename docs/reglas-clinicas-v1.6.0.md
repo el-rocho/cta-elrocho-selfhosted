@@ -218,12 +218,11 @@ Los avisos de tendencia están separados conceptualmente de los avisos de una me
 
 - Ventana corta: últimos `28` días contados desde el día de la sesión más reciente (`día más reciente - 27` hasta el final del día más reciente).
 - Antes de analizar, todas las sesiones efectivas del mismo día se agregan en una media diaria redondeada de sistólica, diastólica y pulso. No se cambia a medias semanales o mensuales.
-- Datos mínimos: `>=3` sesiones efectivas repartidas en `>=3` días.
-- Persistencia requerida: `max(3, ceil(días con datos × 2/3))` días coincidentes. Con exactamente tres días disponibles se exigen los tres.
-- Tendencia alta repetida: la media diaria está en `hypertension` o `extreme` para ESC, `stage1`, `stage2` o `extreme` para AHA/ACC, y `aboveThreshold` o `extreme` para ISH.
-- Tendencia baja repetida: media diaria con `SYS < 90 OR DIA < 60`.
+- Datos mínimos para el patrón: `>=3` medias diarias dentro de la ventana, procedentes por tanto de `>=3` días distintos.
+- Cada media diaria se clasifica con la guía seleccionada. El patrón mostrado es la categoría que aparece más veces en la ventana de cuatro semanas.
+- Si dos o más categorías empatan con la frecuencia máxima, no se elige una arbitrariamente y se muestra `Sin patrón predominante`.
 - La comparación de evolución divide la ventana en los primeros 14 días y los últimos 14. Calcula la diferencia `media_última_quincena - media_primera_quincena` por dimensión.
-- La comparación se marca como respaldada cuando existen al menos dos días con datos en cada quincena; con menos cobertura se marca como dispersa. La aplicación muestra la diferencia, pero no la convierte por sí sola en diagnóstico de tendencia ascendente o descendente.
+- La comparación se considera respaldada cuando existen al menos dos días con datos en cada quincena. Solo entonces la interfaz muestra las diferencias de sistólica y diastólica mediante flechas; con menos cobertura muestra `Datos insuficientes`.
 - Gráficas de largo alcance: `28 días`, `3 meses`, `6 meses` y `1 año`, siempre con medias diarias y tomando como final el día de la sesión más reciente disponible.
 
 ## 9. Límites técnicos de entrada
@@ -290,6 +289,6 @@ Desde el repositorio individual, `npm run test:editions` ejecuta el mismo docume
 4. Umbral de pulso bajo `<50` frente a la referencia general `<60`.
 5. Límites de presión de pulso `<25` y `>60` y su diálogo de confirmación.
 6. Algoritmo de acomodación del filtro de bata blanca (`8/4`, reglas de descarte y sesión que puede quedar reducida a una toma).
-7. Persistencia de tendencias `max(3, ceil(2/3 de los días))` y mínimo de tres sesiones/tres días.
+7. Patrón mensual basado en la categoría modal de al menos tres medias diarias y tratamiento de los empates sin categoría predominante.
 
 Hasta que estos puntos sean revisados por un profesional competente, deben describirse como adaptaciones de la aplicación y no como recomendaciones literales de las guías.
