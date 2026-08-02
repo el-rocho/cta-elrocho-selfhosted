@@ -1,7 +1,7 @@
 {
   "name": "cta-elrocho-server",
   "private": true,
-  "version": "1.6.0-beta.1",
+  "version": "1.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

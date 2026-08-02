@@ -5,7 +5,7 @@
 | Campo | Valor |
 |---|---|
 | Versión de la matriz | 1.6.0 |
-| Versión de aplicación comprobada | 1.6.0-beta.1 |
+| Versión de aplicación comprobada | 1.6.0 |
 | Fecha de revisión técnica | 31 de julio de 2026 |
 | Idiomas de interfaz | Español e inglés |
 | Estado | Transcripción técnica del comportamiento implementado; pendiente de validación clínica formal |
