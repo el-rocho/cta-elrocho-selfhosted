@@ -159,7 +159,12 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           <span>{t('form.heartRate')}</span>
         </div>
         <span className="daily-average-caption">
-          {t('trend.dailyAveragesCount', { days: dailyAverages.length })}
+          {t(
+            dailyAverages.length === 1
+              ? 'trend.dailyAveragesCountOne'
+              : 'trend.dailyAveragesCountOther',
+            { days: dailyAverages.length },
+          )}
         </span>
       </div>
 
