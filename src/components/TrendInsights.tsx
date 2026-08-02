@@ -52,60 +52,68 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
   return (
     <section className="card trend-insights-card" aria-labelledby="trend-insights-title">
       <div className="trend-insights-header">
-        <div className="trend-insights-heading">
-          <ChartNoAxesColumnIncreasing size={24} />
-          <h2 id="trend-insights-title">{t('trendInsights.title')}</h2>
+        <div className="trend-insights-block trend-insights-title-block">
+          <div className="trend-insights-heading">
+            <ChartNoAxesColumnIncreasing size={24} />
+            <h2 id="trend-insights-title">{t('trendInsights.title')}</h2>
+          </div>
         </div>
-        {comparison ? (
-          <div className="trend-month-values">
-            <span className="trend-month-value systolic">
-              <span>{t('form.systolic')}</span>
-              <SystolicArrow size={15} aria-hidden="true" />
-              <strong>{Math.abs(systolicDifference)}</strong>
-              <small>mmHg</small>
-            </span>
-            <span className="trend-month-value diastolic">
-              <span>{t('form.diastolic')}</span>
-              <DiastolicArrow size={15} aria-hidden="true" />
-              <strong>{Math.abs(diastolicDifference)}</strong>
-              <small>mmHg</small>
-            </span>
-          </div>
-        ) : (
-          <span className="trend-insufficient-badge">
-            {t('trendInsights.insufficientTitle')}
-          </span>
-        )}
-        {analysis.status === 'ready' && (
-          <div className="trend-pattern-row">
-            <strong>{t('trendInsights.patternTitle')}</strong>
-            {patternCategory ? (
-              <span
-                className="trend-pattern-category"
-                style={{
-                  backgroundColor: patternCategory.badgeBg,
-                  color: patternCategory.badgeText,
-                }}
-              >
-                {patternCategory.name}
+        <div className="trend-insights-block trend-insights-values-block">
+          {comparison ? (
+            <div className="trend-month-values">
+              <span className="trend-month-value systolic">
+                <span>{t('form.systolic')}</span>
+                <SystolicArrow size={15} aria-hidden="true" />
+                <strong>{Math.abs(systolicDifference)}</strong>
+                <small>mmHg</small>
               </span>
-            ) : (
-              <span className="trend-pattern-none">{t('trendInsights.noPatternTitle')}</span>
-            )}
-          </div>
-        )}
-        <span className="trend-guideline-badge">
-          {getGuidelineName(guidelineProfile, language)}
-        </span>
-        <button
-          type="button"
-          className="settings-info-button trend-info-button"
-          title={t('trendInsights.infoTooltip')}
-          aria-label={t('trendInsights.infoTooltip')}
-          onClick={() => setIsInfoOpen(true)}
-        >
-          <Info size={17} />
-        </button>
+              <span className="trend-month-value diastolic">
+                <span>{t('form.diastolic')}</span>
+                <DiastolicArrow size={15} aria-hidden="true" />
+                <strong>{Math.abs(diastolicDifference)}</strong>
+                <small>mmHg</small>
+              </span>
+            </div>
+          ) : (
+            <span className="trend-insufficient-badge">
+              {t('trendInsights.insufficientTitle')}
+            </span>
+          )}
+        </div>
+        <div className="trend-insights-block trend-insights-pattern-block">
+          {analysis.status === 'ready' && (
+            <div className="trend-pattern-row">
+              <strong>{t('trendInsights.patternTitle')}</strong>
+              {patternCategory ? (
+                <span
+                  className="trend-pattern-category"
+                  style={{
+                    backgroundColor: patternCategory.badgeBg,
+                    color: patternCategory.badgeText,
+                  }}
+                >
+                  {patternCategory.name}
+                </span>
+              ) : (
+                <span className="trend-pattern-none">{t('trendInsights.noPatternTitle')}</span>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="trend-insights-block trend-insights-meta-block">
+          <span className="trend-guideline-badge">
+            {getGuidelineName(guidelineProfile, language)}
+          </span>
+          <button
+            type="button"
+            className="settings-info-button trend-info-button"
+            title={t('trendInsights.infoTooltip')}
+            aria-label={t('trendInsights.infoTooltip')}
+            onClick={() => setIsInfoOpen(true)}
+          >
+            <Info size={17} />
+          </button>
+        </div>
       </div>
       {isInfoOpen && createPortal(
         <div
