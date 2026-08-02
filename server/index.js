@@ -27,6 +27,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const LEGACY_DEMO_NOTES = {
+  'Ejemplo verde: óptima sin medicación': 'Ejemplo: 115/75 mmHg, sin medicación',
+  'Ejemplo verde: óptima con medicación': 'Ejemplo: 120/70 mmHg, con medicación',
+  'Ejemplo azul: hipotensión con taquicardia': 'Ejemplo: 88/58 mmHg y pulso de 105 lpm',
+  'Ejemplo turquesa: subóptima con medicación': 'Ejemplo: 110/62 mmHg, con medicación',
+  'Ejemplo naranja: presión elevada sin medicación': 'Ejemplo: 130/82 mmHg, sin medicación',
+  'Ejemplo naranja: franja elevada con medicación': 'Ejemplo: 128/78 mmHg, con medicación',
+  'Ejemplo rojo: sistólica elevada': 'Ejemplo: 138/82 mmHg, sin medicación',
+  'Ejemplo rojo: diastólica elevada con taquicardia':
+    'Ejemplo: 125/88 mmHg, con medicación y pulso de 106 lpm',
+  'Ejemplo: presión de pulso estrecha y bradicardia':
+    'Ejemplo: presión de pulso de 22 mmHg y pulso de 48 lpm',
+  'Ejemplo rojo: ambos valores elevados y presión de pulso amplia':
+    'Ejemplo: presión de pulso de 65 mmHg',
+};
+
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
@@ -90,6 +106,26 @@ function serializeReadingRow(row) {
     pulsePressureWarningConfirmed: Boolean(row.pulsePressureWarningConfirmed),
     takesAntihypertensiveMedication: Boolean(row.takesAntihypertensiveMedication),
   };
+}
+
+async function migrateDemoReadingNotes(db, rows) {
+  const migratedRows = [];
+  for (const row of rows) {
+    const migratedNote = row.id.startsWith('demo-') && row.notes
+      ? LEGACY_DEMO_NOTES[row.notes]
+      : undefined;
+    if (!migratedNote) {
+      migratedRows.push(row);
+      continue;
+    }
+    await db.run('UPDATE readings SET notes = ? WHERE id = ? AND notes = ?', [
+      migratedNote,
+      row.id,
+      row.notes,
+    ]);
+    migratedRows.push({ ...row, notes: migratedNote });
+  }
+  return migratedRows;
 }
 
 async function getCurrentMedicationContext(db, userId) {
@@ -495,7 +531,8 @@ app.get('/api/readings', requireAuth, async (req, res) => {
       'SELECT id, timestamp, systolic, diastolic, heart_rate as heartRate, arm, notes, pulse_pressure_confirmed as pulsePressureWarningConfirmed, takes_antihypertensive_medication as takesAntihypertensiveMedication FROM readings WHERE user_id = ? ORDER BY timestamp DESC',
       [req.user.id]
     );
-    res.json(rows.map(serializeReadingRow));
+    const migratedRows = await migrateDemoReadingNotes(db, rows);
+    res.json(migratedRows.map(serializeReadingRow));
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener mediciones' });
   }
@@ -683,7 +720,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 75,
         heart_rate: 72,
         arm: 'left',
-        notes: 'Ejemplo verde: óptima sin medicación',
+    notes: 'Ejemplo: 115/75 mmHg, sin medicación',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 0,
       },
@@ -694,7 +731,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 70,
         heart_rate: 68,
         arm: 'right',
-        notes: 'Ejemplo verde: óptima con medicación',
+    notes: 'Ejemplo: 120/70 mmHg, con medicación',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 1,
       },
@@ -705,7 +742,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 58,
         heart_rate: 105,
         arm: 'left',
-        notes: 'Ejemplo azul: hipotensión con taquicardia',
+    notes: 'Ejemplo: 88/58 mmHg y pulso de 105 lpm',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 0,
       },
@@ -716,7 +753,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 62,
         heart_rate: 66,
         arm: 'right',
-        notes: 'Ejemplo turquesa: subóptima con medicación',
+    notes: 'Ejemplo: 110/62 mmHg, con medicación',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 1,
       },
@@ -727,7 +764,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 82,
         heart_rate: 74,
         arm: 'left',
-        notes: 'Ejemplo naranja: presión elevada sin medicación',
+    notes: 'Ejemplo: 130/82 mmHg, sin medicación',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 0,
       },
@@ -738,7 +775,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 78,
         heart_rate: 76,
         arm: 'right',
-        notes: 'Ejemplo naranja: franja elevada con medicación',
+    notes: 'Ejemplo: 128/78 mmHg, con medicación',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 1,
       },
@@ -749,7 +786,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 82,
         heart_rate: 72,
         arm: 'left',
-        notes: 'Ejemplo rojo: sistólica elevada',
+    notes: 'Ejemplo: 138/82 mmHg, sin medicación',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 0,
       },
@@ -760,7 +797,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 88,
         heart_rate: 106,
         arm: 'right',
-        notes: 'Ejemplo rojo: diastólica elevada con taquicardia',
+    notes: 'Ejemplo: 125/88 mmHg, con medicación y pulso de 106 lpm',
         pulse_pressure_confirmed: 0,
         takes_antihypertensive_medication: 1,
       },
@@ -771,7 +808,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 78,
         heart_rate: 48,
         arm: 'left',
-        notes: 'Ejemplo: presión de pulso estrecha y bradicardia',
+    notes: 'Ejemplo: presión de pulso de 22 mmHg y pulso de 48 lpm',
         pulse_pressure_confirmed: 1,
         takes_antihypertensive_medication: 0,
       },
@@ -782,7 +819,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
         diastolic: 85,
         heart_rate: 70,
         arm: 'right',
-        notes: 'Ejemplo rojo: ambos valores elevados y presión de pulso amplia',
+    notes: 'Ejemplo: presión de pulso de 65 mmHg',
         pulse_pressure_confirmed: 1,
         takes_antihypertensive_medication: 0,
       },

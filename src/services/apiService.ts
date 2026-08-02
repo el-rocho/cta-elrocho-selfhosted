@@ -4,6 +4,31 @@ const API_BASE = '/api';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
+const LEGACY_DEMO_NOTES: Record<string, string> = {
+  'Ejemplo verde: óptima sin medicación': 'Ejemplo: 115/75 mmHg, sin medicación',
+  'Ejemplo verde: óptima con medicación': 'Ejemplo: 120/70 mmHg, con medicación',
+  'Ejemplo azul: hipotensión con taquicardia': 'Ejemplo: 88/58 mmHg y pulso de 105 lpm',
+  'Ejemplo turquesa: subóptima con medicación': 'Ejemplo: 110/62 mmHg, con medicación',
+  'Ejemplo naranja: presión elevada sin medicación': 'Ejemplo: 130/82 mmHg, sin medicación',
+  'Ejemplo naranja: franja elevada con medicación': 'Ejemplo: 128/78 mmHg, con medicación',
+  'Ejemplo rojo: sistólica elevada': 'Ejemplo: 138/82 mmHg, sin medicación',
+  'Ejemplo rojo: diastólica elevada con taquicardia':
+    'Ejemplo: 125/88 mmHg, con medicación y pulso de 106 lpm',
+  'Ejemplo: presión de pulso estrecha y bradicardia':
+    'Ejemplo: presión de pulso de 22 mmHg y pulso de 48 lpm',
+  'Ejemplo rojo: ambos valores elevados y presión de pulso amplia':
+    'Ejemplo: presión de pulso de 65 mmHg',
+};
+
+function migrateDemoReadingNotes(readings: BloodPressureReading[]): BloodPressureReading[] {
+  return readings.map((reading) => {
+    if (!reading.id.startsWith('demo-') || !reading.notes) return reading;
+    const migratedNote = LEGACY_DEMO_NOTES[reading.notes];
+    return migratedNote ? { ...reading, notes: migratedNote } : reading;
+  });
+}
+
+
 // Mismos diez ejemplos utilizados por las versiones individual, cliente y autoalojada.
 function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
   const demoTimestamp = (daysAgo: number) => new Date(referenceMs - DAY_MS * daysAgo).toISOString();
@@ -15,7 +40,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 75,
     heartRate: 72,
     arm: 'left',
-    notes: 'Ejemplo verde: óptima sin medicación',
+    notes: 'Ejemplo: 115/75 mmHg, sin medicación',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: false,
   },
@@ -26,7 +51,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 70,
     heartRate: 68,
     arm: 'right',
-    notes: 'Ejemplo verde: óptima con medicación',
+    notes: 'Ejemplo: 120/70 mmHg, con medicación',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: true,
   },
@@ -37,7 +62,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 58,
     heartRate: 105,
     arm: 'left',
-    notes: 'Ejemplo azul: hipotensión con taquicardia',
+    notes: 'Ejemplo: 88/58 mmHg y pulso de 105 lpm',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: false,
   },
@@ -48,7 +73,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 62,
     heartRate: 66,
     arm: 'right',
-    notes: 'Ejemplo turquesa: subóptima con medicación',
+    notes: 'Ejemplo: 110/62 mmHg, con medicación',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: true,
   },
@@ -59,7 +84,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 82,
     heartRate: 74,
     arm: 'left',
-    notes: 'Ejemplo naranja: presión elevada sin medicación',
+    notes: 'Ejemplo: 130/82 mmHg, sin medicación',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: false,
   },
@@ -70,7 +95,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 78,
     heartRate: 76,
     arm: 'right',
-    notes: 'Ejemplo naranja: franja elevada con medicación',
+    notes: 'Ejemplo: 128/78 mmHg, con medicación',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: true,
   },
@@ -81,7 +106,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 82,
     heartRate: 72,
     arm: 'left',
-    notes: 'Ejemplo rojo: sistólica elevada',
+    notes: 'Ejemplo: 138/82 mmHg, sin medicación',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: false,
   },
@@ -92,7 +117,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 88,
     heartRate: 106,
     arm: 'right',
-    notes: 'Ejemplo rojo: diastólica elevada con taquicardia',
+    notes: 'Ejemplo: 125/88 mmHg, con medicación y pulso de 106 lpm',
     pulsePressureWarningConfirmed: false,
     takesAntihypertensiveMedication: true,
   },
@@ -103,7 +128,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 78,
     heartRate: 48,
     arm: 'left',
-    notes: 'Ejemplo: presión de pulso estrecha y bradicardia',
+    notes: 'Ejemplo: presión de pulso de 22 mmHg y pulso de 48 lpm',
     pulsePressureWarningConfirmed: true,
     takesAntihypertensiveMedication: false,
   },
@@ -114,7 +139,7 @@ function createDemoReadings(referenceMs = Date.now()): BloodPressureReading[] {
     diastolic: 85,
     heartRate: 70,
     arm: 'right',
-    notes: 'Ejemplo rojo: ambos valores elevados y presión de pulso amplia',
+    notes: 'Ejemplo: presión de pulso de 65 mmHg',
     pulsePressureWarningConfirmed: true,
     takesAntihypertensiveMedication: false,
   },
@@ -125,13 +150,15 @@ export async function fetchReadingsAPI(): Promise<BloodPressureReading[]> {
   try {
     const res = await fetch(`${API_BASE}/readings`);
     if (!res.ok) throw new Error('Error de servidor al cargar lecturas');
-    const data = await res.json();
+    const data = migrateDemoReadingNotes(await res.json());
     localStorage.setItem('server_bp_readings_cache', JSON.stringify(data));
     return data;
   } catch (error) {
     console.warn('Servidor local no alcanzable, usando almacenamiento en caché local:', error);
     const cached = localStorage.getItem('server_bp_readings_cache');
-    return cached ? JSON.parse(cached) : createDemoReadings();
+    const data = migrateDemoReadingNotes(cached ? JSON.parse(cached) : createDemoReadings());
+    localStorage.setItem('server_bp_readings_cache', JSON.stringify(data));
+    return data;
   }
 }
 
