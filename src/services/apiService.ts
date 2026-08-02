@@ -255,10 +255,10 @@ export async function fetchSettingsAPI(): Promise<AppSettings> {
     const res = await fetch(`${API_BASE}/settings`);
     if (!res.ok) throw new Error('Error de servidor al cargar ajustes');
     const data = await res.json();
-    return { guidelineProfile: 'esc-2024', ...data };
+    return { guidelineProfile: 'esc-2024', ...data, whiteCoatIntervalMinutes: 5 };
   } catch {
     const cached = localStorage.getItem('server_bp_settings_cache');
-    return cached ? { guidelineProfile: 'esc-2024', ...JSON.parse(cached) } : {
+    return cached ? { guidelineProfile: 'esc-2024', ...JSON.parse(cached), whiteCoatIntervalMinutes: 5 } : {
       language: 'es',
       enableWhiteCoatFilter: false,
       whiteCoatIntervalMinutes: 5,
@@ -276,19 +276,20 @@ export async function fetchSettingsAPI(): Promise<AppSettings> {
 }
 
 export async function saveSettingsAPI(settings: AppSettings): Promise<AppSettings> {
+  const fixedSettings: AppSettings = { ...settings, whiteCoatIntervalMinutes: 5 };
   try {
     const res = await fetch(`${API_BASE}/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
+      body: JSON.stringify(fixedSettings),
     });
     if (!res.ok) throw new Error('Error al guardar ajustes en el servidor');
-    const saved = await res.json();
+    const saved = { ...await res.json(), whiteCoatIntervalMinutes: 5 };
     localStorage.setItem('server_bp_settings_cache', JSON.stringify(saved));
     return saved;
   } catch {
-    localStorage.setItem('server_bp_settings_cache', JSON.stringify(settings));
-    return settings;
+    localStorage.setItem('server_bp_settings_cache', JSON.stringify(fixedSettings));
+    return fixedSettings;
   }
 }
 

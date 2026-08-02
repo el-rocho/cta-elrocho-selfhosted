@@ -56,6 +56,19 @@ describe('complete application backups', () => {
     expect(result.snapshot.readings.map((reading) => reading.sessionId)).toEqual(['session-1', 'session-1']);
   });
 
+  it('normalizes configurable intervals from legacy backups to five minutes', () => {
+    const snapshot = createBackupSnapshot(readings, settings, '2026-07-31T12:00:00.000Z');
+    const legacySnapshot = {
+      ...snapshot,
+      settings: { ...snapshot.settings, whiteCoatIntervalMinutes: 3 },
+    };
+    const result = parseBackupContent(JSON.stringify(legacySnapshot));
+
+    expect(result.status).toBe('valid');
+    if (result.status !== 'valid') return;
+    expect(result.snapshot.settings.whiteCoatIntervalMinutes).toBe(5);
+  });
+
   it('rejects unsupported and incomplete native backups without treating them as CSV', () => {
     expect(parseBackupContent(JSON.stringify({ format: BACKUP_FORMAT, version: 99 }))).toEqual({
       status: 'invalid',

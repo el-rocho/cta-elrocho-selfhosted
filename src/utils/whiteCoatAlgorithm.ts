@@ -2,6 +2,8 @@ import type { BloodPressureReading, BloodPressureSession, AppSettings } from '..
 import { DEFAULT_SETTINGS } from '../services/storageService';
 import { getReadingMedicationContext } from './healthClassification';
 
+export const WHITE_COAT_INTERVAL_MINUTES = 5;
+
 export function getEffectiveSessionReadings(
   session: BloodPressureSession
 ): BloodPressureReading[] {
@@ -72,8 +74,8 @@ export function processReadingsIntoSessions(
     };
   }
 
-  // Umbral de tiempo dinámico según la configuración del usuario (en milisegundos) entre tomas consecutivas
-  const sessionThresholdMs = (settings.whiteCoatIntervalMinutes || 5) * 60 * 1000;
+  // Intervalo fijo entre tomas consecutivas; los valores configurables antiguos se ignoran.
+  const sessionThresholdMs = WHITE_COAT_INTERVAL_MINUTES * 60 * 1000;
 
   const sessionGroups: BloodPressureReading[][] = [];
   let currentGroup: BloodPressureReading[] = [sorted[0]];

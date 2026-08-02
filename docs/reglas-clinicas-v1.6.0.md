@@ -50,7 +50,7 @@ Cada toma es una sesión independiente y sus valores son los valores efectivos.
 
 El filtro está desactivado de forma predeterminada. Cuando se activa:
 
-- Agrupa tomas consecutivas si la separación respecto de la toma anterior es `<=` al intervalo configurado (`3`, `5` o `10` minutos) y el contexto de medicación es el mismo.
+- Agrupa tomas consecutivas si la separación respecto de la toma anterior es `<= 5` minutos y el contexto de medicación es el mismo. El intervalo es fijo y no configurable.
 - Una sesión completa se guarda y presenta como un único resultado.
 - Con 1 toma: no descarta ninguna.
 - Con 2 tomas: descarta la primera si `SYS1 >= SYS2 + 8 OR DIA1 >= DIA2 + 4`; si no, conserva ambas.

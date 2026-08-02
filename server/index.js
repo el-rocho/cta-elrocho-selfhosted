@@ -903,7 +903,7 @@ app.get('/api/settings', requireAuth, async (req, res) => {
     res.json({
       language: row?.language || 'es',
       enableWhiteCoatFilter: Boolean(row?.enable_white_coat),
-      whiteCoatIntervalMinutes: row?.white_coat_minutes || 5,
+      whiteCoatIntervalMinutes: 5,
       defaultArm: row?.default_arm || 'left',
       preferredInputMode: row?.preferred_input_mode || 'keyboard',
       guidelineProfile: row?.guideline_profile || 'esc-2024',
@@ -967,7 +967,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         req.user.id,
         s.language || 'es',
         s.enableWhiteCoatFilter ? 1 : 0,
-        s.whiteCoatIntervalMinutes || 5,
+        5,
         s.defaultArm || 'left',
         s.preferredInputMode || 'keyboard',
         ['esc-2024', 'aha-acc-2025', 'ish-2020'].includes(s.guidelineProfile) ? s.guidelineProfile : 'esc-2024',
@@ -996,7 +996,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
       );
     }
 
-    res.json({ success: true, settings: s });
+    res.json({ success: true, settings: { ...s, whiteCoatIntervalMinutes: 5 } });
   } catch (error) {
     console.error('Error al guardar ajustes:', error);
     res.status(500).json({ error: 'Error al guardar ajustes' });

@@ -27,7 +27,7 @@ export const translations = {
       armRight: 'Derecho',
       notesPlaceholder: 'Notas opcionales (ej. tras caminar 15 min)...',
       submit: 'Guardar Medición',
-      whiteCoatFilterActive: 'Filtro {minutes} min activo',
+      whiteCoatFilterActive: 'Filtro 5 min activo',
       validationAlert: 'Por favor, introduce valores válidos para Sistólica, Diastólica y Pulsaciones.',
       diastolicMustBeLower: 'La presión diastólica debe ser menor que la sistólica. Revisa los valores: esta medición no se puede guardar.',
       pulsePressureTitle: 'Revisa el manguito y repite la medición',
@@ -64,7 +64,7 @@ export const translations = {
     whiteCoatBanner: {
       activeTitle: 'Filtro Bata Blanca Activo',
       inactiveTitle: 'Filtro Bata Blanca Inactivo',
-      activeDesc: 'Eliminando tomas iniciales elevadas en mediciones continuadas ({mins} min).',
+      activeDesc: 'Eliminando tomas iniciales elevadas en mediciones continuadas (5 min).',
       inactiveDesc: 'Puedes activar el filtrado automático de sesgo de ansiedad en configuración.',
       configure: 'Configurar',
     },
@@ -327,13 +327,11 @@ export const translations = {
       agePlaceholder: '65',
       birthDate: 'Fecha de nacimiento:',
       whiteCoatTitle: 'Filtro Síndrome bata blanca',
-      whiteCoatDesc: 'Si realiza varias mediciones continuadas distanciadas entre ellas menos del intervalo de tiempo definido, se descartarán las primeras tomas elevadas para eliminar el sesgo de ansiedad inicial, con el resto de los datos se calcula la media y se almacena como una única medición.',
+      whiteCoatDesc: 'Si realiza varias mediciones continuadas separadas entre cada una de ellas por un máximo de 5 minutos, se descartarán las primeras tomas elevadas para reducir el sesgo de ansiedad inicial; con el resto de los datos se calcula la media y se almacena como una única medición.',
       whiteCoatInfoTitle: 'Filtro de bata blanca',
       whiteCoatInfoIntro: 'Pensado para aquellas personas cuyas primeras lecturas suelen ser más altas de forma repetida. No diagnostica hipertensión de bata blanca y puedes desactivarlo en cualquier momento.',
-      whiteCoatInfoMechanism: 'Si se realizan varias mediciones consecutivas, separadas entre ellas un tiempo inferior al intervalo configurado, la aplicación puede excluir del cálculo las primeras lecturas cuando sean más elevadas, reduciendo así la posible influencia de la ansiedad inicial.',
+      whiteCoatInfoMechanism: 'Si se realizan varias mediciones consecutivas, separadas entre cada una de ellas por un máximo de 5 minutos, la aplicación puede excluir del cálculo las primeras lecturas cuando sean más elevadas, reduciendo así la posible influencia de la ansiedad inicial. El intervalo es fijo y no necesita configuración.',
       whiteCoatInfoResult: 'Con las lecturas restantes calcula la media y la guarda como un único resultado. Todas las mediciones originales quedan disponibles para consulta, si se desactiva el filtro vuelven a considerarse mediciones individuales.',
-      intervalLabel: 'Intervalo máximo entre tomas consecutivas:',
-      minutesText: '{mins} minutos',
       defaultArmTitle: 'Brazo utilizado por defecto:',
       defaultArmLeft: 'Brazo Izquierdo',
       defaultArmRight: 'Brazo Derecho',
@@ -503,7 +501,7 @@ export const translations = {
       armRight: 'Right',
       notesPlaceholder: 'Optional notes (e.g. after 15 min walk)...',
       submit: 'Save Reading',
-      whiteCoatFilterActive: '{minutes} min filter active',
+      whiteCoatFilterActive: '5 min filter active',
       validationAlert: 'Please enter valid values for Systolic, Diastolic, and Pulse.',
       diastolicMustBeLower: 'Diastolic pressure must be lower than systolic pressure. Check the values: this reading cannot be saved.',
       pulsePressureTitle: 'Check the cuff and repeat the reading',
@@ -540,7 +538,7 @@ export const translations = {
     whiteCoatBanner: {
       activeTitle: 'White Coat Filter Active',
       inactiveTitle: 'White Coat Filter Inactive',
-      activeDesc: 'Discarding initial elevated readings in continuous measurements ({mins} min).',
+      activeDesc: 'Discarding initial elevated readings in continuous measurements (5 min).',
       inactiveDesc: 'You can enable automatic anxiety bias filtering in settings.',
       configure: 'Configure',
     },
@@ -803,13 +801,11 @@ export const translations = {
       agePlaceholder: '65',
       birthDate: 'Date of birth:',
       whiteCoatTitle: 'White Coat Syndrome Filter',
-      whiteCoatDesc: 'If you take multiple continuous measurements spaced less than the defined interval, the initial elevated readings will be discarded to eliminate anxiety bias, and the average of the remaining data will be stored as a single measurement.',
+      whiteCoatDesc: 'If you take multiple continuous measurements with no more than 5 minutes between each one, the initial elevated readings will be discarded to reduce initial anxiety bias, and the average of the remaining data will be stored as a single measurement.',
       whiteCoatInfoTitle: 'White coat filter',
       whiteCoatInfoIntro: 'Designed for people whose first readings tend to be repeatedly higher. It does not diagnose white coat hypertension and you can turn it off at any time.',
-      whiteCoatInfoMechanism: 'If several consecutive measurements are taken less than the configured interval apart, the application may exclude the first readings from the calculation when they are higher, thereby reducing the possible influence of initial anxiety.',
+      whiteCoatInfoMechanism: 'If several consecutive measurements are taken with no more than 5 minutes between each one, the application may exclude the first readings from the calculation when they are higher, thereby reducing the possible influence of initial anxiety. The interval is fixed and requires no configuration.',
       whiteCoatInfoResult: 'It calculates the average of the remaining readings and stores it as a single result. All original measurements remain available for review; if the filter is disabled, they are considered individual measurements again.',
-      intervalLabel: 'Maximum interval between consecutive readings:',
-      minutesText: '{mins} minutes',
       defaultArmTitle: 'Default arm used:',
       defaultArmLeft: 'Left Arm',
       defaultArmRight: 'Right Arm',
@@ -958,7 +954,7 @@ export type TranslationSchema = typeof translations.es;
 
 /**
  * Función auxiliar para obtener un texto traducido por clave con interpolación de parámetros.
- * Ejemplo: getTranslation('es', 'form.title') o getTranslation('es', 'whiteCoatBanner.activeDesc', { mins: 5 })
+ * Ejemplo: getTranslation('es', 'form.title') o getTranslation('es', 'whiteCoatBanner.activeDesc')
  */
 export function getTranslation(
   lang: LanguageOption,

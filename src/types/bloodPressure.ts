@@ -41,7 +41,7 @@ export type TreatmentTargetMode = 'guideline' | 'custom';
 export interface AppSettings {
   language: LanguageOption; // Idioma de la aplicación ('es' / 'en')
   enableWhiteCoatFilter: boolean; // Activar/desactivar filtro de bata blanca
-  whiteCoatIntervalMinutes: number; // Intervalo de tiempo máximo entre tomas (3, 5 o 10 min)
+  whiteCoatIntervalMinutes: 5; // Campo legado conservado para copias/API; el intervalo es siempre de 5 min
   defaultArm: ArmPosition; // Brazo predeterminado ('left' / 'right')
   preferredInputMode: InputMode; // Modo de introducción de datos ('keyboard' / 'wheel')
   guidelineProfile: GuidelineProfile;

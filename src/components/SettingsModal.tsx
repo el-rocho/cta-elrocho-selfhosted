@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { AppSettings, GuidelineProfile, PatientSex, LanguageOption } from '../types/bloodPressure';
-import { Settings, X, ShieldAlert, ShieldCheck, Clock, Armchair, RotateCcw, User, Trash2, Globe, BookOpenCheck, Target, Info, ExternalLink, Repeat2, Gauge } from 'lucide-react';
+import { Settings, X, ShieldAlert, ShieldCheck, Armchair, RotateCcw, User, Trash2, Globe, BookOpenCheck, Target, Info, ExternalLink, Repeat2, Gauge } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { calculateAge } from '../utils/pdfGenerator';
 import { FlagES, FlagGB } from './FlagIcons';
@@ -76,10 +76,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       </>
     );
   };
-
-  const currentWhiteCoatInterval = [3, 5, 10].includes(settings.whiteCoatIntervalMinutes)
-    ? settings.whiteCoatIntervalMinutes
-    : 5;
 
   const handleLanguageChange = (lang: LanguageOption) => {
     onUpdateSettings({ ...settings, language: lang });
@@ -177,14 +173,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onUpdateSettings({
       ...settings,
       enableWhiteCoatFilter: !settings.enableWhiteCoatFilter,
-      whiteCoatIntervalMinutes: currentWhiteCoatInterval,
-    });
-  };
-
-  const handleChangeInterval = (minutes: number) => {
-    onUpdateSettings({
-      ...settings,
-      whiteCoatIntervalMinutes: minutes,
+      whiteCoatIntervalMinutes: 5,
     });
   };
 
@@ -388,26 +377,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {settings.enableWhiteCoatFilter && (
-              <div className="settings-subcard">
-                <div className="field-label">
-                  <Clock size={16} />
-                  <span>{t('settings.intervalLabel')}</span>
-                </div>
-                <div className="chip-options-row">
-                  {[3, 5, 10].map((mins) => (
-                    <button
-                      key={mins}
-                      type="button"
-                      className={`chip-select ${currentWhiteCoatInterval === mins ? 'active' : ''}`}
-                      onClick={() => handleChangeInterval(mins)}
-                    >
-                      {t('settings.minutesText', { mins })}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Opción 4: Brazo por defecto */}

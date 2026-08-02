@@ -54,7 +54,7 @@ function normalizeSettings(value: unknown): AppSettings | null {
 
   if (candidate.language !== 'es' && candidate.language !== 'en') return null;
   if (typeof candidate.enableWhiteCoatFilter !== 'boolean') return null;
-  if (![3, 5, 10].includes(candidate.whiteCoatIntervalMinutes)) return null;
+  candidate.whiteCoatIntervalMinutes = 5;
   if (candidate.defaultArm !== 'left' && candidate.defaultArm !== 'right') return null;
   if (candidate.preferredInputMode !== 'keyboard' && candidate.preferredInputMode !== 'wheel') return null;
   if (!['esc-2024', 'aha-acc-2025', 'ish-2020'].includes(candidate.guidelineProfile)) return null;

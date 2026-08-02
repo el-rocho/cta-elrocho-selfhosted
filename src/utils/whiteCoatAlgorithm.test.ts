@@ -60,6 +60,13 @@ describe('initial sensitivity filter', () => {
     expect(sessions.every((session) => session.readings.length === 1)).toBe(true);
   });
 
+  it('groups readings up to five minutes apart and splits them above that limit', () => {
+    const input = [reading(0, 140, 85), reading(5, 138, 84), reading(11, 136, 82)];
+    const { sessions } = processReadingsIntoSessions(input, settings(true));
+
+    expect(sessions.map((session) => session.readings.length).sort((a, b) => a - b)).toEqual([1, 2]);
+  });
+
   it('keeps stable repeated readings in the effective average', () => {
     const stableReadings = [
       reading(0, 140, 85),
@@ -106,19 +113,19 @@ describe('initial sensitivity filter', () => {
     expect(sessions[0].readings.every((item) => item.sessionId === sessions[0].id)).toBe(true);
   });
 
-  it('generates unique session ids when stale ids are regrouped with another interval', () => {
+  it('ignores legacy interval settings and regroups stale ids with the fixed five-minute window', () => {
     const input = [
       { ...reading(0, 140, 85), sessionId: 'stale-shared-session' },
       { ...reading(4, 138, 84), sessionId: 'stale-shared-session' },
       { ...reading(8, 136, 82), sessionId: 'stale-shared-session' },
     ];
-    const regroupedSettings = { ...settings(true), whiteCoatIntervalMinutes: 3 };
+    const legacySettings = { ...settings(true), whiteCoatIntervalMinutes: 3 } as unknown as AppSettings;
 
-    const { sessions } = processReadingsIntoSessions(input, regroupedSettings);
+    const { sessions } = processReadingsIntoSessions(input, legacySettings);
     const ids = sessions.map((session) => session.id);
 
-    expect(sessions).toHaveLength(3);
-    expect(new Set(ids).size).toBe(3);
+    expect(sessions).toHaveLength(1);
+    expect(new Set(ids).size).toBe(1);
     expect(ids).not.toContain('stale-shared-session');
     expect(input.every((item) => item.sessionId === 'stale-shared-session')).toBe(true);
   });

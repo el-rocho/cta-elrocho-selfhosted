@@ -375,7 +375,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
             <span className="submit-reading-label">
               <span>{t('form.submit')}</span>
               {settings.enableWhiteCoatFilter && (
-                <small>{t('form.whiteCoatFilterActive', { minutes: settings.whiteCoatIntervalMinutes })}</small>
+                <small>{t('form.whiteCoatFilterActive')}</small>
               )}
             </span>
           </button>
