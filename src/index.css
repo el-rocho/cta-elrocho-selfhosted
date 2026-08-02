@@ -502,8 +502,9 @@ body {
 
 .input-group label {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: baseline;
+  gap: 4px;
   margin-bottom: 6px;
   font-weight: 600;
   font-size: 13px;
