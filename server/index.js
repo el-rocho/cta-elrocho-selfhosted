@@ -5,7 +5,13 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { getDB, DATA_DIR, BACKUPS_DIR } from './db.js';
+import { getDB, DATA_DIR, DB_PATH, BACKUPS_DIR } from './db.js';
+import { createHealthHandler } from './health.js';
+import {
+  createApiActivityMonitor,
+  createProcessCpuSampler,
+  createSystemStatusHandler,
+} from './systemStatus.js';
 import {
   hashPassword,
   comparePassword,
@@ -26,6 +32,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+const APP_VERSION = process.env.APP_VERSION || packageInfo.version || 'unknown';
+const apiActivityMonitor = createApiActivityMonitor();
+const sampleProcessCpu = createProcessCpuSampler();
 
 const LEGACY_DEMO_NOTES = {
   'Ejemplo verde: óptima sin medicación': 'Ejemplo: 115/75 mmHg, sin medicación',
@@ -58,6 +68,18 @@ app.use('/api', (_req, res, next) => {
   res.vary('Cookie');
   next();
 });
+app.use('/api', apiActivityMonitor.middleware);
+
+// Comprobación pública y mínima de disponibilidad del servidor y SQLite.
+app.get('/api/health', createHealthHandler(getDB));
+app.get('/api/admin/system-status', requireAdmin, createSystemStatusHandler({
+  getDatabase: getDB,
+  dataDir: DATA_DIR,
+  databasePath: DB_PATH,
+  appVersion: APP_VERSION,
+  apiActivity: apiActivityMonitor,
+  sampleCpu: sampleProcessCpu,
+}));
 
 // Tokens temporales para flujo 2FA durante el login (validez 5 minutos)
 const pendingTotpLogins = new Map();

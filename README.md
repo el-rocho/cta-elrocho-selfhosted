@@ -56,12 +56,13 @@ Escanea este código QR desde tu teléfono o tablet para acceder directamente al
   - **Soporte 2FA TOTP (RFC 6238)** con Código QR compatible con Google Authenticator, Aegis, Authy, Bitwarden, 1Password, etc.
   - **8 Códigos de rescate de emergencia** de un solo uso.
 - **Panel de Administración Familiar**: La primera persona registrada se convierte en Administrador, pudiendo dar de alta a familiares, restablecer claves o administrar permisos.
+- **Estado y Diagnóstico del Servidor**: Comprobación pública mínima de disponibilidad y panel administrativo con recursos, base de datos, actividad reciente y estado de las copias.
 - **Misma Experiencia de Diseño Cuidada**:
   - **Tres Referencias Clínicas**: Etiquetas y avisos según `ESC 2024`, `AHA/ACC 2025` o `ISH 2020`.
   - **Objetivos Terapéuticos**: Recomendados por guía y edad para usuarios medicados, con límites editables.
-  - **Evolución y Tendencias**: Comparación de medias diarias en cuatro semanas y gráficas de hasta un año.
+  - **Evolución y Tendencias**: Gráficas de hasta un año, estadísticas del periodo, presión de pulso, presión arterial media estimada, carga de presión y comparación de medias diarias en cuatro semanas.
   - **Filtro Opcional de Acomodación**: Calcula un único resultado efectivo por sesión y conserva el desglose completo.
-  - **Informes PDF**: Gráfico temporal, guía seleccionada y recuento de tomas efectivas y descartadas.
+  - **Informes PDF**: Estadísticas, métricas cardiovasculares, gráfico temporal, diagrama de dispersión PAS/PAD y recuento de tomas efectivas y descartadas.
   - **Exportación e Importación CSV**: Copias nativas con metadatos e importación transparente de MyTherapy.
   - **Interfaz Bilingüe (Español / Inglés)**: Adaptable a móviles, tabletas y ordenadores.
 

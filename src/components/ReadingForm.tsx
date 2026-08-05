@@ -439,12 +439,17 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
                   <Repeat2 size={22} className="legal-icon-block" />
                   <span>{t('form.measurementGuideAdviceTitle')}</span>
                 </div>
-                <p>
-                  {t('form.measurementGuideAdviceStart')}{' '}
-                  <strong>{t('form.measurementGuideAdviceStrong')}</strong>, {t('form.measurementGuideAdviceEnd')}{' '}
-                  ({t('form.measurementGuideAdviceAlternative')} <em>{t('form.measurementGuideFilter')}</em>{' '}
-                  {t('form.measurementGuideFilterEnd')})
-                </p>
+                <ul className="measurement-guide-list measurement-guide-advice-list">
+                  <li>{t('form.measurementGuideMorningEvening')}</li>
+                  <li>
+                    {t('form.measurementGuideAdviceStart')}{' '}
+                    <strong>{t('form.measurementGuideAdviceStrong')}</strong>, {t('form.measurementGuideAdviceEnd')}{' '}
+                    ({t('form.measurementGuideAdviceAlternative')} <em>{t('form.measurementGuideFilter')}</em>{' '}
+                    {t('form.measurementGuideFilterEnd')})
+                  </li>
+                  <li><strong>{t('form.measurementGuideFollowUpTitle')}</strong> {t('form.measurementGuideFollowUp')}</li>
+                  <li><strong>{t('form.measurementGuideAssessmentTitle')}</strong> {t('form.measurementGuideAssessment')}</li>
+                </ul>
               </div>
             </div>
           </div>

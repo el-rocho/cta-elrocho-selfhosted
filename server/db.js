@@ -198,4 +198,4 @@ export async function initSchema(db) {
   console.log('✓ Base de datos SQLite y tablas inicializadas correctamente en:', DB_PATH);
 }
 
-export { DATA_DIR, BACKUPS_DIR };
+export { DATA_DIR, DB_PATH, BACKUPS_DIR };

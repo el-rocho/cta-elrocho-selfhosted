@@ -23,6 +23,7 @@ import {
 } from './treatmentTarget';
 import { processReadingsIntoSessions } from './whiteCoatAlgorithm';
 import { analyzeBloodPressureTrends } from './trendAnalysis';
+import { calculateCardiovascularMetrics } from './cardiovascularMetrics';
 
 const profiles: GuidelineProfile[] = ['esc-2024', 'aha-acc-2025', 'ish-2020'];
 const languages: LanguageOption[] = ['es', 'en'];
@@ -157,8 +158,9 @@ function buildEditionCharacterization() {
   const trends = Object.fromEntries(
     profiles.map((profile) => [profile, analyzeBloodPressureTrends(trendSessions, profile)])
   );
+  const cardiovascularMetrics = calculateCardiovascularMetrics(trendSessions);
 
-  return { assessments, targets, filtered, trends };
+  return { assessments, targets, filtered, trends, cardiovascularMetrics };
 }
 
 describe('cross-edition clinical characterization contract', () => {

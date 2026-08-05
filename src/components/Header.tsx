@@ -2,6 +2,7 @@ import React from 'react';
 import { Server, Download, Moon, Sun, Settings, LogOut, Users } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { AppLogo } from './AppLogo';
+import { ServerHealthIndicator } from './ServerHealthIndicator';
 import type { AuthUser } from '../types/bloodPressure';
 
 interface HeaderProps {
@@ -24,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleDarkMode,
 }) => {
   const { t } = useLanguage();
-  const appVersion = import.meta.env.VITE_APP_VERSION || 'v1.6.0';
+  const appVersion = import.meta.env.VITE_APP_VERSION || 'v1.6.1-beta.1';
 
   return (
     <header className="app-header">
@@ -39,6 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
             <span>
               {currentUser ? `Hola, ${currentUser.name}` : t('header.badgePrivate')} &bull; {appVersion}
             </span>
+            <ServerHealthIndicator healthUrl="/api/health" isAdmin={currentUser?.role === 'admin'} />
           </div>
         </div>
       </div>

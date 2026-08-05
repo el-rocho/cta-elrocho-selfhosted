@@ -10,26 +10,30 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react';
-import type { BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
+import type { AppSettings, BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
 import { useLanguage } from '../i18n/useLanguage';
 import { getGuidelineName, getHealthCategoriesMap } from '../utils/healthClassification';
-import { analyzeBloodPressureTrends } from '../utils/trendAnalysis';
+import { calculateTrendCardStatistics } from '../utils/summaryStatistics';
+import { TreatmentTargetBadge } from './TreatmentTargetBadge';
 
 interface TrendInsightsProps {
   sessions: BloodPressureSession[];
   guidelineProfile: GuidelineProfile;
+  settings: AppSettings;
 }
 
 export const TrendInsights: React.FC<TrendInsightsProps> = ({
   sessions,
   guidelineProfile,
+  settings,
 }) => {
   const { t, language } = useLanguage();
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const analysis = useMemo(
-    () => analyzeBloodPressureTrends(sessions, guidelineProfile),
-    [sessions, guidelineProfile]
+  const trendSummary = useMemo(
+    () => calculateTrendCardStatistics(sessions, settings),
+    [sessions, settings]
   );
+  const analysis = trendSummary.analysis;
   const comparison = analysis.status === 'ready' && analysis.comparison?.coverage === 'supported'
     ? analysis.comparison
     : undefined;
@@ -48,6 +52,7 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
   const patternCategory = analysis.status === 'ready' && analysis.pattern
     ? getHealthCategoriesMap(language, guidelineProfile)[analysis.pattern.categoryKey]
     : undefined;
+  const dominantTargetAssessment = trendSummary.targetMode.value;
 
   return (
     <section className="card trend-insights-card" aria-labelledby="trend-insights-title">
@@ -96,6 +101,9 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
                 </span>
               ) : (
                 <span className="trend-pattern-none">{t('trendInsights.noPatternTitle')}</span>
+              )}
+              {dominantTargetAssessment && (
+                <TreatmentTargetBadge assessment={dominantTargetAssessment} compact />
               )}
             </div>
           )}

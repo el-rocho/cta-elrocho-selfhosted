@@ -73,6 +73,11 @@ export interface ExportReportOptions {
   patientBirthDate?: string;
   takesAntihypertensiveMedication?: boolean;
   guidelineProfile?: GuidelineProfile;
+  treatmentTargetMode?: TreatmentTargetMode;
+  customTargetSystolicMin?: number;
+  customTargetSystolicMax?: number;
+  customTargetDiastolicMin?: number;
+  customTargetDiastolicMax?: number;
   reportNotes?: string;
   hidePatientData?: boolean;
 }
