@@ -377,6 +377,7 @@ export const ReadingList: React.FC<ReadingListProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
 
   const filteredSessions = filterSessionsByDateRange(sessions, dateRange);
 
@@ -384,18 +385,34 @@ export const ReadingList: React.FC<ReadingListProps> = ({
     setExpandedSessionId(expandedSessionId === id ? null : id);
   };
 
+  const toggleHistory = () => {
+    if (isHistoryExpanded) setExpandedSessionId(null);
+    setIsHistoryExpanded(!isHistoryExpanded);
+  };
+
   const locale = language === 'en' ? 'en-US' : 'es-ES';
 
   return (
     <div className="card list-card">
-      <div className="list-header">
+      <div className={`list-header${isHistoryExpanded ? '' : ' collapsed'}`}>
         <div className="list-title-container">
           <div className="list-title">
             <History size={20} className="icon-history" />
             <h2>{t('list.title')}</h2>
             <span className="count-badge">{filteredSessions.length}</span>
+            <button
+              type="button"
+              className="history-toggle-button"
+              aria-expanded={isHistoryExpanded}
+              aria-controls="history-measurement-details"
+              aria-label={t(isHistoryExpanded ? 'list.collapseHistory' : 'list.expandHistory')}
+              title={t(isHistoryExpanded ? 'list.collapseHistory' : 'list.expandHistory')}
+              onClick={toggleHistory}
+            >
+              {isHistoryExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
           </div>
-          <p className="list-edit-hint">{t('list.editHint')}</p>
+          {isHistoryExpanded && <p className="list-edit-hint">{t('list.editHint')}</p>}
         </div>
 
         {/* Filtros de Rango de Fecha */}
@@ -431,27 +448,31 @@ export const ReadingList: React.FC<ReadingListProps> = ({
         </div>
       </div>
 
-      {filteredSessions.length === 0 ? (
-        <div className="empty-state">
-          <p>{t('list.emptyState')}</p>
-        </div>
-      ) : (
-        <div className="sessions-list">
-          {filteredSessions.map((session) => (
-            <SessionCardItem
-              key={session.id}
-              session={session}
-              isExpanded={expandedSessionId === session.id}
-              onToggleExpand={toggleExpand}
-              onEditReading={onEditReading}
-              onDeleteSession={onDeleteSession}
-              onDeleteSingleReading={onDeleteSingleReading}
-              t={t}
-              language={language}
-              locale={locale}
-              settings={settings}
-            />
-          ))}
+      {isHistoryExpanded && (
+        <div id="history-measurement-details">
+          {filteredSessions.length === 0 ? (
+            <div className="empty-state">
+              <p>{t('list.emptyState')}</p>
+            </div>
+          ) : (
+            <div className="sessions-list">
+              {filteredSessions.map((session) => (
+                <SessionCardItem
+                  key={session.id}
+                  session={session}
+                  isExpanded={expandedSessionId === session.id}
+                  onToggleExpand={toggleExpand}
+                  onEditReading={onEditReading}
+                  onDeleteSession={onDeleteSession}
+                  onDeleteSingleReading={onDeleteSingleReading}
+                  t={t}
+                  language={language}
+                  locale={locale}
+                  settings={settings}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

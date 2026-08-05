@@ -396,12 +396,13 @@ export function App() {
 
         <TrendChart
           sessions={sessions}
-          guidelineProfile={settings.guidelineProfile}
+          settings={settings}
         />
 
         <TrendInsights
           sessions={sessions}
           guidelineProfile={settings.guidelineProfile}
+          settings={settings}
         />
 
         <ReadingList

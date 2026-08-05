@@ -263,8 +263,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="settings-info-button"
                     onClick={() => setInfoTopic(profile)}
                     aria-label={`${t('settings.info')} — ${t(labelKey)}`}
+                    title={`${t('settings.info')} — ${t(labelKey)}`}
                   >
-                    <Info size={14} /> {t('settings.info')}
+                    <Info size={15} />
                   </button>
                 </div>
               ))}
@@ -363,8 +364,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   className="settings-info-button"
                   onClick={() => setInfoTopic('white-coat')}
+                  aria-label={`${t('settings.info')} — ${t('settings.whiteCoatTitle')}`}
+                  title={`${t('settings.info')} — ${t('settings.whiteCoatTitle')}`}
                 >
-                  <Info size={14} /> {t('settings.info')}
+                  <Info size={15} />
                 </button>
                 <label className="toggle-switch">
                   <input

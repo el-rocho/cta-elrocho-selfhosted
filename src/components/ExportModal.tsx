@@ -97,9 +97,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       patientSex: currentUser?.sex || settings.patientSex,
       patientAge: patientBirthDate ? calculateAge(patientBirthDate) : settings.patientAge,
       patientBirthDate,
-      takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
-      guidelineProfile: settings.guidelineProfile,
-      reportNotes: reportNotes.trim() || undefined,
+    takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
+    guidelineProfile: settings.guidelineProfile,
+    treatmentTargetMode: settings.treatmentTargetMode,
+    customTargetSystolicMin: settings.customTargetSystolicMin,
+    customTargetSystolicMax: settings.customTargetSystolicMax,
+    customTargetDiastolicMin: settings.customTargetDiastolicMin,
+    customTargetDiastolicMax: settings.customTargetDiastolicMax,
+    reportNotes: reportNotes.trim() || undefined,
       hidePatientData,
     };
   };
@@ -128,7 +133,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           try {
             await Share.share({
               title: result.filename,
-              text: language === 'en' ? 'Blood Pressure Clinical Report' : 'Informe Clínico de Tensión Arterial',
+              text: language === 'en' ? 'Home Blood Pressure Report' : 'Informe Tensión Arterial domiciliaria',
               url: result.fileUri,
               dialogTitle: language === 'en' ? 'Open or Share PDF' : 'Abrir o Compartir PDF',
             });

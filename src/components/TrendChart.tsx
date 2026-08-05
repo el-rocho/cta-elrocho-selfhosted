@@ -1,7 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import type { BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
-import { TrendingUp } from 'lucide-react';
+import type { AppSettings, BloodPressureSession } from '../types/bloodPressure';
+import { Activity, ChevronDown, Gauge, Info, Percent, TrendingUp, X } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
+import { getHealthCategoriesMap } from '../utils/healthClassification';
+import { calculatePeriodSummary } from '../utils/summaryStatistics';
+import { TreatmentTargetBadge } from './TreatmentTargetBadge';
 import {
   buildDailyTrendSeries,
   type DailyAverage,
@@ -10,7 +13,7 @@ import {
 
 interface TrendChartProps {
   sessions: BloodPressureSession[];
-  guidelineProfile: GuidelineProfile;
+  settings: AppSettings;
 }
 
 const RANGE_TRANSLATION_KEYS: Record<LongTermTrendRange, string> = {
@@ -20,19 +23,29 @@ const RANGE_TRANSLATION_KEYS: Record<LongTermTrendRange, string> = {
   '1year': 'trend.range1Year',
 };
 
+type MetricKey = 'systolic' | 'diastolic' | 'heartRate';
+
 export const TrendChart: React.FC<TrendChartProps> = ({
   sessions,
-  guidelineProfile,
+  settings,
 }) => {
   const { t, language } = useLanguage();
   const [range, setRange] = useState<LongTermTrendRange>('1month');
   const [activeTooltip, setActiveTooltip] = useState<DailyAverage | null>(null);
+  const [expandedMetric, setExpandedMetric] = useState<MetricKey | null>(null);
+  const [showCardiovascularInfo, setShowCardiovascularInfo] = useState(false);
   const series = useMemo(
     () => buildDailyTrendSeries(sessions, range),
     [sessions, range]
   );
   const dailyAverages = series.dailyAverages;
+  const periodSessions = dailyAverages.flatMap((day) => day.sessions);
+  const periodSummary = useMemo(
+    () => calculatePeriodSummary(periodSessions, settings),
+    [periodSessions, settings]
+  );
   const locale = language === 'en' ? 'en-US' : 'es-ES';
+  const categories = getHealthCategoriesMap(language, settings.guidelineProfile);
 
   const selectRange = (nextRange: LongTermTrendRange) => {
     setRange(nextRange);
@@ -71,8 +84,15 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     series.rangeEnd ?? dailyAverages[dailyAverages.length - 1].timestamp
   ).getTime();
   const timeSpan = Math.max(1, rangeEndTime - rangeStartTime);
-  const systolicThreshold = guidelineProfile === 'aha-acc-2025' ? 130 : 135;
-  const diastolicThreshold = guidelineProfile === 'aha-acc-2025' ? 80 : 85;
+  const systolicThreshold = settings.guidelineProfile === 'aha-acc-2025' ? 130 : 135;
+  const diastolicThreshold = settings.guidelineProfile === 'aha-acc-2025' ? 80 : 85;
+  const periodCategory = periodSummary.categoryMode.value
+    ? categories[periodSummary.categoryMode.value]
+    : undefined;
+  const { estimatedMap, pressureLoad, pulsePressure } = periodSummary.cardiovascular;
+  const modeFallback = (status: 'none' | 'tie') => t(
+    status === 'tie' ? 'trend.noPredominant' : 'trend.notAvailable'
+  );
 
   const getY = (value: number) => {
     const clamped = Math.max(minVal, Math.min(maxVal, value));
@@ -144,6 +164,75 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           )}
         </div>
       </div>
+
+      <div className="trend-summary-row">
+        {([
+          { key: 'systolic' as const, className: 'systolic', title: t('form.systolic'), unit: 'mmHg', values: periodSummary.systolic },
+          { key: 'diastolic' as const, className: 'diastolic', title: t('form.diastolic'), unit: 'mmHg', values: periodSummary.diastolic },
+          { key: 'heartRate' as const, className: 'pulse', title: t('form.heartRate'), unit: language === 'en' ? 'BPM' : 'ppm', values: periodSummary.heartRate },
+        ]).map((metric) => {
+          const expanded = expandedMetric === metric.key;
+          return (
+            <button
+              key={metric.key}
+              type="button"
+              className={`trend-summary-card metric-summary-card ${metric.className}${expanded ? ' expanded' : ''}`}
+              aria-expanded={expanded}
+              aria-label={`${metric.title}. ${t('trend.average')}: ${metric.values.average} ${metric.unit}. ${t(expanded ? 'trend.hideDetails' : 'trend.showDetails')}`}
+              onClick={() => setExpandedMetric(expanded ? null : metric.key)}
+            >
+              <div className="trend-average-value">
+                <strong>{metric.values.average}</strong>
+                <span>{metric.unit}</span>
+              </div>
+              <span className="trend-details-toggle">
+                {t(expanded ? 'trend.hideDetails' : 'trend.showDetails')}
+                <ChevronDown size={14} aria-hidden="true" />
+              </span>
+              {expanded && (
+                <div className="trend-stat-list">
+                  <span><small>{t('trend.maximum')}</small><strong>{metric.values.maximum}</strong></span>
+                  <span><small>{t('trend.minimum')}</small><strong>{metric.values.minimum}</strong></span>
+                  <span><small>{t('trend.percentileBelow')}</small><strong>{metric.values.percentile90}</strong></span>
+                  <span><small>{t('trend.percentileAbove')}</small><strong>{metric.values.percentile10}</strong></span>
+                </div>
+              )}
+            </button>
+          );
+        })}
+        <div className="trend-summary-card status-card" role="group" aria-label={t('trend.globalStatus')}>
+          <div className="trend-mode-block">
+            {periodCategory ? (
+              <span className="trend-pattern-category" style={{ backgroundColor: periodCategory.badgeBg, color: periodCategory.badgeText }}>{periodCategory.name}</span>
+            ) : <span className="trend-pattern-none">{modeFallback(periodSummary.categoryMode.status as 'none' | 'tie')}</span>}
+          </div>
+          <div className="trend-mode-block">
+            {periodSummary.targetMode.value ? (
+              <TreatmentTargetBadge assessment={periodSummary.targetMode.value} compact />
+            ) : <span className="trend-pattern-none">{modeFallback(periodSummary.targetMode.status as 'none' | 'tie')}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div className="cardiovascular-metrics-strip" role="group" aria-label={t('trend.complementaryMetrics')}>
+        <div className="cardiovascular-metric pressure-load-metric"><span><strong>{t('trend.pressureLoadTitle')}:</strong></span><span className="cardiovascular-metric-detail">{t('trend.homePressureLoad')}</span><strong>{pressureLoad.elevatedPercentage} %</strong><small>{t('trend.loadFraction', { elevated: pressureLoad.elevatedSessions, total: pressureLoad.totalSessions })}</small>{!pressureLoad.hasSufficientData && <em>{t('trend.insufficientMetricsData')}</em>}</div>
+        <div className="cardiovascular-metric map-metric"><span><strong>{t('trend.estimatedMap')}:</strong></span><strong>{estimatedMap.average} <small>mmHg</small></strong></div>
+        <div className="cardiovascular-metric pulse-pressure-metric"><span><strong>{t('trend.averagePulsePressure')}:</strong></span><strong>{pulsePressure.average} <small>mmHg</small></strong></div>
+        <button type="button" className="settings-info-button cardiovascular-info-button" onClick={() => setShowCardiovascularInfo(true)} aria-label={t('trend.metricsInfoTooltip')} title={t('trend.metricsInfoTooltip')}><Info size={16} /></button>
+      </div>
+      {showCardiovascularInfo && (
+        <div className="modal-overlay settings-info-overlay" onClick={() => setShowCardiovascularInfo(false)}>
+          <div className="modal-content settings-info-dialog cardiovascular-info-dialog" role="dialog" aria-modal="true" aria-labelledby="cardiovascular-info-title" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header"><div className="modal-title-group"><Info size={24} className="modal-icon text-blue legal-icon-main" /><h2 id="cardiovascular-info-title" className="settings-info-title">{t('trend.metricsInfoTitle')}</h2></div><button type="button" className="btn-close-modal" onClick={() => setShowCardiovascularInfo(false)} aria-label={t('settings.close')}><X size={22} /></button></div>
+            <div className="modal-body settings-info-body cardiovascular-info-body">
+              <div className="settings-subcard cardiovascular-info-card"><Percent size={22} className="cardiovascular-modal-icon pressure-load-icon" /><div><strong>{t('trend.pressureLoadTitle')}</strong><p>{t('trend.pressureLoadDescription')}</p><p><em>{t('trend.pressureLoadRequirement')}</em></p><div className="cardiovascular-current-values"><span>{t('trend.totalLoad')}: <strong>{pressureLoad.elevatedPercentage} %</strong></span><span>{t('trend.systolicLoad')}: <strong>{pressureLoad.systolicPercentage} %</strong></span><span>{t('trend.diastolicLoad')}: <strong>{pressureLoad.diastolicPercentage} %</strong></span><span>{t('trend.sessionsAndDays', { sessions: pressureLoad.totalSessions, days: pressureLoad.dayCount })}</span></div></div></div>
+              <div className="settings-subcard cardiovascular-info-card"><Gauge size={22} className="cardiovascular-modal-icon map-icon" /><div><strong>{t('trend.mapTitle')}</strong><p>{t('trend.mapDescription')}</p><p className="cardiovascular-formula">{t('trend.mapFormula')}</p><div className="cardiovascular-current-values"><span>{t('trend.average')}: <strong>{estimatedMap.average} mmHg</strong></span><span>{t('trend.minimum')}: <strong>{estimatedMap.minimum} mmHg</strong></span><span>{t('trend.maximum')}: <strong>{estimatedMap.maximum} mmHg</strong></span></div></div></div>
+              <div className="settings-subcard cardiovascular-info-card"><Activity size={22} className="cardiovascular-modal-icon pulse-pressure-icon" /><div><strong>{t('trend.pulsePressureTitle')}</strong><p>{t('trend.pulsePressureDescription')}</p><p className="cardiovascular-formula">{t('trend.pulsePressureFormula')}</p><p><em>{t('trend.pulsePressureContext')}</em></p><div className="cardiovascular-current-values"><span>{t('trend.average')}: <strong>{pulsePressure.average} mmHg</strong></span><span>{t('trend.includedSessions', { sessions: pressureLoad.totalSessions })}</span></div></div></div>
+              <div className="settings-info-note cardiovascular-info-note"><p><em>{t('trend.metricsCaution')}</em></p></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="chart-legend">
         <div className="legend-item">

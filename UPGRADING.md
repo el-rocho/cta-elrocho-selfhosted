@@ -6,6 +6,7 @@ Esta guía describe el procedimiento general para actualizar una instalación es
 
 1. Lee las [versiones publicadas en GitHub](https://github.com/el-rocho/cta-elrocho-selfhosted/releases).
 2. Consulta las notas específicas:
+   - [Actualización a 1.6.1-beta.1](docs/actualizaciones/v1.6.1-beta.1.md)
    - [Actualización a 1.6.0](docs/actualizaciones/v1.6.0.md)
 3. Avisa a los usuarios y evita que registren mediciones durante la copia.
 4. Conserva una copia consistente de todo el directorio `data`, no solo del archivo `.sqlite`.
