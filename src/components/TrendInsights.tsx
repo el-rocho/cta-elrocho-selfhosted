@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import type { AppSettings, BloodPressureSession, GuidelineProfile } from '../types/bloodPressure';
 import { useLanguage } from '../i18n/useLanguage';
-import { getGuidelineName, getHealthCategoriesMap } from '../utils/healthClassification';
+import { getHealthCategoriesMap } from '../utils/healthClassification';
 import { calculateTrendCardStatistics } from '../utils/summaryStatistics';
 import { TreatmentTargetBadge } from './TreatmentTargetBadge';
 
@@ -186,11 +186,8 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
                     <TreatmentTargetBadge
                       assessment={{
                         status: 'within',
-                        isTargetMet: true,
-                        systolicStatus: 'within',
-                        diastolicStatus: 'within',
                         targetLabel: '< 135/85',
-                        target: { source: 'guideline', sysMax: 135, diaMax: 85 },
+                        target: { source: 'guideline', profile: 'esc-2024', systolicMax: 135, diastolicMax: 85 },
                       }}
                       compact
                     />

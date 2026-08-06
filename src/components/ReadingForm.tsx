@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { PlusCircle, Activity, Armchair, FileText, Keyboard, Sliders, AlertCircle, Info, X, ClipboardCheck, Repeat2 } from 'lucide-react';
+import { PlusCircle, Activity, FileText, AlertCircle, Info, X, ClipboardCheck, Repeat2 } from 'lucide-react';
 import type { ArmPosition, AppSettings, BloodPressureReading, InputMode } from '../types/bloodPressure';
 import { getHealthAssessment } from '../utils/healthClassification';
 import {

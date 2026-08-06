@@ -3,7 +3,7 @@ import type { AppSettings, BloodPressureReading, BloodPressureSession, DateRange
 import { getConfirmedPulsePressureAlerts, getCulpritLabel, getHealthAssessment, getReadingMedicationContext, getSessionMedicationContext } from '../utils/healthClassification';
 import { getEffectiveSessionReadings } from '../utils/whiteCoatAlgorithm';
 import { filterSessionsByDateRange } from '../utils/exportCsv';
-import { History, Trash2, ChevronDown, ChevronUp, Clock, Armchair, ShieldCheck, AlertCircle } from 'lucide-react';
+import { History, ChevronDown, ChevronUp, Clock, Armchair, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { assessTreatmentTarget } from '../utils/treatmentTarget';
 import { TreatmentTargetBadge } from './TreatmentTargetBadge';
