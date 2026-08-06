@@ -434,6 +434,7 @@ export function App() {
           onUpdateInputMode={handleUpdateInputMode}
           onClose={() => setReadingToEdit(null)}
           onSaveReading={handleSaveReadingEdit}
+          onDeleteReading={handleDeleteSingleReading}
           readings={readings}
         />
 

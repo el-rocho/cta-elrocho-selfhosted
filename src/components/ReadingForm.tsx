@@ -169,49 +169,27 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
         </div>
 
         <div className="form-controls-wrapper">
-          {/* Selector Discreto de Brazo */}
-          <div className="arm-selector-container">
-            <label className="arm-label">
-              <Armchair size={14} />
-              <span>{t('form.armLabel')}</span>
-            </label>
-            <div className="arm-chips">
-              <button
-                type="button"
-                className={`arm-chip ${arm === 'left' ? 'active' : ''}`}
-                onClick={() => setArm('left')}
-              >
-                {t('form.armLeft')}
-              </button>
-              <button
-                type="button"
-                className={`arm-chip ${arm === 'right' ? 'active' : ''}`}
-                onClick={() => setArm('right')}
-              >
-                {t('form.armRight')}
-              </button>
-            </div>
-          </div>
+          {/* Selector de Brazo (Switch) */}
+          <button
+            type="button"
+            className="arm-chip active btn-switch"
+            onClick={() => setArm((prev) => (prev === 'left' ? 'right' : 'left'))}
+            title={t('form.armLabel')}
+          >
+            <span>{arm === 'left' ? t('form.armLeft') : t('form.armRight')}</span>
+            <Repeat2 size={14} className="switch-icon" />
+          </button>
 
-          {/* Conmutador discreto Modo Teclado vs Modo Ruleta Rápida */}
-          <div className="input-mode-toggle">
-            <button
-              type="button"
-              className={`btn-mode-chip ${activeInputMode === 'keyboard' ? 'active' : ''}`}
-              onClick={() => handleToggleInputMode('keyboard')}
-            >
-              <Keyboard size={18} />
-              <span>{t('form.modeKeyboard')}</span>
-            </button>
-            <button
-              type="button"
-              className={`btn-mode-chip ${activeInputMode === 'wheel' ? 'active' : ''}`}
-              onClick={() => handleToggleInputMode('wheel')}
-            >
-              <Sliders size={18} />
-              <span>{t('form.modeWheel')}</span>
-            </button>
-          </div>
+          {/* Conmutador Modo Entrada (Switch) */}
+          <button
+            type="button"
+            className="btn-mode-chip active btn-switch"
+            onClick={() => handleToggleInputMode(activeInputMode === 'keyboard' ? 'wheel' : 'keyboard')}
+            title="Cambiar modo de entrada"
+          >
+            <span>{activeInputMode === 'keyboard' ? t('form.modeKeyboard') : t('form.modeWheel')}</span>
+            <Repeat2 size={14} className="switch-icon" />
+          </button>
         </div>
       </div>
 

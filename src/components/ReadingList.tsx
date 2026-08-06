@@ -165,15 +165,17 @@ const SessionCardItem: React.FC<{
   isExpanded,
   onToggleExpand,
   onEditReading,
-  onDeleteSession,
   onDeleteSingleReading,
   t,
   language,
   locale,
   settings,
 }) => {
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const pressStartTimeRef = useRef<number>(0);
+  const isLongPressRef = useRef<boolean>(false);
 
   const primaryReading = session.readings[0];
   const effectiveReadings = getEffectiveSessionReadings(session);
@@ -203,8 +205,11 @@ const SessionCardItem: React.FC<{
 
   const startTimer = (x: number, y: number) => {
     touchStartPosRef.current = { x, y };
+    pressStartTimeRef.current = Date.now();
+    isLongPressRef.current = false;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
       onEditReading(primaryReading);
     }, 450);
   };
@@ -213,6 +218,16 @@ const SessionCardItem: React.FC<{
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
+    }
+  };
+
+  const handlePointerUp = () => {
+    cancelTimer();
+    if (!isLongPressRef.current) {
+      const duration = Date.now() - pressStartTimeRef.current;
+      if (duration < 380) {
+        setIsDetailsExpanded((prev) => !prev);
+      }
     }
   };
 
@@ -228,89 +243,88 @@ const SessionCardItem: React.FC<{
       const dy = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
       if (dx > 10 || dy > 10) {
         cancelTimer();
+        isLongPressRef.current = true;
       }
     }
   };
 
   return (
     <div
-      className={`session-item ${isMulti ? 'session-multi' : ''}`}
+      className={`session-item ${isMulti ? 'session-multi' : ''} ${isDetailsExpanded ? 'session-details-expanded' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
-      onTouchEnd={cancelTimer}
+      onTouchEnd={handlePointerUp}
       onTouchCancel={cancelTimer}
       onMouseDown={(e) => { if (e.button === 0) startTimer(e.clientX, e.clientY); }}
-      onMouseUp={cancelTimer}
+      onMouseUp={handlePointerUp}
       onMouseLeave={cancelTimer}
       onDoubleClick={() => { cancelTimer(); onEditReading(primaryReading); }}
       onContextMenu={(e) => { e.preventDefault(); cancelTimer(); onEditReading(primaryReading); }}
-      style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
+      style={{ userSelect: 'none', WebkitUserSelect: 'none', cursor: 'pointer' }}
     >
       <div className="session-main-row">
-        <div className="session-block session-primary-block">
-          <div className="session-primary-content">
-            <div className="session-time-col">
-              <div className="session-date">{dateStr}</div>
-              <div className="session-time"><Clock size={12} /> {timeStr}</div>
-            </div>
-            <div className="session-metrics-col">
-              <div className="bp-reading-display">
-                <span className="sys-num">{session.averageSystolic}</span><span className="slash">/</span><span className="dia-num">{session.averageDiastolic}</span><span className="slash">/</span><span className="pulse-num">{session.averageHeartRate}</span>
-              </div>
+        {/* Fila principal unexpanded: Fecha/Hora - Datos - Nota - Etiqueta Gris */}
+        <div className="session-unexpanded-row">
+          <div className="session-time-col">
+            <div className="session-date">{dateStr}</div>
+            <div className="session-time"><Clock size={12} /> {timeStr}</div>
+          </div>
+
+          <div className="session-metrics-col">
+            <div className="bp-reading-display">
+              <span className="sys-num">{session.averageSystolic}</span><span className="slash">/</span><span className="dia-num">{session.averageDiastolic}</span><span className="slash">/</span><span className="pulse-num">{session.averageHeartRate}</span>
             </div>
           </div>
-          {isMulti && (
-            <button type="button" onClick={(e) => { e.stopPropagation(); onToggleExpand(session.id); }} className="session-readings-toggle" title={isExpanded ? t('list.collapseReadings') : t('list.expandReadings')}>
-              <ShieldCheck size={12} /><span>{t('list.readingsCount', { count: session.readings.length })}</span>{isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-            </button>
-          )}
-        </div>
 
-        <div className="session-block session-guideline-block">
-          <span
-            className="category-pill"
-            style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
-            title={category.description}
-          >
-            <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
-            {category.name}
-          </span>
-          {(culprit !== 'none' || healthAlerts.length > 0 || safetyAlerts.length > 0) && (
-            <div className="session-info-lines">
-              {culprit !== 'none' && <span className="session-info-line">{getCulpritLabel(culprit, category.direction, language)}</span>}
-              {healthAlerts.map((alert) => (
-                <span key={alert.key} className="session-info-line" title={alert.description}>{alert.name}</span>
-              ))}
-              {safetyAlerts.map((alert) => (
-                <span key={alert.key} className="session-info-line session-safety-text" role="alert"><strong>{alert.name}</strong><span>{alert.description}</span></span>
-              ))}
+          {session.notes && (
+            <div className="session-notes-col">
+              <span className="notes-preview">"{session.notes}"</span>
+            </div>
+          )}
+
+          {isMulti && (
+            <div className="session-multi-toggle-block" onClick={(e) => e.stopPropagation()}>
+              <button type="button" onClick={(e) => { e.stopPropagation(); onToggleExpand(session.id); }} className="session-readings-toggle" title={isExpanded ? t('list.collapseReadings') : t('list.expandReadings')}>
+                <ShieldCheck size={12} /><span>{session.readings.length}</span>{isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </button>
             </div>
           )}
         </div>
 
-        {treatmentTargetAssessment && <div className="session-block session-target-block"><TreatmentTargetBadge assessment={treatmentTargetAssessment} /></div>}
+        {/* Fila secundaria desplegable mediante clic corto (detalles extendidos) */}
+        {isDetailsExpanded && (
+          <div className="session-details-expanded-row">
+            <div className="session-block session-guideline-block">
+              <span
+                className="category-pill"
+                style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
+                title={category.description}
+              >
+                <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
+                {category.name}
+              </span>
+              {(culprit !== 'none' || healthAlerts.length > 0 || safetyAlerts.length > 0) && (
+                <div className="session-info-lines">
+                  {culprit !== 'none' && <span className="session-info-line">{getCulpritLabel(culprit, category.direction, language)}</span>}
+                  {healthAlerts.map((alert) => (
+                    <span key={alert.key} className="session-info-line" title={alert.description}>{alert.name}</span>
+                  ))}
+                  {safetyAlerts.map((alert) => (
+                    <span key={alert.key} className="session-info-line session-safety-text" role="alert"><strong>{alert.name}</strong><span>{alert.description}</span></span>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        <div className="session-block session-details-col">
-          <span className="arm-badge">
-            <Armchair size={12} /> {t('list.arm')}: {session.arm === 'left' ? t('form.armLeft') : t('form.armRight')}
-          </span>
-          {session.notes && <span className="notes-preview">"{session.notes}"</span>}
-        </div>
+            {treatmentTargetAssessment && <div className="session-block session-target-block"><TreatmentTargetBadge assessment={treatmentTargetAssessment} /></div>}
 
-        <div className="session-block session-actions-col" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteSession(session);
-            }}
-            className="btn-icon-delete"
-            title={t('list.deleteSession')}
-            aria-label={t('list.deleteSession')}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
+            <div className="session-block session-details-col">
+              <span className="arm-badge">
+                <Armchair size={12} /> {t('list.arm')}: {session.arm === 'left' ? t('form.armLeft') : t('form.armRight')}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Desglose desplegable de tomas de la sesión de bata blanca */}

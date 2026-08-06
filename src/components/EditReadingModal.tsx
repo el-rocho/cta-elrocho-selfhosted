@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { BloodPressureReading, AppSettings, InputMode } from '../types/bloodPressure';
-import { Edit3, X, Save, CalendarDays, AlertCircle, Keyboard, Sliders } from 'lucide-react';
+import { Edit3, X, Save, CalendarDays, AlertCircle, Keyboard, Sliders, Trash2 } from 'lucide-react';
 import { WheelPicker } from './WheelPicker';
 import { useLanguage } from '../i18n/useLanguage';
 import { getReadingValidationError, hasSimilarConfirmedReadingToday, needsPulsePressureConfirmation, type ReadingValues } from '../utils/readingValidation';
@@ -44,6 +44,7 @@ interface EditReadingModalProps {
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
   onSaveReading: (updatedReading: BloodPressureReading) => void;
+  onDeleteReading?: (readingId: string) => void;
   readings: BloodPressureReading[];
 }
 
@@ -54,6 +55,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
   settings,
   onUpdateInputMode,
   onSaveReading,
+  onDeleteReading,
   readings,
 }) => {
   const { t, language } = useLanguage();
@@ -67,6 +69,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
   const [readingTime, setReadingTime] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingReading, setPendingReading] = useState<BloodPressureReading | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
@@ -81,6 +84,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
       setReadingTime(formatTimeInputValue(timestamp));
       setErrorMsg(null);
       setPendingReading(null);
+      setShowDeleteConfirm(false);
     }
   }, [reading]);
 
@@ -339,16 +343,58 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
               </div>
             </div>
           )}
-          <div className="modal-actions-row">
-            <button type="button" className="btn-secondary-large" onClick={onClose}>
-              <X size={20} />
-              <span>{t('editModal.cancel')}</span>
-            </button>
-            <button type="submit" className="btn-primary-large">
-              <Save size={20} />
-              <span>{t('editModal.save')}</span>
-            </button>
-          </div>
+          {showDeleteConfirm ? (
+            <div className="pulse-pressure-confirmation modal-delete-confirmation" role="alert">
+              <div>
+                <strong>{t('editModal.deleteConfirm')}</strong>
+              </div>
+              <div className="pulse-pressure-actions">
+                <button
+                  type="button"
+                  className="btn-cancel-warning"
+                  onClick={() => setShowDeleteConfirm(false)}
+                >
+                  {t('editModal.cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="btn-danger-confirm"
+                  onClick={() => {
+                    if (reading && onDeleteReading) {
+                      onDeleteReading(reading.id);
+                      onClose();
+                    }
+                  }}
+                >
+                  {t('editModal.confirmDeleteBtn')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="modal-actions-row">
+              {onDeleteReading && (
+                <button
+                  type="button"
+                  className="btn-delete-modal"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  title={t('editModal.delete')}
+                >
+                  <Trash2 size={18} />
+                  <span>{t('editModal.delete')}</span>
+                </button>
+              )}
+              <div className="modal-actions-right">
+                <button type="button" className="btn-secondary-large" onClick={onClose}>
+                  <X size={20} />
+                  <span>{t('editModal.cancel')}</span>
+                </button>
+                <button type="submit" className="btn-primary-large">
+                  <Save size={20} />
+                  <span>{t('editModal.save')}</span>
+                </button>
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </div>

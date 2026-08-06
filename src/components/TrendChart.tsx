@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import type { AppSettings, BloodPressureSession } from '../types/bloodPressure';
 import { Activity, ChevronDown, Gauge, Info, Percent, TrendingUp, X } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
-import { getHealthCategoriesMap } from '../utils/healthClassification';
+import { getGuidelineName, getHealthCategoriesMap } from '../utils/healthClassification';
 import { calculatePeriodSummary } from '../utils/summaryStatistics';
 import { TreatmentTargetBadge } from './TreatmentTargetBadge';
 import {
@@ -147,6 +147,17 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         <div className="chart-title">
           <TrendingUp size={24} className="icon-chart" />
           <h2>{t('trend.title')}</h2>
+          <span className="trend-guideline-badge">
+            {getGuidelineName(settings.guidelineProfile, language)}
+          </span>
+          <span className="readings-count-badge">
+            {t(
+              periodSessions.length === 1
+                ? 'trend.readingsCountOne'
+                : 'trend.readingsCountOther',
+              { count: periodSessions.length },
+            )}
+          </span>
         </div>
 
         <div className="filter-chips">
@@ -214,21 +225,110 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         </div>
       </div>
 
-      <div className="cardiovascular-metrics-strip" role="group" aria-label={t('trend.complementaryMetrics')}>
-        <div className="cardiovascular-metric pressure-load-metric"><span><strong>{t('trend.pressureLoadTitle')}:</strong></span><span className="cardiovascular-metric-detail">{t('trend.homePressureLoad')}</span><strong>{pressureLoad.elevatedPercentage} %</strong><small>{t('trend.loadFraction', { elevated: pressureLoad.elevatedSessions, total: pressureLoad.totalSessions })}</small>{!pressureLoad.hasSufficientData && <em>{t('trend.insufficientMetricsData')}</em>}</div>
-        <div className="cardiovascular-metric map-metric"><span><strong>{t('trend.estimatedMap')}:</strong></span><strong>{estimatedMap.average} <small>mmHg</small></strong></div>
-        <div className="cardiovascular-metric pulse-pressure-metric"><span><strong>{t('trend.averagePulsePressure')}:</strong></span><strong>{pulsePressure.average} <small>mmHg</small></strong></div>
-        <button type="button" className="settings-info-button cardiovascular-info-button" onClick={() => setShowCardiovascularInfo(true)} aria-label={t('trend.metricsInfoTooltip')} title={t('trend.metricsInfoTooltip')}><Info size={16} /></button>
-      </div>
+      {expandedMetric !== null && (
+        <div className="cardiovascular-metrics-strip" role="group" aria-label={t('trend.complementaryMetrics')}>
+          <div className="cardiovascular-metric pressure-load-metric">
+            <span className="metric-name"><strong>{t('trend.pressureLoadTitle')}:</strong></span>
+            <span className="metric-val">
+              <strong>
+                {pressureLoad.elevatedPercentage} %
+                {!pressureLoad.hasSufficientData && (
+                  <em className="insufficient-tag"> ({t('trend.insufficientMetricsData')})</em>
+                )}
+              </strong>
+            </span>
+          </div>
+          <div className="cardiovascular-metric map-metric">
+            <span className="metric-name"><strong>{t('trend.estimatedMap')}:</strong></span>
+            <span className="metric-val"><strong>{estimatedMap.average} mmHg</strong></span>
+          </div>
+          <div className="cardiovascular-metric pulse-pressure-metric">
+            <span className="metric-name"><strong>{t('trend.averagePulsePressure')}:</strong></span>
+            <div className="pulse-pressure-value-group">
+              <span className="metric-val"><strong>{pulsePressure.average} mmHg</strong></span>
+              <button
+                type="button"
+                className="settings-info-button cardiovascular-info-button"
+                onClick={() => setShowCardiovascularInfo(true)}
+                aria-label={t('trend.metricsInfoTooltip')}
+                title={t('trend.metricsInfoTooltip')}
+              >
+                <Info size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showCardiovascularInfo && (
         <div className="modal-overlay settings-info-overlay" onClick={() => setShowCardiovascularInfo(false)}>
-          <div className="modal-content settings-info-dialog cardiovascular-info-dialog" role="dialog" aria-modal="true" aria-labelledby="cardiovascular-info-title" onClick={(event) => event.stopPropagation()}>
-            <div className="modal-header"><div className="modal-title-group"><Info size={24} className="modal-icon text-blue legal-icon-main" /><h2 id="cardiovascular-info-title" className="settings-info-title">{t('trend.metricsInfoTitle')}</h2></div><button type="button" className="btn-close-modal" onClick={() => setShowCardiovascularInfo(false)} aria-label={t('settings.close')}><X size={22} /></button></div>
+          <div
+            className="modal-content settings-info-dialog cardiovascular-info-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cardiovascular-info-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div className="modal-title-group">
+                <Info size={24} className="modal-icon text-blue legal-icon-main" />
+                <h2 id="cardiovascular-info-title" className="settings-info-title">
+                  {t('trend.metricsInfoTitle')}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="btn-close-modal"
+                onClick={() => setShowCardiovascularInfo(false)}
+                aria-label={t('settings.close')}
+              >
+                <X size={22} />
+              </button>
+            </div>
             <div className="modal-body settings-info-body cardiovascular-info-body">
-              <div className="settings-subcard cardiovascular-info-card"><Percent size={22} className="cardiovascular-modal-icon pressure-load-icon" /><div><strong>{t('trend.pressureLoadTitle')}</strong><p>{t('trend.pressureLoadDescription')}</p><p><em>{t('trend.pressureLoadRequirement')}</em></p><div className="cardiovascular-current-values"><span>{t('trend.totalLoad')}: <strong>{pressureLoad.elevatedPercentage} %</strong></span><span>{t('trend.systolicLoad')}: <strong>{pressureLoad.systolicPercentage} %</strong></span><span>{t('trend.diastolicLoad')}: <strong>{pressureLoad.diastolicPercentage} %</strong></span><span>{t('trend.sessionsAndDays', { sessions: pressureLoad.totalSessions, days: pressureLoad.dayCount })}</span></div></div></div>
-              <div className="settings-subcard cardiovascular-info-card"><Gauge size={22} className="cardiovascular-modal-icon map-icon" /><div><strong>{t('trend.mapTitle')}</strong><p>{t('trend.mapDescription')}</p><p className="cardiovascular-formula">{t('trend.mapFormula')}</p><div className="cardiovascular-current-values"><span>{t('trend.average')}: <strong>{estimatedMap.average} mmHg</strong></span><span>{t('trend.minimum')}: <strong>{estimatedMap.minimum} mmHg</strong></span><span>{t('trend.maximum')}: <strong>{estimatedMap.maximum} mmHg</strong></span></div></div></div>
-              <div className="settings-subcard cardiovascular-info-card"><Activity size={22} className="cardiovascular-modal-icon pulse-pressure-icon" /><div><strong>{t('trend.pulsePressureTitle')}</strong><p>{t('trend.pulsePressureDescription')}</p><p className="cardiovascular-formula">{t('trend.pulsePressureFormula')}</p><p><em>{t('trend.pulsePressureContext')}</em></p><div className="cardiovascular-current-values"><span>{t('trend.average')}: <strong>{pulsePressure.average} mmHg</strong></span><span>{t('trend.includedSessions', { sessions: pressureLoad.totalSessions })}</span></div></div></div>
-              <div className="settings-info-note cardiovascular-info-note"><p><em>{t('trend.metricsCaution')}</em></p></div>
+              <div className="settings-subcard cardiovascular-info-card">
+                <Percent size={22} className="cardiovascular-modal-icon pressure-load-icon" />
+                <div>
+                  <strong>{t('trend.pressureLoadTitle')}</strong>
+                  <p>{t('trend.pressureLoadDescription')}</p>
+                  <p><em>{t('trend.pressureLoadRequirement')}</em></p>
+                  <div className="cardiovascular-current-values">
+                    <span>{t('trend.totalLoad')}: <strong>{pressureLoad.elevatedPercentage} %</strong></span>
+                    <span>{t('trend.systolicLoad')}: <strong>{pressureLoad.systolicPercentage} %</strong></span>
+                    <span>{t('trend.diastolicLoad')}: <strong>{pressureLoad.diastolicPercentage} %</strong></span>
+                    <span>{t('trend.sessionsAndDays', { sessions: pressureLoad.totalSessions, days: pressureLoad.dayCount })}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="settings-subcard cardiovascular-info-card">
+                <Gauge size={22} className="cardiovascular-modal-icon map-icon" />
+                <div>
+                  <strong>{t('trend.mapTitle')}</strong>
+                  <p>{t('trend.mapDescription')}</p>
+                  <p className="cardiovascular-formula">{t('trend.mapFormula')}</p>
+                  <div className="cardiovascular-current-values">
+                    <span>{t('trend.average')}: <strong>{estimatedMap.average} mmHg</strong></span>
+                    <span>{t('trend.minimum')}: <strong>{estimatedMap.minimum} mmHg</strong></span>
+                    <span>{t('trend.maximum')}: <strong>{estimatedMap.maximum} mmHg</strong></span>
+                  </div>
+                </div>
+              </div>
+              <div className="settings-subcard cardiovascular-info-card">
+                <Activity size={22} className="cardiovascular-modal-icon pulse-pressure-icon" />
+                <div>
+                  <strong>{t('trend.pulsePressureTitle')}</strong>
+                  <p>{t('trend.pulsePressureDescription')}</p>
+                  <p className="cardiovascular-formula">{t('trend.pulsePressureFormula')}</p>
+                  <p><em>{t('trend.pulsePressureContext')}</em></p>
+                  <div className="cardiovascular-current-values">
+                    <span>{t('trend.average')}: <strong>{pulsePressure.average} mmHg</strong></span>
+                    <span>{t('trend.includedSessions', { sessions: pressureLoad.totalSessions })}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="settings-info-note cardiovascular-info-note">
+                <p><em>{t('trend.metricsCaution')}</em></p>
+              </div>
             </div>
           </div>
         </div>
@@ -247,14 +347,6 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           <span className="legend-dot pulse-dot"></span>
           <span>{t('form.heartRate')}</span>
         </div>
-        <span className="daily-average-caption">
-          {t(
-            dailyAverages.length === 1
-              ? 'trend.dailyAveragesCountOne'
-              : 'trend.dailyAveragesCountOther',
-            { days: dailyAverages.length },
-          )}
-        </span>
       </div>
 
       <div className="svg-container">

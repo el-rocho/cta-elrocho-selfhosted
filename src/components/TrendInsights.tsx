@@ -67,13 +67,11 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
           {comparison ? (
             <div className="trend-month-values">
               <span className="trend-month-value systolic">
-                <span>{t('form.systolic')}</span>
                 <SystolicArrow size={15} aria-hidden="true" />
                 <strong>{Math.abs(systolicDifference)}</strong>
                 <small>mmHg</small>
               </span>
               <span className="trend-month-value diastolic">
-                <span>{t('form.diastolic')}</span>
                 <DiastolicArrow size={15} aria-hidden="true" />
                 <strong>{Math.abs(diastolicDifference)}</strong>
                 <small>mmHg</small>
@@ -88,7 +86,6 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
         <div className="trend-insights-block trend-insights-pattern-block">
           {analysis.status === 'ready' && (
             <div className="trend-pattern-row">
-              <strong>{t('trendInsights.patternTitle')}</strong>
               {patternCategory ? (
                 <span
                   className="trend-pattern-category"
@@ -109,9 +106,6 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
           )}
         </div>
         <div className="trend-insights-block trend-insights-meta-block">
-          <span className="trend-guideline-badge">
-            {getGuidelineName(guidelineProfile, language)}
-          </span>
           <button
             type="button"
             className="settings-info-button trend-info-button"
@@ -157,6 +151,18 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
                 <div>
                   <strong>{t('trendInsights.infoTrendTitle')}</strong>
                   <p>{t('trendInsights.infoTrendText')}</p>
+                  <div className="trend-badge-examples">
+                    <span className="trend-month-value systolic">
+                      <ArrowUp size={14} aria-hidden="true" />
+                      <strong>4</strong>
+                      <small>mmHg</small>
+                    </span>
+                    <span className="trend-month-value diastolic">
+                      <ArrowDown size={14} aria-hidden="true" />
+                      <strong>2</strong>
+                      <small>mmHg</small>
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="settings-subcard measurement-guide-advice-card trend-info-card">
@@ -164,11 +170,36 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
                 <div>
                   <strong>{t('trendInsights.infoPatternTitle')}</strong>
                   <p>{t('trendInsights.infoPatternText')}</p>
+                  <div className="trend-badge-examples">
+                    <span
+                      className="trend-pattern-category"
+                      style={{
+                        backgroundColor: 'rgba(16, 185, 129, 0.14)',
+                        color: '#047857',
+                      }}
+                    >
+                      Normotensión
+                    </span>
+                    <span className="trend-pattern-none">
+                      {t('trendInsights.noPatternTitle')}
+                    </span>
+                    <TreatmentTargetBadge
+                      assessment={{
+                        status: 'within',
+                        isTargetMet: true,
+                        systolicStatus: 'within',
+                        diastolicStatus: 'within',
+                        targetLabel: '< 135/85',
+                        target: { source: 'guideline', sysMax: 135, diaMax: 85 },
+                      }}
+                      compact
+                    />
+                  </div>
                 </div>
               </div>
               <div className="settings-info-note trend-info-note">
-                <p>{t('trendInsights.infoDailyAverages')}</p>
-                <p>{t('trendInsights.infoCaution')}</p>
+                <p><em>{t('trendInsights.infoDailyAverages')}</em></p>
+                <p><em>{t('trendInsights.infoCaution')}</em></p>
               </div>
             </div>
           </div>

@@ -59,7 +59,7 @@ export const translations = {
 
     // Formulario de lectura
     form: {
-      title: 'Nueva Lectura de Tensión',
+      title: 'Nueva lectura',
       modeKeyboard: 'Teclado',
       modeWheel: 'Rueda',
       systolic: 'Sistólica',
@@ -127,6 +127,8 @@ export const translations = {
       dailyAverage: 'Media diaria',
       dailyAveragesCountOne: 'Valores de la media diaria de {days} día',
       dailyAveragesCountOther: 'Valores de las medias diarias de {days} días',
+      readingsCountOne: '{count} medida',
+      readingsCountOther: '{count} medidas',
       sessionsOnDay: '{count} sesión(es) efectiva(s) este día',
       avgSystolic: 'Promedio Sistólica',
       avgDiastolic: 'Promedio Diastólica',
@@ -227,12 +229,16 @@ export const translations = {
       noPatternTitle: 'Sin patrón predominante',
       infoTooltip: 'Cómo interpretar la tendencia y el patrón',
       infoTitle: 'Tendencia y patrón',
-      infoTrendTitle: 'Tendencia del último mes',
-      infoTrendText: 'Compara la media de las medias diarias de los primeros 14 días con la de los últimos 14 días de la ventana de cuatro semanas. La flecha indica si cada valor ha subido, bajado o permanecido igual, y la cifra muestra la diferencia absoluta en mmHg. Se requieren al menos dos días con datos en cada mitad.',
+      infoTrendTitle: 'Tendencia último mes',
+      infoTrendText: 'Compara la media de los primeros 14 días con la de los últimos 14 días. La flecha indica si el valor ha subido, bajado o permanecido igual, y la cifra muestra la cantidad en mmHg. Se requieren al menos dos días con datos en cada mitad.',
+      infoTrendDesc1: 'Subida de 4 mmHg respecto a los primeros 14 días.',
+      infoTrendDesc2: 'Bajada de 2 mmHg respecto a los primeros 14 días.',
       infoPatternTitle: 'Patrón',
-      infoPatternText: 'Clasifica cada media diaria según la guía seleccionada y muestra la categoría que más se repite. Se necesitan al menos tres medias diarias; si varias categorías empatan como las más frecuentes, se muestra «Sin patrón predominante». Si hay tratamiento antihipertensivo, también muestra el estado de objetivo más repetido entre las sesiones del periodo; si hay empate, no se muestra.',
-      infoDailyAverages: 'Si hay varias sesiones en un mismo día, primero se combinan en una única media diaria.',
-      infoCaution: 'La tendencia y el patrón intentan resumir los datos del último mes pero en ningún caso constituyen un diagnóstico.',
+      infoPatternText: 'Clasifica cada media diaria según la guía configurada y muestra la categoría que más se repite. Se necesitan al menos tres días con datos; si varias categorías empatan como las más repetidas, se muestra «Sin patrón predominante». Si hay tratamiento antihipertensivo, también muestra el estado de objetivo más repetido entre las sesiones del periodo; si hay empate, no se muestra.',
+      infoPatternDesc1: 'La categoría que más días se ha repetido durante los últimos 30 días.',
+      infoPatternDesc2: 'Se muestra cuando dos o más categorías empatan en número de días.',
+      infoDailyAverages: 'Cuando hay varias sesiones en un mismo día, primero se calcula una única media diaria.',
+      infoCaution: 'Esta información intenta resumir los datos del último mes, pero en ningún caso constituye un diagnóstico.',
     },
 
     healthAlerts: {
@@ -314,6 +320,9 @@ export const translations = {
       notesPlaceholder: 'Añadir o corregir observaciones...',
       save: 'Guardar Cambios',
       cancel: 'Cancelar',
+      delete: 'Eliminar',
+      deleteConfirm: '¿Estás seguro de que deseas eliminar esta medición?',
+      confirmDeleteBtn: 'Sí, eliminar',
     },
 
     treatmentTarget: {
@@ -619,7 +628,7 @@ export const translations = {
 
     // Reading Form
     form: {
-      title: 'New Pressure Reading',
+      title: 'New Reading',
       modeKeyboard: 'Keyboard',
       modeWheel: 'Wheel',
       systolic: 'Systolic',
@@ -687,6 +696,8 @@ export const translations = {
       dailyAverage: 'Daily average',
       dailyAveragesCountOne: 'Daily average value for {days} day',
       dailyAveragesCountOther: 'Daily average values for {days} days',
+      readingsCountOne: '{count} reading',
+      readingsCountOther: '{count} readings',
       sessionsOnDay: '{count} effective session(s) on this day',
       avgSystolic: 'Avg Systolic',
       avgDiastolic: 'Avg Diastolic',
@@ -788,11 +799,15 @@ export const translations = {
       infoTooltip: 'How to interpret the trend and pattern',
       infoTitle: 'Trend and pattern',
       infoTrendTitle: 'Trend over the last month',
-      infoTrendText: 'It compares the average of the daily averages from the first 14 days with that from the last 14 days of the four-week window. The arrow indicates whether each value has risen, fallen, or remained unchanged, and the figure shows the absolute difference in mmHg. At least two days with data are required in each half.',
+      infoTrendText: 'Compares the average of the first 14 days with that of the last 14 days. The arrow indicates whether the value has risen, fallen, or remained equal, and the figure shows the amount in mmHg. At least two days with data in each half are required.',
+      infoTrendDesc1: 'Increase of 4 mmHg compared to the first 14 days.',
+      infoTrendDesc2: 'Decrease of 2 mmHg compared to the first 14 days.',
       infoPatternTitle: 'Pattern',
-      infoPatternText: 'It classifies each daily average according to the selected guideline and displays the category that occurs most often. At least three daily averages are required; if several categories tie for the highest frequency, “No predominant pattern” is displayed. When antihypertensive treatment is recorded, it also shows the most frequent target status among the sessions in the period; ties are not shown.',
-      infoDailyAverages: 'If there are several sessions on the same day, they are first combined into a single daily average.',
-      infoCaution: 'The trend and pattern attempt to summarize the data from the last month but do not constitute a diagnosis under any circumstances.',
+      infoPatternText: 'Classifies each daily average according to the configured guideline and displays the category that occurs most often. At least three days with data are required; if several categories tie as the most repeated, "No predominant pattern" is displayed. If there is antihypertensive treatment, it also displays the most repeated target status among the sessions of the period; if there is a tie, it is not shown.',
+      infoPatternDesc1: 'The category that occurred on the most days during the last 30 days.',
+      infoPatternDesc2: 'Displayed when two or more categories tie in number of days.',
+      infoDailyAverages: 'When there are several sessions on the same day, a single daily average is calculated first.',
+      infoCaution: 'This information attempts to summarize the data from the last month, but in no case constitutes a diagnosis.',
     },
 
     healthAlerts: {
@@ -874,6 +889,9 @@ export const translations = {
       notesPlaceholder: 'Add or correct observations...',
       save: 'Save Changes',
       cancel: 'Cancel',
+      delete: 'Delete',
+      deleteConfirm: 'Are you sure you want to delete this reading?',
+      confirmDeleteBtn: 'Yes, delete',
     },
 
     treatmentTarget: {

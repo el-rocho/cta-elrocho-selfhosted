@@ -445,7 +445,47 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.btn-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-switch:hover {
+  background: var(--bg-input);
+  border-color: var(--accent-primary);
+}
+
+.btn-switch .switch-icon {
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.readings-count-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--bg-subtle) 90%, transparent);
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* Botones */
@@ -987,8 +1027,10 @@ body {
   line-height: 1.5;
 }
 
-.measurement-guide-main-card strong,
-.measurement-guide-advice-card strong {
+.measurement-guide-main-card > strong,
+.measurement-guide-advice-card > strong,
+.measurement-guide-main-card > div > strong,
+.measurement-guide-advice-card > div > strong {
   color: var(--text-primary);
 }
 
@@ -2032,86 +2074,63 @@ body {
 }
 
 .cardiovascular-metrics-strip {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1.05fr) minmax(0, 0.85fr) 30px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0;
-  margin: -2px 0 14px;
-  padding: 8px 10px;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 14px;
+  padding: 10px 14px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
   background: color-mix(in srgb, var(--bg-subtle) 82%, transparent);
 }
 
 .cardiovascular-metric {
+  flex: 1 1 0px;
   display: flex;
-  min-width: 0;
-  height: 100%;
-  align-items: baseline;
-  align-content: center;
-  flex-wrap: wrap;
-  gap: 3px 5px;
-  padding: 0 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
   color: var(--text-secondary);
 }
 
-.cardiovascular-metric svg {
-  align-self: center;
-  flex: 0 0 auto;
-  color: var(--accent-primary);
-}
-
-.cardiovascular-metric > span {
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.cardiovascular-metric > .cardiovascular-metric-detail {
-  font-weight: 400;
-}
-
-.cardiovascular-metric > strong {
-  color: var(--text-primary);
-  font-size: 16px;
-  white-space: nowrap;
-}
-
-.cardiovascular-metric > small,
-.cardiovascular-metric > strong small {
-  color: var(--text-muted);
-  font-size: 10px;
+.cardiovascular-metric .metric-name {
+  color: var(--text-secondary);
   font-weight: 600;
-}
-
-.cardiovascular-metric > em {
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, #f59e0b 13%, transparent);
-  color: #b45309;
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 700;
+  font-size: 13px;
   white-space: nowrap;
 }
 
-.pressure-load-metric {
-  padding-left: 0;
+.cardiovascular-metric .metric-val {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
-.map-metric {
-  border-left: 1px solid var(--border-color);
+.cardiovascular-metric .insufficient-tag {
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
-.pulse-pressure-metric {
-  border-left: 1px solid var(--border-color);
+.pulse-pressure-value-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .cardiovascular-info-button {
-  justify-self: end;
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cardiovascular-info-dialog { max-width: 650px; }
@@ -2171,35 +2190,23 @@ body {
 .cardiovascular-current-values strong { color: var(--text-primary); }
 .cardiovascular-info-note { margin: 0; }
 
-@media (max-width: 620px) {
+@media (max-width: 640px) {
   .cardiovascular-metrics-strip {
-    grid-template-columns: minmax(0, 1fr) 30px;
-    gap: 7px 9px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
   }
 
-  .pressure-load-metric {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .map-metric,
-  .pulse-pressure-metric {
-    grid-column: 1 / -1;
+  .cardiovascular-metric {
     width: 100%;
-    margin-left: 0;
-    padding-top: 7px;
-    padding-left: 0;
-    border-top: 1px solid var(--border-color);
-    border-left: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 6px;
   }
 
-  .map-metric { grid-row: 2; }
-  .pulse-pressure-metric { grid-row: 3; }
-
-  .cardiovascular-info-button {
-    grid-column: 2;
-    grid-row: 1;
-    margin-left: auto;
+  .cardiovascular-metric:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
   }
 }
 
@@ -3204,11 +3211,58 @@ input:checked + .toggle-slider:before {
 
 .modal-actions-row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.modal-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.btn-delete-modal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: var(--radius-md, 10px);
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-delete-modal:hover {
+  background: rgba(220, 38, 38, 0.16);
+  border-color: rgba(220, 38, 38, 0.6);
+}
+
+.btn-danger-confirm {
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-danger-confirm:hover {
+  background: #b91c1c;
+}
+
+.session-multi-toggle-block {
+  margin-left: auto;
 }
 
 .btn-primary-large {
@@ -3563,12 +3617,12 @@ input:checked + .toggle-slider:before {
 .trend-insights-heading > svg { flex:0 0 auto; color:#6366f1; }
 .trend-insights-heading h2 { margin:0; font-size:19px; color:var(--text-primary); }
 .trend-month-values { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
-.trend-month-value { display:inline-flex; align-items:center; gap:3px; padding:4px 7px; border:1px solid currentColor; border-radius:999px; background:var(--bg-subtle); font-size:12px; }
-.trend-month-value > span,.trend-month-value small { font-size:10px; }
-.trend-month-value strong { font-size:13px; }
-.trend-month-value.systolic { color:#dc2626; }
-.trend-month-value.diastolic { color:#2563eb; }
-.trend-insufficient-badge { display:inline-flex; align-items:center; padding:4px 7px; border:1px solid var(--text-primary); border-radius:999px; background:transparent; color:var(--text-primary); font-size:12px; font-weight:700; }
+.trend-month-value { display:inline-flex; align-items:center; justify-content:center; gap:3px; box-sizing:border-box; height:26px; padding:0 9px; border-radius:999px; font-size:11px; font-weight:700; line-height:1; }
+.trend-month-value small { font-size:10px; font-weight:600; }
+.trend-month-value strong { font-size:12px; font-weight:700; }
+.trend-month-value.systolic { background:rgba(220,38,38,0.09); border:1px solid rgba(220,38,38,0.35); color:#dc2626; }
+.trend-month-value.diastolic { background:rgba(37,99,235,0.09); border:1px solid rgba(37,99,235,0.35); color:#2563eb; }
+.trend-insufficient-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:26px; padding:0 9px; border:1px solid var(--border-color); border-radius:999px; background:var(--bg-subtle); color:var(--text-muted); font-size:11px; font-weight:700; line-height:1; }
 .trend-guideline-badge { flex:0 0 auto; margin-left:0; padding:5px 9px; border-radius:999px; background:rgba(99,102,241,.1); color:#4f46e5; font-size:11px; font-weight:700; }
 .trend-info-button { flex:0 0 auto; width:30px; height:30px; padding:0; border-radius:8px; color:#2563eb; }
 .trend-info-dialog { max-width:650px; }
@@ -3577,13 +3631,19 @@ input:checked + .toggle-slider:before {
 .trend-info-card { display:flex; align-items:flex-start; gap:12px; padding:14px; }
 .trend-info-card > .trend-info-icon { flex:0 0 auto; margin-top:1px; color:#2563eb; }
 .trend-info-card.measurement-guide-advice-card > .trend-info-icon { color:#059669; }
-.trend-info-card strong { display:block; margin-bottom:5px; color:var(--text-primary); font-size:14px; }
+.trend-info-card > div > strong { display:block; margin-bottom:5px; color:var(--text-primary); font-size:14px; }
 .trend-info-card p,.trend-info-note p { margin:0; font-size:13px; line-height:1.55; }
 .trend-info-note p + p { margin-top:8px; }
+.trend-badge-examples { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; padding-top:8px; border-top:1px dashed var(--border-color); }
+.trend-badge-examples > * { flex: 0 0 auto; width: auto; max-width: max-content; white-space: nowrap; }
+.trend-badge-examples .trend-month-value.systolic, .trend-badge-examples .trend-month-value.systolic strong, .trend-badge-examples .trend-month-value.systolic small, .trend-badge-examples .trend-month-value.systolic svg { color: #dc2626 !important; }
+.trend-badge-examples .trend-month-value.diastolic, .trend-badge-examples .trend-month-value.diastolic strong, .trend-badge-examples .trend-month-value.diastolic small, .trend-badge-examples .trend-month-value.diastolic svg { color: #2563eb !important; }
+.trend-badge-examples .treatment-target-badge.status-within, .trend-badge-examples .treatment-target-badge.status-within strong { color: #047857 !important; }
+.trend-badge-examples strong { display: inline !important; margin: 0 !important; }
 .trend-pattern-row { display:flex; align-items:center; flex:0 0 auto; gap:7px; white-space:nowrap; }
 .trend-pattern-row > strong { color:var(--text-primary); font-size:19px; }
-.trend-pattern-category,.trend-pattern-none { display:inline-flex; align-items:center; min-height:24px; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700; }
-.trend-pattern-none { background:var(--bg-subtle); color:var(--text-muted); }
+.trend-pattern-category,.trend-pattern-none { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:26px; padding:0 9px; border-radius:999px; font-size:11px; font-weight:700; line-height:1; border:1px solid currentColor; }
+.trend-pattern-none { background:var(--bg-subtle); color:var(--text-muted); border-color:var(--border-color); }
 @media (max-width:640px) { .trend-insights-header { flex-direction:column; align-items:flex-start; flex-wrap:nowrap; gap:10px; } .trend-insights-block { width:100%; justify-content:flex-start; } .trend-insights-meta-block { margin-left:0; } .trend-insights-heading h2,.trend-pattern-row > strong { font-size:17px; } }
 
 .daily-average-caption { margin-left:auto; color:var(--text-muted); font-size:11px; }
@@ -3640,9 +3700,12 @@ input:checked + .toggle-slider:before {
 .treatment-target-badge.status-above .dot, .treatment-target-badge.status-mixed .dot { background: #c2410c; }
 
 .treatment-target-badge.compact {
-  height: 22px;
-  padding: 0 6px;
-  font-size: 10px;
+  height: 26px;
+  box-sizing: border-box;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid currentColor;
 }
 
 .treatment-target-badge.compact strong {
@@ -3752,41 +3815,58 @@ input:checked + .toggle-slider:before {
 
 /* Historial de mediciones: bloques compactos y adaptables */
 .session-main-row {
-  display: grid;
-  grid-template-columns:
-    minmax(205px, 1.35fr)
-    minmax(135px, 1fr)
-    minmax(115px, 0.75fr)
-    minmax(125px, 1fr)
-    min-content;
-  grid-template-areas: "primary guideline target details actions";
-  align-items: start;
-  gap: 10px 14px;
-}
-
-.session-block {
-  min-width: 0;
-}
-
-.session-primary-block {
-  grid-area: primary;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  width: 100%;
 }
 
-.session-primary-content {
+.session-unexpanded-row {
   display: flex;
+  align-items: center;
+  gap: 14px;
   width: 100%;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px 12px;
 }
 
 .session-time-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.session-metrics-col {
+  flex: 0 0 auto;
+}
+
+.session-notes-col {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+.session-notes-col .notes-preview {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-multi-toggle-block {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.session-details-expanded-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-color);
+  width: 100%;
 }
 
 .session-date,
@@ -3925,25 +4005,35 @@ input:checked + .toggle-slider:before {
     padding: 12px;
   }
 
-  .session-main-row {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "primary"
-      "guideline"
-      "target"
-      "details"
-      "actions";
-    gap: 11px;
-  }
-
-  .session-block,
-  .session-primary-content {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .session-primary-content {
+  .session-unexpanded-row {
     flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .session-time-col {
+    order: 1;
+  }
+
+  .session-metrics-col {
+    order: 2;
+  }
+
+  .session-multi-toggle-block {
+    order: 3;
+    margin-left: auto;
+  }
+
+  .session-notes-col {
+    order: 4;
+    flex: 1 1 100%;
+    width: 100%;
+    margin-top: 2px;
+  }
+
+  .session-notes-col .notes-preview {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .session-actions-col {
