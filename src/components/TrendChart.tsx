@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings, BloodPressureSession } from '../types/bloodPressure';
 import { Activity, ChevronDown, Gauge, Info, Percent, TrendingUp, X } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
@@ -34,11 +34,13 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   const [activeTooltip, setActiveTooltip] = useState<DailyAverage | null>(null);
   const [expandedMetric, setExpandedMetric] = useState<MetricKey | null>(null);
   const [showCardiovascularInfo, setShowCardiovascularInfo] = useState(false);
+  const chartScrollRef = useRef<HTMLDivElement>(null);
   const series = useMemo(
     () => buildDailyTrendSeries(sessions, range),
     [sessions, range]
   );
   const dailyAverages = series.dailyAverages;
+  const latestDailyTimestamp = dailyAverages[dailyAverages.length - 1]?.timestamp;
   const periodSessions = dailyAverages.flatMap((day) => day.sessions);
   const periodSummary = useMemo(
     () => calculatePeriodSummary(periodSessions, settings),
@@ -46,6 +48,12 @@ export const TrendChart: React.FC<TrendChartProps> = ({
   );
   const locale = language === 'en' ? 'en-US' : 'es-ES';
   const categories = getHealthCategoriesMap(language, settings.guidelineProfile);
+
+  useLayoutEffect(() => {
+    const chartContainer = chartScrollRef.current;
+    if (!chartContainer) return;
+    chartContainer.scrollLeft = chartContainer.scrollWidth - chartContainer.clientWidth;
+  }, [range, latestDailyTimestamp]);
 
   const selectRange = (nextRange: LongTermTrendRange) => {
     setRange(nextRange);
@@ -151,12 +159,17 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             {getGuidelineName(settings.guidelineProfile, language)}
           </span>
           <span className="readings-count-badge">
-            {t(
-              periodSessions.length === 1
-                ? 'trend.readingsCountOne'
-                : 'trend.readingsCountOther',
-              { count: periodSessions.length },
-            )}
+            <span className="readings-count-full">
+              {t(
+                periodSessions.length === 1
+                  ? 'trend.readingsCountOne'
+                  : 'trend.readingsCountOther',
+                { count: periodSessions.length },
+              )}
+            </span>
+            <span className="readings-count-compact" aria-hidden="true">
+              {periodSessions.length}
+            </span>
           </span>
         </div>
 
@@ -349,7 +362,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         </div>
       </div>
 
-      <div className="svg-container">
+      <div className="svg-container" ref={chartScrollRef}>
         <svg viewBox={`0 0 ${width} ${height}`} className="trend-svg">
           {[60, 90, 120, 150, 180].map((value) => {
             const y = getY(value);

@@ -30,9 +30,11 @@ import { useLanguage } from '../i18n/useLanguage';
 import { Share } from '@capacitor/share';
 
 export interface ToastNotification {
-  message: string;
+  message?: string;
   actionLabel?: string;
   onAction?: () => void;
+  cancelLabel?: string;
+  variant?: 'neutral';
 }
 
 type DataTab = 'backup' | 'import' | 'report';
@@ -237,52 +239,44 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <div className="modal-body">
           {activeTab === 'backup' && (
             <div className="data-panel">
-              <div className="data-intro-card">
-                <DatabaseBackup size={26} />
-                <div>
-                  <h3>{t('data.backupTitle')}</h3>
-                  <p>{t('data.backupDescription')}</p>
+              <section className="backup-action-card">
+                <div className="backup-create-row">
+                  <button type="button" className="btn-create-backup" onClick={onTriggerManualBackup} disabled={readings.length === 0}>
+                    <DatabaseBackup size={20} />
+                    {t('data.createBackupNow')}
+                  </button>
+                  <div className="backup-last-backup">
+                    <span>{t('data.lastBackup')}</span>
+                    <strong>{lastBackup}</strong>
+                  </div>
                 </div>
-              </div>
 
-              <div className="backup-status-grid">
-                <div className="backup-status-item">
-                  <span>{t('data.readingsStored')}</span>
-                  <strong>{readings.length}</strong>
+                <div className="modal-field backup-schedule-card">
+                  <label className="field-label">
+                    <Clock3 size={20} className="export-field-icon" />
+                    <span>{t('data.scheduleTitle')}</span>
+                  </label>
+                  <div className="chip-options-row backup-frequency-options">
+                    {(['disabled', 'daily', 'weekly', 'monthly'] as const).map((frequency) => (
+                      <button
+                        key={frequency}
+                        type="button"
+                        className={`chip-select ${settings.backupFrequency === frequency ? 'active' : ''}`}
+                        onClick={() => handleBackupFrequency(frequency)}
+                      >
+                        {t(`data.frequency.${frequency}`)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="backup-status-item">
-                  <span>{t('data.lastBackup')}</span>
-                  <strong>{lastBackup}</strong>
-                </div>
-              </div>
+              </section>
 
-              <button type="button" className="btn-create-backup" onClick={onTriggerManualBackup} disabled={readings.length === 0}>
-                <DatabaseBackup size={20} />
-                {t('data.createBackupNow')}
-              </button>
-
-              <div className="modal-field backup-schedule-card">
-                <label className="field-label">
-                  <Clock3 size={20} className="export-field-icon" />
-                  <span>{t('data.scheduleTitle')}</span>
-                </label>
-                <div className="chip-options-row">
-                  {(['disabled', 'daily', 'weekly', 'monthly'] as const).map((frequency) => (
-                    <button
-                      key={frequency}
-                      type="button"
-                      className={`chip-select ${settings.backupFrequency === frequency ? 'active' : ''}`}
-                      onClick={() => handleBackupFrequency(frequency)}
-                    >
-                      {t(`data.frequency.${frequency}`)}
-                    </button>
-                  ))}
-                </div>
-                <div className="data-caveat">
-                  <AlertCircle size={17} />
-                  <span>{t('data.scheduleNotice')}</span>
-                </div>
-              </div>
+              <section className="backup-action-card restore-backup-card">
+                <button type="button" className="btn-select-backup" onClick={() => setActiveTab('import')}>
+                  <Upload size={20} />
+                  {t('data.restoreBackup')}
+                </button>
+              </section>
             </div>
           )}
 

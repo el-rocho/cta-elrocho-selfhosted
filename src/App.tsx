@@ -195,8 +195,9 @@ export function App() {
     try {
       downloadBackup(readings, settings, now);
       setNotificationMsg({
-        message: getTranslation(settings.language, 'toast.manualBackupRequested'),
         actionLabel: getTranslation(settings.language, 'toast.confirmBackupSaved'),
+        cancelLabel: getTranslation(settings.language, 'toast.backupCancelledAction'),
+        variant: 'neutral',
         onAction: () => {
           const updatedSettings = {
             ...settings,
@@ -342,20 +343,24 @@ export function App() {
         )}
 
         {notificationMsg && (
-          <div className="toast-modal-overlay" onClick={() => setNotificationMsg(null)}>
-            <div className="toast-notification" onClick={(e) => e.stopPropagation()}>
+          <div className={`toast-modal-overlay ${typeof notificationMsg === 'object' && notificationMsg.variant === 'neutral' ? 'neutral' : ''}`} onClick={() => setNotificationMsg(null)}>
+            <div className={`toast-notification ${typeof notificationMsg === 'object' && notificationMsg.variant === 'neutral' ? 'neutral' : ''}`} onClick={(e) => e.stopPropagation()}>
               <div className="toast-top-row">
-                <span className="toast-message-text">
-                  {typeof notificationMsg === 'string' ? notificationMsg : notificationMsg.message}
-                </span>
-                <button
-                  type="button"
-                  className="toast-close-btn"
-                  onClick={() => setNotificationMsg(null)}
-                  aria-label="Cerrar notificación"
-                >
-                  ×
-                </button>
+                {(typeof notificationMsg === 'string' || notificationMsg.message) && (
+                  <span className="toast-message-text">
+                    {typeof notificationMsg === 'string' ? notificationMsg : notificationMsg.message}
+                  </span>
+                )}
+                {(typeof notificationMsg === 'string' || !notificationMsg.cancelLabel) && (
+                  <button
+                    type="button"
+                    className="toast-close-btn"
+                    onClick={() => setNotificationMsg(null)}
+                    aria-label="Cerrar notificación"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
 
               {typeof notificationMsg === 'object' && notificationMsg.actionLabel && notificationMsg.onAction && (
@@ -370,6 +375,11 @@ export function App() {
                   >
                     {notificationMsg.actionLabel}
                   </button>
+                  {notificationMsg.cancelLabel && (
+                    <button type="button" className="toast-cancel-btn" onClick={() => setNotificationMsg(null)}>
+                      {notificationMsg.cancelLabel}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -195,7 +195,12 @@ const SessionCardItem: React.FC<{
   ];
 
   const dateObj = new Date(session.timestamp);
-  const dateStr = dateObj.toLocaleDateString(locale, {
+  const shortDateStr = dateObj.toLocaleDateString(locale, {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+  const longDateStr = dateObj.toLocaleDateString(locale, {
     weekday: 'short',
     day: '2-digit',
     month: 'short',
@@ -266,7 +271,10 @@ const SessionCardItem: React.FC<{
         {/* Fila principal unexpanded: Fecha/Hora - Datos - Nota - Etiqueta Gris */}
         <div className="session-unexpanded-row">
           <div className="session-time-col">
-            <div className="session-date">{dateStr}</div>
+            <div className="session-date">
+              <span className="session-date-long">{longDateStr}</span>
+              <span className="session-date-short">{shortDateStr}</span>
+            </div>
             <div className="session-time"><Clock size={12} /> {timeStr}</div>
           </div>
 

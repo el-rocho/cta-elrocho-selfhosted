@@ -233,7 +233,8 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
           <div className="metrics-inputs-grid">
             <div className="input-group">
               <label htmlFor="systolic-input">
-                <span>{t('form.systolic')}</span>
+                <span className="metric-label-full">{t('form.systolic')}</span>
+                <span className="metric-label-compact">{t('form.systolicShort')}</span>
                 <span className="unit">(mmHg)</span>
               </label>
               <div className="input-wrapper">
@@ -256,7 +257,8 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
             <div className="input-group">
               <label htmlFor="diastolic-input">
-                <span>{t('form.diastolic')}</span>
+                <span className="metric-label-full">{t('form.diastolic')}</span>
+                <span className="metric-label-compact">{t('form.diastolicShort')}</span>
                 <span className="unit">(mmHg)</span>
               </label>
               <div className="input-wrapper">
@@ -279,7 +281,8 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
 
             <div className="input-group">
               <label htmlFor="pulse-input">
-                <span>{t('form.heartRate')}</span>
+                <span className="metric-label-full">{t('form.heartRate')}</span>
+                <span className="metric-label-compact">{t('form.heartRateShort')}</span>
                 <span className="unit">({language === 'en' ? 'BPM' : 'ppm'})</span>
               </label>
               <div className="input-wrapper">
