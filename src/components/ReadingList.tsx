@@ -176,6 +176,7 @@ const SessionCardItem: React.FC<{
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const pressStartTimeRef = useRef<number>(0);
   const isLongPressRef = useRef<boolean>(false);
+  const ignoreMouseUntilRef = useRef<number>(0);
 
   const primaryReading = session.readings[0];
   const effectiveReadings = getEffectiveSessionReadings(session);
@@ -253,15 +254,32 @@ const SessionCardItem: React.FC<{
     }
   };
 
+  const handleTouchEnd = () => {
+    // Android WebView emits a synthetic mouse sequence after a touch. Ignore it
+    // so a short tap cannot expand and immediately collapse the same card.
+    ignoreMouseUntilRef.current = Date.now() + 700;
+    handlePointerUp();
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (Date.now() < ignoreMouseUntilRef.current) return;
+    if (e.button === 0) startTimer(e.clientX, e.clientY);
+  };
+
+  const handleMouseUp = () => {
+    if (Date.now() < ignoreMouseUntilRef.current) return;
+    handlePointerUp();
+  };
+
   return (
     <div
       className={`session-item ${isMulti ? 'session-multi' : ''} ${isDetailsExpanded ? 'session-details-expanded' : ''}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
-      onTouchEnd={handlePointerUp}
+      onTouchEnd={handleTouchEnd}
       onTouchCancel={cancelTimer}
-      onMouseDown={(e) => { if (e.button === 0) startTimer(e.clientX, e.clientY); }}
-      onMouseUp={handlePointerUp}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       onMouseLeave={cancelTimer}
       onDoubleClick={() => { cancelTimer(); onEditReading(primaryReading); }}
       onContextMenu={(e) => { e.preventDefault(); cancelTimer(); onEditReading(primaryReading); }}

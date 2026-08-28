@@ -135,10 +135,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <p className="text-sm text-muted" style={{ margin: 0 }}>
-              Administra quién tiene acceso al servidor.
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '16px' }}>
             <button
               type="button"
               className="btn-primary-gradient"
@@ -149,7 +146,7 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
               style={{ fontSize: '13px', padding: '6px 12px' }}
             >
               <UserPlus size={16} />
-              <span>{showAddForm ? 'Cancelar' : 'Añadir Usuario'}</span>
+              <span>{showAddForm ? 'Cancelar' : 'Añadir usuario'}</span>
             </button>
           </div>
 

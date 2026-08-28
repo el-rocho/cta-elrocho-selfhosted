@@ -4085,8 +4085,6 @@ input:checked + .toggle-slider:before {
     justify-content: flex-start;
   }
 }
-+
-
 /* Ajustes compactos compartidos con la edición individual */
 .metric-label-compact,
 .readings-count-compact,
@@ -4186,9 +4184,11 @@ input:checked + .toggle-slider:before {
   }
 
   .session-unexpanded-row {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
     align-items: center;
-    gap: 8px 12px;
+    column-gap: 6px;
+    row-gap: 8px;
   }
 
   .session-time-col {
@@ -4201,12 +4201,13 @@ input:checked + .toggle-slider:before {
 
   .session-multi-toggle-block {
     order: 3;
-    margin-left: auto;
+    margin-left: 0;
+    justify-self: end;
   }
 
   .session-notes-col {
     order: 4;
-    flex: 1 1 100%;
+    grid-column: 1 / -1;
     width: 100%;
     margin-top: 2px;
   }
