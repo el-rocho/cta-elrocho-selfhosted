@@ -1,4 +1,4 @@
-const CACHE_NAME = 'control-tension-v1.6.1-beta.1';
+const CACHE_NAME = 'control-tension-v1.6.1-beta.2';
 const APP_SHELL = [
   './',
   './index.html',
