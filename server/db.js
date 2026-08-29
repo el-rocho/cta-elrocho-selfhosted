@@ -135,6 +135,7 @@ export async function initSchema(db) {
       default_arm TEXT NOT NULL DEFAULT 'left',
       preferred_input_mode TEXT NOT NULL DEFAULT 'keyboard',
       guideline_profile TEXT NOT NULL DEFAULT 'esc-2024',
+      show_informational_labels INTEGER NOT NULL DEFAULT 0,
       treatment_target_mode TEXT NOT NULL DEFAULT 'guideline',
       custom_target_systolic_min INTEGER NOT NULL DEFAULT 120,
       custom_target_systolic_max INTEGER NOT NULL DEFAULT 129,
@@ -178,6 +179,15 @@ export async function initSchema(db) {
     } catch (e) {
       // La columna ya existe
     }
+  }
+
+  // La columna nace con DEFAULT 0 para nuevos usuarios. Sólo durante la
+  // migración inicial se activa para las filas existentes, preservando su UI.
+  try {
+    await db.exec('ALTER TABLE settings ADD COLUMN show_informational_labels INTEGER NOT NULL DEFAULT 0;');
+    await db.exec('UPDATE settings SET show_informational_labels = 1;');
+  } catch (e) {
+    // La columna ya existe y conserva las preferencias guardadas.
   }
 
   // Migración de instalaciones anteriores: las tomas sin contexto heredan una

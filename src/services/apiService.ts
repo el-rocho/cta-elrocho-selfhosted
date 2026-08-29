@@ -282,16 +282,36 @@ export async function fetchSettingsAPI(): Promise<AppSettings> {
     const res = await fetch(`${API_BASE}/settings`);
     if (!res.ok) throw new Error('Error de servidor al cargar ajustes');
     const data = await res.json();
-    return { guidelineProfile: 'esc-2024', ...data, whiteCoatIntervalMinutes: 5 };
+    return {
+      guidelineProfile: 'esc-2024',
+      ...data,
+      showInformationalLabels: typeof data.showInformationalLabels === 'boolean' ? data.showInformationalLabels : true,
+      whiteCoatIntervalMinutes: 5,
+    };
   } catch {
     const cached = localStorage.getItem('server_bp_settings_cache');
-    return cached ? { guidelineProfile: 'esc-2024', ...JSON.parse(cached), whiteCoatIntervalMinutes: 5 } : {
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      return {
+        guidelineProfile: 'esc-2024',
+        ...parsed,
+        showInformationalLabels: typeof parsed.showInformationalLabels === 'boolean' ? parsed.showInformationalLabels : true,
+        whiteCoatIntervalMinutes: 5,
+      };
+    }
+    return {
       language: 'es',
       enableWhiteCoatFilter: false,
       whiteCoatIntervalMinutes: 5,
       defaultArm: 'left',
       preferredInputMode: 'keyboard',
       guidelineProfile: 'esc-2024',
+      showInformationalLabels: false,
+      treatmentTargetMode: 'guideline',
+      customTargetSystolicMin: 120,
+      customTargetSystolicMax: 129,
+      customTargetDiastolicMin: 70,
+      customTargetDiastolicMax: 79,
       patientName: '',
       patientSex: '',
       patientAge: '',

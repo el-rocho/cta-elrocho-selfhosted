@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultArm: 'left',
   preferredInputMode: 'keyboard',
   guidelineProfile: 'esc-2024',
+  showInformationalLabels: false,
   treatmentTargetMode: 'guideline',
   customTargetSystolicMin: 120,
   customTargetSystolicMax: 129,
@@ -171,7 +172,13 @@ export async function fetchSettingsFromServer(): Promise<AppSettings> {
     });
     if (!res.ok) return DEFAULT_SETTINGS;
     const data = await res.json();
-    return { ...DEFAULT_SETTINGS, ...data };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...data,
+      showInformationalLabels: typeof data.showInformationalLabels === 'boolean'
+        ? data.showInformationalLabels
+        : true,
+    };
   } catch (error) {
     console.error('Error al consultar ajustes del servidor:', error);
     return DEFAULT_SETTINGS;

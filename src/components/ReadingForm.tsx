@@ -25,7 +25,6 @@ interface ReadingFormProps {
   }) => void | Promise<void>;
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
-  lastReading?: BloodPressureReading | null;
   readings: BloodPressureReading[];
 }
 
@@ -33,16 +32,15 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   onAddReading,
   settings,
   onUpdateInputMode,
-  lastReading,
   readings,
 }) => {
   const { t, language } = useLanguage();
   const [inputMode, setInputMode] = useState<InputMode>(settings.preferredInputMode || 'keyboard');
 
-  // Inicializar los valores centrados en la última medición realizada o en valores medios por defecto (120 / 80 / 72)
-  const initialSys = lastReading ? lastReading.systolic : 120;
-  const initialDia = lastReading ? lastReading.diastolic : 80;
-  const initialPulse = lastReading ? lastReading.heartRate : 72;
+  // Mostrar siempre valores de referencia al abrir el formulario.
+  const initialSys = 120;
+  const initialDia = 80;
+  const initialPulse = 60;
 
   const [systolic, setSystolic] = useState<number | ''>(initialSys);
   const [diastolic, setDiastolic] = useState<number | ''>(initialDia);
@@ -163,7 +161,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
           </div>
 
           {/* Badge de clasificación en tiempo real */}
-          <div className="classification-badges">
+          {settings.showInformationalLabels && <div className="classification-badges">
             <div
               className="live-category-badge"
               style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
@@ -173,7 +171,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
               {category.name}
             </div>
             {treatmentTargetAssessment && <TreatmentTargetBadge assessment={treatmentTargetAssessment} live />}
-          </div>
+          </div>}
         </div>
 
         <div className="form-controls-wrapper">
@@ -213,7 +211,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
         </div>
       ))}
 
-      {healthAlerts.length > 0 && (
+      {settings.showInformationalLabels && healthAlerts.length > 0 && (
         <div className="health-alerts-strip" aria-live="polite">
           <div className="health-alerts-heading">
             <AlertCircle size={16} />

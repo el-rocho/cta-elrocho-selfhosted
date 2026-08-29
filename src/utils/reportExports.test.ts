@@ -177,6 +177,7 @@ describe('clinical PDF content', () => {
       'es',
       'esc-2024',
       settings({
+        showInformationalLabels: true,
         takesAntihypertensiveMedication: true,
         treatmentTargetMode: 'custom',
         customTargetSystolicMin: 120,
@@ -194,6 +195,7 @@ describe('clinical PDF content', () => {
 
   it('places the therapeutic target after medication using the existing separators', () => {
     const reportSettings = settings({
+      showInformationalLabels: true,
       takesAntihypertensiveMedication: true,
       treatmentTargetMode: 'custom',
       customTargetSystolicMin: 118,
@@ -210,6 +212,18 @@ describe('clinical PDF content', () => {
     expect(html).toContain(
       'Paciente de prueba | 74 a. | <strong>Medicación antihipertensiva: Sí</strong> | Objetivo 118–128/68–78 mmHg'
     );
+  });
+
+  it('hides informational classifications and targets while preserving safety notices', () => {
+    const html = buildPDFMeasurementRowsHTML(
+      [medicatedSession()],
+      'es',
+      'esc-2024',
+      settings({ showInformationalLabels: false, takesAntihypertensiveMedication: true })
+    );
+
+    expect(html).not.toContain('data-treatment-target-status');
+    expect(html).not.toContain('Presión elevada');
   });
 
   it('omits the medication block when antihypertensive medication is disabled', () => {

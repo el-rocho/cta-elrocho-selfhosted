@@ -103,7 +103,7 @@ export const ServerStatusModal: React.FC<ServerStatusModalProps> = ({ isOpen, he
         <div className="modal-header server-status-header">
           <div className="modal-title-group">
             <ServerCog size={24} className="modal-icon text-blue" />
-            <div><h2 id="server-status-title">{t('header.serverStatus.title')}</h2><span className="server-status-auto-refresh">v1.6.1-beta.2</span></div>
+            <div><h2 id="server-status-title">{t('header.serverStatus.title')}</h2><span className="server-status-auto-refresh">v1.6.1-beta.3</span></div>
           </div>
           <div className="server-status-header-actions">
             <button type="button" className="server-status-refresh-button" title={t('header.serverStatus.refresh')} aria-label={t('header.serverStatus.refresh')} onClick={() => void loadStatus()} disabled={isLoading}>

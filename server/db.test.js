@@ -81,6 +81,7 @@ describe('server treatment-target migration and persistence', () => {
       expect(columns.map((column) => column.name)).toEqual(
         expect.arrayContaining([
           'guideline_profile',
+          'show_informational_labels',
           'treatment_target_mode',
           'custom_target_systolic_min',
           'custom_target_systolic_max',
@@ -91,7 +92,7 @@ describe('server treatment-target migration and persistence', () => {
       );
 
       const migrated = await database.get(
-        `SELECT guideline_profile, treatment_target_mode,
+        `SELECT guideline_profile, show_informational_labels, treatment_target_mode,
                 custom_target_systolic_min, custom_target_systolic_max,
                 custom_target_diastolic_min, custom_target_diastolic_max
          FROM settings WHERE user_id = ?`,
@@ -99,12 +100,23 @@ describe('server treatment-target migration and persistence', () => {
       );
       expect(migrated).toEqual({
         guideline_profile: 'esc-2024',
+        show_informational_labels: 1,
         treatment_target_mode: 'guideline',
         custom_target_systolic_min: 120,
         custom_target_systolic_max: 129,
         custom_target_diastolic_min: 70,
         custom_target_diastolic_max: 79,
       });
+
+      await database.run(
+        `INSERT INTO users (id, username, name, password_hash, created_at)
+         VALUES ('user-new', 'new', 'New', 'hash', '2026-08-29T00:00:00.000Z')`
+      );
+      await database.run(`INSERT INTO settings (user_id) VALUES ('user-new')`);
+      const freshSettings = await database.get(
+        `SELECT show_informational_labels FROM settings WHERE user_id = 'user-new'`
+      );
+      expect(freshSettings.show_informational_labels).toBe(0);
 
       await database.run(
         `UPDATE settings

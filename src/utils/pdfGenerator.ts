@@ -58,10 +58,11 @@ export function buildPDFPatientInfoHTML(
   }
 
   const takesMedication = options.takesAntihypertensiveMedication === true;
+  const showInformationalLabels = options.showInformationalLabels ?? true;
   if (takesMedication) {
     const medicationText = `${isEn ? 'Antihypertensive medication' : 'Medicación antihipertensiva'}: ${isEn ? 'Yes' : 'Sí'}`;
     parts.push(`<strong>${medicationText}</strong>`);
-    parts.push(`${isEn ? 'Target' : 'Objetivo'} ${formatTreatmentTarget(getTreatmentTarget(reportSettings))} mmHg`);
+    if (showInformationalLabels) parts.push(`${isEn ? 'Target' : 'Objetivo'} ${formatTreatmentTarget(getTreatmentTarget(reportSettings))} mmHg`);
   }
   return parts.join(' | ');
 }
@@ -81,6 +82,7 @@ export async function downloadPDFReport(
   const isEn = lang === 'en';
   const locale = isEn ? 'en-US' : 'es-ES';
   const guidelineProfile = options.guidelineProfile ?? 'esc-2024';
+  const showInformationalLabels = options.showInformationalLabels ?? true;
   const filtered = filterSessionsByDateRange(sessions, dateRange);
 
   if (filtered.length === 0) {
@@ -102,6 +104,7 @@ export async function downloadPDFReport(
     patientBirthDate: options.patientBirthDate ?? DEFAULT_SETTINGS.patientBirthDate,
     takesAntihypertensiveMedication: options.takesAntihypertensiveMedication ?? DEFAULT_SETTINGS.takesAntihypertensiveMedication,
     guidelineProfile,
+    showInformationalLabels,
     treatmentTargetMode: options.treatmentTargetMode ?? DEFAULT_SETTINGS.treatmentTargetMode,
     customTargetSystolicMin: options.customTargetSystolicMin ?? DEFAULT_SETTINGS.customTargetSystolicMin,
     customTargetSystolicMax: options.customTargetSystolicMax ?? DEFAULT_SETTINGS.customTargetSystolicMax,
@@ -140,9 +143,9 @@ export async function downloadPDFReport(
   const totalPDFPages = 2 + tablePagesCount; // Página 1 = Resumen; página 2 = Dispersión sistólica/diastólica
 
   // Generar HTML de los gráficos para la Página 1
-  const svgLineChartHtml = generateChartSVG(chronological, locale, isEn);
-  const categoryDistributionHtml = generateCategoryDistributionHTML(filtered, lang, guidelineProfile);
-  const bloodPressureScatterHtml = generateBloodPressureScatterHTML(filtered, lang);
+  const svgLineChartHtml = generateChartSVG(chronological, locale, isEn, showInformationalLabels);
+  const categoryDistributionHtml = showInformationalLabels ? generateCategoryDistributionHTML(filtered, lang, guidelineProfile) : '';
+  const bloodPressureScatterHtml = generateBloodPressureScatterHTML(filtered, lang, showInformationalLabels);
   const categories = getHealthCategories(guidelineProfile, lang);
   const periodCategory = periodSummary.categoryMode.value
     ? categories.find(({ key }) => key === periodSummary.categoryMode.value)
@@ -195,25 +198,25 @@ export async function downloadPDFReport(
     </div>
   `;
   const trendValue = (difference: number) => `${difference > 0 ? '↑' : difference < 0 ? '↓' : '→'} ${Math.abs(difference)} mmHg`;
-  const statusCardHtml = `
+  const statusCardHtml = showInformationalLabels ? `
     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:7px 8px; min-width:0; text-align:center;">
       <div style="font-size:10px; color:#0f172a; font-weight:700; margin-bottom:8px; white-space:nowrap;">${isEn ? 'Period Global Status' : 'Estado Global periodo'}</div>
       ${renderCategoryMode(periodCategory, periodSummary.categoryMode.status)}
       <div style="margin:7px 0 5px; border-top:1px solid #e2e8f0;"></div>
       ${renderTargetMode(periodSummary.targetMode)}
     </div>
-  `;
+  ` : '';
   const trendCardHtml = `
     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:7px 8px; min-width:0; text-align:center;">
       <div style="font-size:10px; color:#0f172a; font-weight:700; margin-bottom:8px; white-space:nowrap;">${isEn ? 'Trend last month' : 'Tendencia último mes'}</div>
       ${trendComparison
         ? `<div style="font-size:10px; font-weight:700;"><span style="color:#dc2626;">S: ${trendValue(trendComparison.systolicDifference)}</span><br><span style="color:#2563eb;">D: ${trendValue(trendComparison.diastolicDifference)}</span></div>`
         : `<span style="color:#64748b; font-size:10px;">${isEn ? 'Not available' : 'No disponible'}</span>`}
-      <div style="margin:6px 0 4px; border-top:1px solid #e2e8f0;"></div>
+      ${showInformationalLabels ? `<div style="margin:6px 0 4px; border-top:1px solid #e2e8f0;"></div>
       <div style="display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:3px;">
         ${renderCategoryMode(trendPatternCategory, trendAnalysis.status === 'ready' ? 'tie' : 'none')}
         ${renderTargetMode(trendSummary.targetMode)}
-      </div>
+      </div>` : ''}
     </div>
   `;
 
@@ -224,7 +227,7 @@ export async function downloadPDFReport(
         ${reportLogoMarkup}
         <div>
           <h1 style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 700;">${pageTitle}</h1>
-          <p style="margin: 3px 0 0 0; font-size: 12px; color: #64748b;">${patientInfoStr ? patientInfoStr + ' | ' : ''}<strong>${getGuidelineName(guidelineProfile, lang)}</strong> | ${realPeriodStr}</p>
+          <p style="margin: 3px 0 0 0; font-size: 12px; color: #64748b;">${patientInfoStr ? patientInfoStr + ' | ' : ''}${showInformationalLabels ? `<strong>${getGuidelineName(guidelineProfile, lang)}</strong> | ` : ''}${realPeriodStr}</p>
         </div>
       </div>
       <div style="text-align: right; font-size: 11px; color: #64748b;">
@@ -274,7 +277,7 @@ export async function downloadPDFReport(
     }
 
     <!-- Tarjetas KPI Resumen -->
-    <div style="display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:8px; margin-bottom:12px;">
+    <div style="display:grid; grid-template-columns:repeat(${showInformationalLabels ? 5 : 4}, minmax(0, 1fr)); gap:8px; margin-bottom:12px;">
       ${renderMetricCard(isEn ? 'Systolic' : 'Sistólica', periodSummary.systolic, 'mmHg', '#dc2626')}
       ${renderMetricCard(isEn ? 'Diastolic' : 'Diastólica', periodSummary.diastolic, 'mmHg', '#2563eb')}
       ${renderMetricCard(isEn ? 'Pulse' : 'Pulsaciones', periodSummary.heartRate, isEn ? 'BPM' : 'ppm', '#64748b')}
@@ -296,7 +299,7 @@ export async function downloadPDFReport(
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#ef4444; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Systolic' : 'Sistólica'}</span>
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#3b82f6; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Diastolic' : 'Diastólica'}</span>
           <span style="display: flex; align-items: center; gap: 4px;"><span style="width:7px; height:7px; background:#64748b; border-radius:50%; display:inline-block;"></span> ${isEn ? 'Pulse' : 'Pulsaciones'}</span>
-          <span style="display: flex; align-items: center; gap: 4px;"><span style="width:9px; height:7px; background:rgba(16, 185, 129, 0.15); border:1px solid rgba(16, 185, 129, 0.4); display:inline-block;"></span> ${isEn ? 'Healthy Range' : 'Rango Saludable'}</span>
+          ${showInformationalLabels ? `<span style="display: flex; align-items: center; gap: 4px;"><span style="width:9px; height:7px; background:rgba(16, 185, 129, 0.15); border:1px solid rgba(16, 185, 129, 0.4); display:inline-block;"></span> ${isEn ? 'Healthy Range' : 'Rango Saludable'}</span>` : ''}
         </div>
       </div>
       ${svgLineChartHtml}
@@ -380,8 +383,8 @@ export async function downloadPDFReport(
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Diastolic' : 'Diastólica'}</th>
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Pulse' : 'Pulso'}</th>
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Arm' : 'Brazo'}</th>
-            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Classification' : 'Clasificación'}</th>
-            <th style="padding: 8px 8px; border-bottom: 2px solid #cbd5e1; text-align:center;">${isEn ? 'Target' : 'Objetivo'}</th>
+            <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${showInformationalLabels ? (isEn ? 'Classification' : 'Clasificación') : (isEn ? 'Safety notices' : 'Avisos de seguridad')}</th>
+            ${showInformationalLabels ? `<th style="padding: 8px 8px; border-bottom: 2px solid #cbd5e1; text-align:center;">${isEn ? 'Target' : 'Objetivo'}</th>` : ''}
             <th style="padding: 8px 10px; border-bottom: 2px solid #cbd5e1;">${isEn ? 'Notes' : 'Notas'}</th>
           </tr>
         </thead>
@@ -507,7 +510,7 @@ export function printPDFReport(
 }
 
 // Gráfico de líneas (Evolución Tensión) a ancho completo (970px)
-function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale = 'es-ES', isEn = false): string {
+function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale = 'es-ES', isEn = false, showInformationalLabels = true): string {
   if (chronologicalSessions.length === 0) {
     return `<p style="text-align:center; color:#94a3b8; font-size:12px;">${isEn ? 'No data to chart in this period' : 'Sin datos para graficar en este periodo'}</p>`;
   }
@@ -549,9 +552,9 @@ function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale 
 
   return `
     <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:100%; height:auto; overflow:visible; display:block;">
-      <!-- Banda Rango Saludable -->
+      ${showInformationalLabels ? `<!-- Banda Rango Saludable -->
       <rect x="${paddingLeft}" y="${idealSysY}" width="${chartWidth}" height="${Math.max(0, idealDiaY - idealSysY)}" fill="rgba(16, 185, 129, 0.1)" rx="3" />
-      <line x1="${paddingLeft}" y1="${idealSysY}" x2="${width - paddingRight}" y2="${idealSysY}" stroke="rgba(16, 185, 129, 0.4)" stroke-dasharray="3 3" />
+      <line x1="${paddingLeft}" y1="${idealSysY}" x2="${width - paddingRight}" y2="${idealSysY}" stroke="rgba(16, 185, 129, 0.4)" stroke-dasharray="3 3" />` : ''}
 
       <!-- Escala Y -->
       ${[60, 90, 120, 150, 180]
@@ -592,7 +595,8 @@ function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale 
 // Diagrama de dispersión de las medias efectivas de sesión (diastólica en X, sistólica en Y).
 export function generateBloodPressureScatterHTML(
   sessions: BloodPressureSession[],
-  lang: LanguageOption = 'es'
+  lang: LanguageOption = 'es',
+  showInformationalLabels = true
 ): string {
   const isEn = lang === 'en';
   const width = 940;
@@ -629,7 +633,7 @@ export function generateBloodPressureScatterHTML(
     const isVeryHighBoth = session.averageSystolic >= 180 && session.averageDiastolic >= 120;
     const isExtreme = session.averageSystolic >= 180 || session.averageDiastolic >= 120;
     const isIsolated = !isExtreme && session.averageSystolic >= 135 && session.averageDiastolic < 85;
-    const fill = isVeryHighBoth ? '#991b1b' : isExtreme ? '#dc2626' : isIsolated ? '#d97706' : '#4f46e5';
+    const fill = isVeryHighBoth ? '#991b1b' : isExtreme ? '#dc2626' : showInformationalLabels && isIsolated ? '#d97706' : '#4f46e5';
     return `<circle data-reading-point="true" cx="${x(session.averageDiastolic)}" cy="${y(session.averageSystolic)}" r="3.6" fill="${fill}" fill-opacity="0.72" stroke="#ffffff" stroke-width="0.8" />`;
   }).join('');
 
@@ -639,19 +643,19 @@ export function generateBloodPressureScatterHTML(
         <span style="font-size:10px; color:#64748b; font-weight:500; white-space:nowrap;">${sessions.length} ${isEn ? 'readings' : 'tomas'}</span>
       </div>
       <div style="display:flex; gap:14px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:4px; color:#64748b; font-size:9.5px;">
-        <span><i style="display:inline-block; width:9px; height:9px; border-radius:2px; background:#ffffff; border:1px solid #cbd5e1; vertical-align:-1px;"></i> ${isEn ? 'No highlighted values' : 'Sin valores destacados'}: ${unhighlightedCount}</span>
-        <span><i style="display:inline-block; width:9px; height:9px; border-radius:2px; background:rgba(217,119,6,.18); border:1px solid #d97706; vertical-align:-1px;"></i> ${isEn ? 'Isolated systolic pattern' : 'Patrón sistólico aislado'}: ${isolatedCount}</span>
+        ${showInformationalLabels ? `<span><i style="display:inline-block; width:9px; height:9px; border-radius:2px; background:#ffffff; border:1px solid #cbd5e1; vertical-align:-1px;"></i> ${isEn ? 'No highlighted values' : 'Sin valores destacados'}: ${unhighlightedCount}</span>
+        <span><i style="display:inline-block; width:9px; height:9px; border-radius:2px; background:rgba(217,119,6,.18); border:1px solid #d97706; vertical-align:-1px;"></i> ${isEn ? 'Isolated systolic pattern' : 'Patrón sistólico aislado'}: ${isolatedCount}</span>` : ''}
         <span><i style="display:inline-block; width:9px; height:9px; border-radius:2px; background:rgba(220,38,38,.09); border:1px solid #f87171; vertical-align:-1px;"></i> ${isEn ? 'Very high value' : 'Valor muy alto'}: ${veryHighSingleCount}</span>
         <span><i style="display:inline-block; width:9px; height:9px; border-radius:2px; background:rgba(220,38,38,.18); border:1px solid #991b1b; vertical-align:-1px;"></i> ${isEn ? 'Both values very high' : 'Ambos valores muy altos'}: ${veryHighBothCount}</span>
       </div>
       <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:100%; height:auto; overflow:visible; display:block; margin:0 auto;">
-        <rect x="${paddingLeft}" y="${y(180)}" width="${x(85) - paddingLeft}" height="${y(135) - y(180)}" fill="rgba(217,119,6,0.10)" />
+        ${showInformationalLabels ? `<rect x="${paddingLeft}" y="${y(180)}" width="${x(85) - paddingLeft}" height="${y(135) - y(180)}" fill="rgba(217,119,6,0.10)" />` : ''}
         <rect x="${paddingLeft}" y="${paddingTop}" width="${chartWidth}" height="${y(180) - paddingTop}" fill="rgba(220,38,38,0.09)" />
         <rect x="${x(120)}" y="${paddingTop}" width="${width - paddingRight - x(120)}" height="${chartHeight}" fill="rgba(220,38,38,0.09)" />
         ${yTicks.map((tick) => `<g><line x1="${paddingLeft}" y1="${y(tick)}" x2="${width - paddingRight}" y2="${y(tick)}" stroke="#e2e8f0" stroke-width="0.8"/><text x="${paddingLeft - 8}" y="${y(tick) + 4}" text-anchor="end" fill="#64748b" font-size="11">${tick}</text></g>`).join('')}
         ${xTicks.map((tick) => `<g><line x1="${x(tick)}" y1="${paddingTop}" x2="${x(tick)}" y2="${height - paddingBottom}" stroke="#e2e8f0" stroke-width="0.8"/><text x="${x(tick)}" y="${height - 25}" text-anchor="middle" fill="#64748b" font-size="11">${tick}</text></g>`).join('')}
-        <line x1="${paddingLeft}" y1="${y(135)}" x2="${width - paddingRight}" y2="${y(135)}" stroke="#d97706" stroke-width="0.9" stroke-dasharray="3 2" />
-        <line x1="${x(85)}" y1="${paddingTop}" x2="${x(85)}" y2="${height - paddingBottom}" stroke="#d97706" stroke-width="0.9" stroke-dasharray="3 2" />
+        ${showInformationalLabels ? `<line x1="${paddingLeft}" y1="${y(135)}" x2="${width - paddingRight}" y2="${y(135)}" stroke="#d97706" stroke-width="0.9" stroke-dasharray="3 2" />
+        <line x1="${x(85)}" y1="${paddingTop}" x2="${x(85)}" y2="${height - paddingBottom}" stroke="#d97706" stroke-width="0.9" stroke-dasharray="3 2" />` : ''}
         ${points}
         <text x="${paddingLeft + chartWidth / 2}" y="${height - 6}" text-anchor="middle" fill="#475569" font-size="12" font-weight="600">${isEn ? 'Diastolic' : 'Diastólica'} (mmHg)</text>
         <text x="14" y="${paddingTop + chartHeight / 2}" text-anchor="middle" fill="#475569" font-size="12" font-weight="600" transform="rotate(-90 14 ${paddingTop + chartHeight / 2})">${isEn ? 'Systolic' : 'Sistólica'} (mmHg)</text>

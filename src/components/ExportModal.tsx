@@ -102,6 +102,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       patientBirthDate,
     takesAntihypertensiveMedication: settings.takesAntihypertensiveMedication,
     guidelineProfile: settings.guidelineProfile,
+    showInformationalLabels: settings.showInformationalLabels,
     treatmentTargetMode: settings.treatmentTargetMode,
     customTargetSystolicMin: settings.customTargetSystolicMin,
     customTargetSystolicMax: settings.customTargetSystolicMax,
@@ -117,20 +118,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleExportCSV = () => {
-    exportToCSV(sessions, getCurrentRange(), 'tension_arterial_informe', getExportOptions(), language);
+    const filename = exportToCSV(sessions, getCurrentRange(), 'tension_arterial_informe', getExportOptions(), language);
     onClose();
-    onNotify?.(t('toast.csvReportSuccess'));
+    onNotify?.({ message: t('toast.csvReportSuccess'), detail: filename, variant: 'soft-blue' });
   };
 
   const handlePrintPDF = async () => {
     onClose();
-    onNotify?.(t('toast.pdfDownloadStarting'));
+    onNotify?.({ message: t('toast.pdfDownloadStarting'), variant: 'soft-blue' });
     const result = await downloadPDFReport(sessions, getCurrentRange(), getExportOptions(), language);
     if (!result.success || !onNotify) return;
 
     onNotify({
       message: t('toast.pdfDownloadSuccess'),
-      actionLabel: language === 'en' ? 'View / Share' : 'Ver / Compartir',
+      detail: result.filename,
+      actionLabel: language === 'en' ? 'Share report' : 'Compartir informe',
+      variant: 'soft-blue',
       onAction: async () => {
         if (result.isNative && result.fileUri) {
           try {
@@ -138,7 +141,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               title: result.filename,
               text: language === 'en' ? 'Home Blood Pressure Report' : 'Informe Tensión Arterial domiciliaria',
               url: result.fileUri,
-              dialogTitle: language === 'en' ? 'Open or Share PDF' : 'Abrir o Compartir PDF',
+              dialogTitle: language === 'en' ? 'Share report' : 'Compartir informe',
             });
           } catch (error) {
             console.error('Error al abrir/compartir archivo en Android:', error);

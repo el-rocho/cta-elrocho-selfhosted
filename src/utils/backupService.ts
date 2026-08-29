@@ -51,6 +51,9 @@ function isValidReading(value: unknown): value is BloodPressureReading {
 function normalizeSettings(value: unknown): AppSettings | null {
   if (!isObject(value)) return null;
   const candidate = { ...DEFAULT_SETTINGS, ...value } as AppSettings;
+  candidate.showInformationalLabels = typeof value.showInformationalLabels === 'boolean'
+    ? value.showInformationalLabels
+    : true;
 
   if (candidate.language !== 'es' && candidate.language !== 'en') return null;
   if (typeof candidate.enableWhiteCoatFilter !== 'boolean') return null;
@@ -58,6 +61,7 @@ function normalizeSettings(value: unknown): AppSettings | null {
   if (candidate.defaultArm !== 'left' && candidate.defaultArm !== 'right') return null;
   if (candidate.preferredInputMode !== 'keyboard' && candidate.preferredInputMode !== 'wheel') return null;
   if (!['esc-2024', 'aha-acc-2025', 'ish-2020'].includes(candidate.guidelineProfile)) return null;
+  if (typeof candidate.showInformationalLabels !== 'boolean') return null;
   if (candidate.treatmentTargetMode !== 'guideline' && candidate.treatmentTargetMode !== 'custom') return null;
   if (![candidate.customTargetSystolicMin, candidate.customTargetSystolicMax, candidate.customTargetDiastolicMin, candidate.customTargetDiastolicMax].every(Number.isFinite)) return null;
   if (candidate.patientName !== undefined && typeof candidate.patientName !== 'string') return null;

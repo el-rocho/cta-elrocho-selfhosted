@@ -2077,7 +2077,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   margin: 6px 0 14px;
   padding: 10px 14px;
@@ -2087,10 +2087,10 @@ body {
 }
 
 .cardiovascular-metric {
-  flex: 1 1 0px;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   padding: 2px 6px;
   color: var(--text-secondary);
@@ -4086,10 +4086,16 @@ input:checked + .toggle-slider:before {
   }
 }
 
+.cardiovascular-metric .metric-inline {
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 /* Confirmaciones discretas y ajustes compactos de edición */
 .btn-submit-reading:disabled { cursor: wait; opacity: 0.82; }
-.btn-submit-reading.is-saved { animation: readingSavedPulse 0.65s ease both; }
-@keyframes readingSavedPulse { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.018); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12); } }
+.btn-submit-reading.is-saved { animation: readingSavedPulse 0.9s ease both; }
+@keyframes readingSavedPulse { 0%, 100% { transform: scale(1); background: linear-gradient(135deg, #10b981, #059669); } 45% { transform: scale(1.012); background: linear-gradient(135deg, #ef8b8b, #dc6b6b); box-shadow: 0 0 0 5px rgba(220, 107, 107, 0.12); } }
 .edit-label-compact { display: none; }
 .toast-modal-overlay.soft-blue { background-color: rgba(15, 23, 42, 0.3); backdrop-filter: blur(2px); }
 .toast-notification.soft-blue { background: #eff6ff; color: #1e3a8a; border-color: rgba(59, 130, 246, 0.24); box-shadow: 0 14px 34px rgba(30, 64, 175, 0.18); }

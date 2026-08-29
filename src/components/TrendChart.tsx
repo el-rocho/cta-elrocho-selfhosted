@@ -155,9 +155,9 @@ export const TrendChart: React.FC<TrendChartProps> = ({
         <div className="chart-title">
           <TrendingUp size={24} className="icon-chart" />
           <h2>{t('trend.title')}</h2>
-          <span className="trend-guideline-badge">
+          {settings.showInformationalLabels && <span className="trend-guideline-badge">
             {getGuidelineName(settings.guidelineProfile, language)}
-          </span>
+          </span>}
           <span className="readings-count-badge">
             <span className="readings-count-full">
               {t(
@@ -224,7 +224,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             </button>
           );
         })}
-        <div className="trend-summary-card status-card" role="group" aria-label={t('trend.globalStatus')}>
+        {settings.showInformationalLabels && <div className="trend-summary-card status-card" role="group" aria-label={t('trend.globalStatus')}>
           <div className="trend-mode-block">
             {periodCategory ? (
               <span className="trend-pattern-category" style={{ backgroundColor: periodCategory.badgeBg, color: periodCategory.badgeText }}>{periodCategory.name}</span>
@@ -235,15 +235,15 @@ export const TrendChart: React.FC<TrendChartProps> = ({
               <TreatmentTargetBadge assessment={periodSummary.targetMode.value} compact />
             ) : <span className="trend-pattern-none">{modeFallback(periodSummary.targetMode.status as 'none' | 'tie')}</span>}
           </div>
-        </div>
+        </div>}
       </div>
 
       {expandedMetric !== null && (
         <div className="cardiovascular-metrics-strip" role="group" aria-label={t('trend.complementaryMetrics')}>
           <div className="cardiovascular-metric pressure-load-metric">
-            <span className="metric-name"><strong>{t('trend.pressureLoadTitle')}:</strong></span>
-            <span className="metric-val">
-              <strong>
+            <span className="metric-inline">
+              <strong>{t('trend.pressureLoadTitle')}:</strong>{' '}
+              <strong className="metric-val">
                 {pressureLoad.elevatedPercentage} %
                 {!pressureLoad.hasSufficientData && (
                   <em className="insufficient-tag"> ({t('trend.insufficientMetricsData')})</em>
@@ -252,13 +252,11 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             </span>
           </div>
           <div className="cardiovascular-metric map-metric">
-            <span className="metric-name"><strong>{t('trend.estimatedMap')}:</strong></span>
-            <span className="metric-val"><strong>{estimatedMap.average} mmHg</strong></span>
+            <span className="metric-inline"><strong>{t('trend.estimatedMap')}:</strong>{' '}<strong className="metric-val">{estimatedMap.average} mmHg</strong></span>
           </div>
           <div className="cardiovascular-metric pulse-pressure-metric">
-            <span className="metric-name"><strong>{t('trend.averagePulsePressure')}:</strong></span>
             <div className="pulse-pressure-value-group">
-              <span className="metric-val"><strong>{pulsePressure.average} mmHg</strong></span>
+              <span className="metric-inline"><strong>{t('trend.averagePulsePressure')}:</strong>{' '}<strong className="metric-val">{pulsePressure.average} mmHg</strong></span>
               <button
                 type="button"
                 className="settings-info-button cardiovascular-info-button"
@@ -384,6 +382,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             );
           })}
 
+          {settings.showInformationalLabels && <>
           <line
             x1={paddingLeft}
             y1={getY(systolicThreshold)}
@@ -402,6 +401,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
             strokeDasharray="5 5"
             opacity={0.22}
           />
+          </>}
 
           <path
             d={buildPath(pulsePoints)}

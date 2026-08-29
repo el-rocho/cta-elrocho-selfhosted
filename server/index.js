@@ -966,6 +966,7 @@ app.get('/api/settings', requireAuth, async (req, res) => {
       defaultArm: row?.default_arm || 'left',
       preferredInputMode: row?.preferred_input_mode || 'keyboard',
       guidelineProfile: row?.guideline_profile || 'esc-2024',
+      showInformationalLabels: Boolean(row?.show_informational_labels),
       treatmentTargetMode: row?.treatment_target_mode || 'guideline',
       customTargetSystolicMin: row?.custom_target_systolic_min ?? 120,
       customTargetSystolicMax: row?.custom_target_systolic_max ?? 129,
@@ -996,11 +997,11 @@ app.post('/api/settings', requireAuth, async (req, res) => {
     await db.run(
       `INSERT INTO settings (
         user_id, language, enable_white_coat, white_coat_minutes, default_arm, preferred_input_mode,
-        guideline_profile, treatment_target_mode, custom_target_systolic_min, custom_target_systolic_max,
+        guideline_profile, show_informational_labels, treatment_target_mode, custom_target_systolic_min, custom_target_systolic_max,
         custom_target_diastolic_min, custom_target_diastolic_max,
         patient_name, patient_sex, patient_age, patient_birth_date, takes_antihypertensive_medication,
         backup_frequency, backup_folder, last_backup_timestamp, last_full_backup_timestamp
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         language = excluded.language,
         enable_white_coat = excluded.enable_white_coat,
@@ -1008,6 +1009,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         default_arm = excluded.default_arm,
         preferred_input_mode = excluded.preferred_input_mode,
         guideline_profile = excluded.guideline_profile,
+        show_informational_labels = excluded.show_informational_labels,
         treatment_target_mode = excluded.treatment_target_mode,
         custom_target_systolic_min = excluded.custom_target_systolic_min,
         custom_target_systolic_max = excluded.custom_target_systolic_max,
@@ -1030,6 +1032,7 @@ app.post('/api/settings', requireAuth, async (req, res) => {
         s.defaultArm || 'left',
         s.preferredInputMode || 'keyboard',
         ['esc-2024', 'aha-acc-2025', 'ish-2020'].includes(s.guidelineProfile) ? s.guidelineProfile : 'esc-2024',
+        typeof s.showInformationalLabels === 'boolean' ? (s.showInformationalLabels ? 1 : 0) : 1,
         s.treatmentTargetMode === 'custom' ? 'custom' : 'guideline',
         Number.isFinite(s.customTargetSystolicMin) ? s.customTargetSystolicMin : 120,
         Number.isFinite(s.customTargetSystolicMax) ? s.customTargetSystolicMax : 129,

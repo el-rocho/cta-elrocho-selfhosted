@@ -64,12 +64,14 @@ export function buildCSVContent(
 
   const isEn = lang === 'en';
   const guidelineProfile = options.guidelineProfile ?? 'esc-2024';
+  const showInformationalLabels = options.showInformationalLabels ?? true;
   const reportSettings: AppSettings = {
     ...DEFAULT_SETTINGS,
     patientAge: options.patientAge ?? DEFAULT_SETTINGS.patientAge,
     patientBirthDate: options.patientBirthDate ?? DEFAULT_SETTINGS.patientBirthDate,
     takesAntihypertensiveMedication: options.takesAntihypertensiveMedication ?? DEFAULT_SETTINGS.takesAntihypertensiveMedication,
     guidelineProfile,
+    showInformationalLabels,
     treatmentTargetMode: options.treatmentTargetMode ?? DEFAULT_SETTINGS.treatmentTargetMode,
     customTargetSystolicMin: options.customTargetSystolicMin ?? DEFAULT_SETTINGS.customTargetSystolicMin,
     customTargetSystolicMax: options.customTargetSystolicMax ?? DEFAULT_SETTINGS.customTargetSystolicMax,
@@ -133,10 +135,10 @@ export function buildCSVContent(
     metadataHeader += `# ${isEn ? 'Remarks' : 'Observaciones'}: ${options.reportNotes}\n`;
   }
   metadataHeader += `# ${isEn ? 'Antihypertensive medication' : 'Medicación antihipertensiva'}: ${options.takesAntihypertensiveMedication ? (isEn ? 'Yes' : 'Sí') : 'No'}\n`;
-  if (options.takesAntihypertensiveMedication === true) {
+  if (showInformationalLabels && options.takesAntihypertensiveMedication === true) {
     metadataHeader += `# ${isEn ? 'Therapeutic target' : 'Objetivo terapéutico'}: ${treatmentTarget.source === 'custom' ? (isEn ? 'Custom' : 'Personalizado') : (isEn ? 'Guideline' : 'Guía')} · ${formatTreatmentTarget(treatmentTarget)} mmHg\n`;
   }
-  metadataHeader += `# ${isEn ? 'Classification reference' : 'Referencia de clasificación'}: ${getGuidelineName(guidelineProfile, lang)}\n`;
+  if (showInformationalLabels) metadataHeader += `# ${isEn ? 'Classification reference' : 'Referencia de clasificación'}: ${getGuidelineName(guidelineProfile, lang)}\n`;
   metadataHeader += `# ${isEn ? 'Home pressure load' : 'Carga presiva domiciliaria'}: ${isEn ? 'Readings' : 'Mediciones'} ≥135/85 ${cardiovascularMetrics.pressureLoad.elevatedPercentage} % · ${cardiovascularMetrics.pressureLoad.elevatedSessions} ${isEn ? 'of' : 'de'} ${cardiovascularMetrics.pressureLoad.totalSessions} ${isEn ? 'sessions' : 'sesiones'}\n`;
   metadataHeader += `# ${isEn ? 'Estimated Mean Arterial Pressure' : 'Presión Arterial Media estimada'}: ${cardiovascularMetrics.estimatedMap.average} mmHg\n`;
   metadataHeader += `# ${isEn ? 'Mean pulse pressure' : 'Presión de pulso media'}: ${cardiovascularMetrics.pulsePressure.average} mmHg\n`;
@@ -172,11 +174,9 @@ export function buildCSVContent(
     const targetAssessment = sessionTakesMedication
       ? assessTreatmentTarget(s.averageSystolic, s.averageDiastolic, reportSettings)
       : undefined;
-    const sessionAlerts = [
-      ...assessment.safetyAlerts,
-      ...assessment.alerts,
-      ...getConfirmedPulsePressureAlerts(getEffectiveSessionReadings(s), lang),
-    ];
+    const sessionAlerts = showInformationalLabels
+      ? [...assessment.safetyAlerts, ...assessment.alerts, ...getConfirmedPulsePressureAlerts(getEffectiveSessionReadings(s), lang)]
+      : assessment.safetyAlerts;
     const armStr = s.arm === 'left' ? (isEn ? 'Left' : 'Izquierdo') : (isEn ? 'Right' : 'Derecho');
     const notesClean = s.notes ? `"${s.notes.replace(/"/g, '""')}"` : '';
     const alertsClean = sessionAlerts.length > 0
@@ -191,17 +191,17 @@ export function buildCSVContent(
       s.averageHeartRate,
       armStr,
       sessionTakesMedication ? 'true' : 'false',
-      targetAssessment ? `"${getTreatmentTargetStatusLabel(targetAssessment.status, lang)}"` : '',
-      `"${assessment.category.name}"`,
+      showInformationalLabels && targetAssessment ? `"${getTreatmentTargetStatusLabel(targetAssessment.status, lang)}"` : '',
+      showInformationalLabels ? `"${assessment.category.name}"` : '',
       s.readings.length,
       s.discardedCount,
       `"${getSessionResultTypeInfo(getSessionResultType(s), lang).label}"`,
       notesClean,
       assessment.pulsePressure,
       calculateEstimatedMeanArterialPressure(s.averageSystolic, s.averageDiastolic),
-      s.averageSystolic >= 135 || s.averageDiastolic >= 85 ? 'true' : 'false',
-      assessment.culprit === 'none' ? '' : `"${getCulpritLabel(assessment.culprit, assessment.category.direction, lang)}"`,
-      pulsePressureConfirmed ? 'true' : 'false',
+      showInformationalLabels ? (s.averageSystolic >= 135 || s.averageDiastolic >= 85 ? 'true' : 'false') : '',
+      showInformationalLabels && assessment.culprit !== 'none' ? `"${getCulpritLabel(assessment.culprit, assessment.category.direction, lang)}"` : '',
+      showInformationalLabels && pulsePressureConfirmed ? 'true' : '',
       alertsClean,
     ].join(';');
   });
@@ -217,7 +217,7 @@ export function exportToCSV(
   filenamePrefix = 'tension_arterial',
   options: ExportReportOptions = {},
   lang: LanguageOption = 'es'
-): void {
+): string {
   const csvContent = buildCSVContent(sessions, dateRange, options, lang);
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -233,9 +233,11 @@ export function exportToCSV(
   const seconds = String(now.getSeconds()).padStart(2, '0');
   const dateTimeStr = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
 
+  const filename = `${filenamePrefix}_${dateTimeStr}.csv`;
   link.setAttribute('href', url);
-  link.setAttribute('download', `${filenamePrefix}_${dateTimeStr}.csv`);
+  link.setAttribute('download', filename);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  return filename;
 }

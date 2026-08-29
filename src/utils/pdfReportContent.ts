@@ -62,6 +62,7 @@ export function buildPDFMeasurementRowsHTML(
 ): string {
   const isEn = lang === 'en';
   const locale = isEn ? 'en-US' : 'es-ES';
+  const showInformationalLabels = settings?.showInformationalLabels ?? true;
 
   return sessions
     .map((session, index) => {
@@ -79,11 +80,9 @@ export function buildPDFMeasurementRowsHTML(
         lang,
         guidelineProfile
       );
-      const sessionAlerts = [
-        ...assessment.safetyAlerts,
-        ...assessment.alerts,
-        ...getConfirmedPulsePressureAlerts(getEffectiveSessionReadings(session), lang),
-      ];
+      const sessionAlerts = showInformationalLabels
+        ? [...assessment.safetyAlerts, ...assessment.alerts, ...getConfirmedPulsePressureAlerts(getEffectiveSessionReadings(session), lang)]
+        : assessment.safetyAlerts;
       const category = assessment.category;
       const armLabel = session.arm === 'left' ? (isEn ? 'Left' : 'Izq') : (isEn ? 'Right' : 'Der');
       const sessionTag = getSessionTag(session, isEn);
@@ -104,17 +103,17 @@ export function buildPDFMeasurementRowsHTML(
           <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;"><strong style="font-size:12px; color:#64748b;">${session.averageHeartRate}</strong> ${isEn ? 'BPM' : 'ppm'}</td>
           <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;">${armLabel}</td>
           <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;">
-            <span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:10px; font-weight:600; background:${category.badgeBg}; color:${category.badgeText};">
+            ${showInformationalLabels ? `<span style="display:inline-block; padding:2px 8px; border-radius:9999px; font-size:10px; font-weight:600; background:${category.badgeBg}; color:${category.badgeText};">
               ${category.name}
-            </span>
-            ${assessment.culprit !== 'none'
+            </span>` : ''}
+            ${showInformationalLabels && assessment.culprit !== 'none'
               ? `<div style="font-size:8.5px; color:#475569; margin-top:3px;">${getCulpritLabel(assessment.culprit, assessment.category.direction, lang)}</div>`
               : ''}
             ${sessionAlerts.length > 0
               ? `<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px;">${renderAlertBadges(sessionAlerts)}</div>`
               : ''}
           </td>
-          <td style="padding: 7px 8px; border-bottom: 1px solid #e2e8f0; text-align:center;">${targetAssessment ? renderTreatmentTargetBadge(targetAssessment, lang) : '—'}</td>
+          ${showInformationalLabels ? `<td style="padding: 7px 8px; border-bottom: 1px solid #e2e8f0; text-align:center;">${targetAssessment ? renderTreatmentTargetBadge(targetAssessment, lang) : '—'}</td>` : ''}
           <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0;">${(session.notes || '') + sessionTag}</td>
         </tr>
       `;

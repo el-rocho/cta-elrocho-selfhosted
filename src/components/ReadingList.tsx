@@ -96,7 +96,7 @@ const BreakdownRow: React.FC<{
       <td data-label={language === 'en' ? 'Time' : 'Hora'}>{rTime}</td>
       <td data-label={language === 'en' ? 'Values' : 'Medición'}>
         <strong>{reading.systolic}</strong> / <strong>{reading.diastolic}</strong> / <strong>{reading.heartRate}</strong>
-        <div className="breakdown-classification">
+        {settings.showInformationalLabels && <div className="breakdown-classification">
           <span className="category-pill compact" style={{ backgroundColor: readingCategory.badgeBg, color: readingCategory.badgeText }}>
             {readingCategory.name}
           </span>
@@ -104,10 +104,10 @@ const BreakdownRow: React.FC<{
             <span className="breakdown-info-text">{getCulpritLabel(readingCulprit, readingCategory.direction, language)}</span>
           )}
           {treatmentTargetAssessment && <TreatmentTargetBadge assessment={treatmentTargetAssessment} compact />}
-        </div>
-        {(readingSafetyAlerts.length > 0 || readingAlerts.length > 0) && (
+        </div>}
+        {(readingSafetyAlerts.length > 0 || (settings.showInformationalLabels && readingAlerts.length > 0)) && (
           <div className="breakdown-alerts">
-            {[...readingSafetyAlerts, ...readingAlerts].map((alert) => (
+            {[...readingSafetyAlerts, ...(settings.showInformationalLabels ? readingAlerts : [])].map((alert) => (
               <span
                 key={alert.key}
                 className="breakdown-info-text"
@@ -320,19 +320,19 @@ const SessionCardItem: React.FC<{
         {/* Fila secundaria desplegable mediante clic corto (detalles extendidos) */}
         {isDetailsExpanded && (
           <div className="session-details-expanded-row">
-            <div className="session-block session-guideline-block">
-              <span
+            {(settings.showInformationalLabels || safetyAlerts.length > 0) && <div className="session-block session-guideline-block">
+              {settings.showInformationalLabels && <span
                 className="category-pill"
                 style={{ backgroundColor: category.badgeBg, color: category.badgeText }}
                 title={category.description}
               >
                 <span className="dot" style={{ backgroundColor: category.colorHex }}></span>
                 {category.name}
-              </span>
-              {(culprit !== 'none' || healthAlerts.length > 0 || safetyAlerts.length > 0) && (
+              </span>}
+              {((settings.showInformationalLabels && (culprit !== 'none' || healthAlerts.length > 0)) || safetyAlerts.length > 0) && (
                 <div className="session-info-lines">
-                  {culprit !== 'none' && <span className="session-info-line">{getCulpritLabel(culprit, category.direction, language)}</span>}
-                  {healthAlerts.map((alert) => (
+                  {settings.showInformationalLabels && culprit !== 'none' && <span className="session-info-line">{getCulpritLabel(culprit, category.direction, language)}</span>}
+                  {settings.showInformationalLabels && healthAlerts.map((alert) => (
                     <span key={alert.key} className="session-info-line" title={alert.description}>{alert.name}</span>
                   ))}
                   {safetyAlerts.map((alert) => (
@@ -340,9 +340,9 @@ const SessionCardItem: React.FC<{
                   ))}
                 </div>
               )}
-            </div>
+            </div>}
 
-            {treatmentTargetAssessment && <div className="session-block session-target-block"><TreatmentTargetBadge assessment={treatmentTargetAssessment} /></div>}
+            {settings.showInformationalLabels && treatmentTargetAssessment && <div className="session-block session-target-block"><TreatmentTargetBadge assessment={treatmentTargetAssessment} /></div>}
 
             <div className="session-block session-details-col">
               <span className="arm-badge">

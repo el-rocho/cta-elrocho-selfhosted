@@ -45,6 +45,7 @@ export interface AppSettings {
   defaultArm: ArmPosition; // Brazo predeterminado ('left' / 'right')
   preferredInputMode: InputMode; // Modo de introducción de datos ('keyboard' / 'wheel')
   guidelineProfile: GuidelineProfile;
+  showInformationalLabels: boolean;
   treatmentTargetMode: TreatmentTargetMode;
   customTargetSystolicMin: number;
   customTargetSystolicMax: number;
@@ -73,6 +74,7 @@ export interface ExportReportOptions {
   patientBirthDate?: string;
   takesAntihypertensiveMedication?: boolean;
   guidelineProfile?: GuidelineProfile;
+  showInformationalLabels?: boolean;
   treatmentTargetMode?: TreatmentTargetMode;
   customTargetSystolicMin?: number;
   customTargetSystolicMax?: number;

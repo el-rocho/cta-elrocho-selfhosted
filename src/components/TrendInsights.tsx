@@ -84,7 +84,7 @@ export const TrendInsights: React.FC<TrendInsightsProps> = ({
           )}
         </div>
         <div className="trend-insights-block trend-insights-pattern-block">
-          {analysis.status === 'ready' && (
+          {settings.showInformationalLabels && analysis.status === 'ready' && (
             <div className="trend-pattern-row">
               {patternCategory ? (
                 <span

@@ -15,10 +15,7 @@ import {
   DEFAULT_SETTINGS,
 } from './services/storageService';
 import { getAuthStatus, logout } from './services/authService';
-import {
-  getSessionSummaryReading,
-  processReadingsIntoSessions,
-} from './utils/whiteCoatAlgorithm';
+import { processReadingsIntoSessions } from './utils/whiteCoatAlgorithm';
 import { isBackupDue } from './utils/backupScheduler';
 import { downloadBackup, type AppBackupSnapshot } from './utils/backupService';
 import { Header } from './components/Header';
@@ -317,11 +314,6 @@ export function App() {
     }
   };
 
-  const lastReading = useMemo(
-    () => (sessions.length > 0 ? getSessionSummaryReading(sessions[0]) : null),
-    [sessions]
-  );
-
   if (authChecking) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
@@ -405,7 +397,6 @@ export function App() {
           onAddReading={handleAddReading}
           settings={settings}
           onUpdateInputMode={handleUpdateInputMode}
-          lastReading={lastReading}
           readings={readings}
         />
 
