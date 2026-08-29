@@ -22,7 +22,7 @@ interface ReadingFormProps {
     arm: ArmPosition;
     notes?: string;
     pulsePressureWarningConfirmed?: boolean;
-  }) => void;
+  }) => void | Promise<void>;
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
   lastReading?: BloodPressureReading | null;
@@ -55,6 +55,8 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     arm: ArmPosition;
     notes?: string;
   }) | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
@@ -65,15 +67,6 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
       setInputMode(settings.preferredInputMode);
     }
   }, [settings.defaultArm, settings.preferredInputMode]);
-
-  // Actualizar valores iniciales cuando entra una nueva medición
-  useEffect(() => {
-    if (lastReading) {
-      setSystolic(lastReading.systolic);
-      setDiastolic(lastReading.diastolic);
-      setHeartRate(lastReading.heartRate);
-    }
-  }, [lastReading]);
 
   const liveSystolic = typeof systolic === 'number' ? systolic : 120;
   const liveDiastolic = typeof diastolic === 'number' ? diastolic : 80;
@@ -101,16 +94,31 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
     }
   };
 
-  const saveReading = (
+  const saveReading = async (
     reading: ReadingValues & { arm: ArmPosition; notes?: string },
     pulsePressureWarningConfirmed: boolean
   ) => {
-    onAddReading({
-      ...reading,
-      pulsePressureWarningConfirmed,
-    });
-    setNotes('');
-    setPendingReading(null);
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      await Promise.resolve(onAddReading({
+        ...reading,
+        pulsePressureWarningConfirmed,
+      }));
+      setSystolic(120);
+      setDiastolic(80);
+      setHeartRate(60);
+      setNotes('');
+      setPendingReading(null);
+      setJustSaved(true);
+      window.setTimeout(() => {
+        setJustSaved(false);
+        setIsSaving(false);
+      }, 1100);
+    } catch (error) {
+      setIsSaving(false);
+      throw error;
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -351,8 +359,8 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
         )}
 
         <div className="reading-submit-row">
-          <button type="submit" className="btn-submit-reading">
-            <PlusCircle size={20} />
+          <button type="submit" className={`btn-submit-reading ${justSaved ? 'is-saved' : ''}`} disabled={isSaving}>
+            {justSaved ? <ClipboardCheck size={20} /> : <PlusCircle size={20} />}
             <span className="submit-reading-label">
               <span>{t('form.submit')}</span>
               {settings.enableWhiteCoatFilter && (

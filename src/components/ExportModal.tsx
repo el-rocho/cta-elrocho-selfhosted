@@ -31,10 +31,11 @@ import { Share } from '@capacitor/share';
 
 export interface ToastNotification {
   message?: string;
+  detail?: string;
   actionLabel?: string;
   onAction?: () => void;
   cancelLabel?: string;
-  variant?: 'neutral';
+  variant?: 'neutral' | 'soft-blue';
 }
 
 type DataTab = 'backup' | 'import' | 'report';

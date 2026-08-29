@@ -146,7 +146,7 @@ export function downloadBackup(
   now = new Date()
 ): string {
   const snapshot = createBackupSnapshot(readings, settings, now.toISOString());
-  const filename = `control_tension_backup_${formatFilenameTimestamp(now)}.cta-backup.json`;
+  const filename = `cta-backup-${formatFilenameTimestamp(now)}.json`;
   const blob = new Blob([serializeBackup(snapshot)], { type: 'application/json;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

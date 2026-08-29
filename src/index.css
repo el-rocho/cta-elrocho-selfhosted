@@ -4085,6 +4085,35 @@ input:checked + .toggle-slider:before {
     justify-content: flex-start;
   }
 }
+
+/* Confirmaciones discretas y ajustes compactos de edición */
+.btn-submit-reading:disabled { cursor: wait; opacity: 0.82; }
+.btn-submit-reading.is-saved { animation: readingSavedPulse 0.65s ease both; }
+@keyframes readingSavedPulse { 0%, 100% { transform: scale(1); } 45% { transform: scale(1.018); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12); } }
+.edit-label-compact { display: none; }
+.toast-modal-overlay.soft-blue { background-color: rgba(15, 23, 42, 0.3); backdrop-filter: blur(2px); }
+.toast-notification.soft-blue { background: #eff6ff; color: #1e3a8a; border-color: rgba(59, 130, 246, 0.24); box-shadow: 0 14px 34px rgba(30, 64, 175, 0.18); }
+.toast-notification.soft-blue .toast-message-text, .toast-notification.soft-blue .toast-detail-text { color: #1e3a8a; }
+.toast-detail-text { display: block; width: 100%; font-size: 14px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.toast-notification.soft-blue .toast-close-btn { background: rgba(59, 130, 246, 0.1) !important; border-color: rgba(59, 130, 246, 0.22) !important; color: #1d4ed8 !important; box-shadow: none; }
+.toast-notification.soft-blue .toast-action-btn { background: rgba(37, 99, 235, 0.12) !important; border-color: rgba(37, 99, 235, 0.28) !important; color: #1d4ed8 !important; box-shadow: none; }
+@media (max-width: 580px) {
+  .edit-modal-header { flex-wrap: nowrap; gap: 8px; }
+  .edit-modal-header .modal-title-row { min-width: 0; }
+  .edit-modal-header .modal-title-row h2 { font-size: 16px; white-space: nowrap; }
+  .edit-header-toggle { order: initial; width: auto; margin-top: 0; flex: 0 0 auto !important; padding-inline: 9px; }
+  .edit-fields-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .edit-fields-grid .edit-field-group:nth-child(3) { grid-column: auto; justify-self: stretch; width: auto; max-width: none; }
+  .edit-fields-grid .edit-field-group label, .edit-fields-grid .edit-field-group:nth-child(3) label { justify-content: center; gap: 3px; text-align: center; }
+  .edit-fields-grid .edit-input { padding-inline: 8px; text-align: center; }
+  .edit-label-full, .edit-fields-grid .unit-label, .modal-actions-row button span { display: none; }
+  .edit-label-compact { display: inline; }
+  .modal-actions-row button { min-width: 42px; min-height: 42px; padding: 9px 11px; justify-content: center; }
+}
+@media (max-width: 380px) {
+  .edit-modal-header .modal-header-icon { width: 20px; height: 20px; }
+  .edit-header-toggle span { display: none; }
+}
 /* Ajustes compactos compartidos con la edición individual */
 .metric-label-compact,
 .readings-count-compact,

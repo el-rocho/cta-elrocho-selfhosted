@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { BloodPressureReading, AppSettings, InputMode } from '../types/bloodPressure';
-import { Edit3, X, Save, CalendarDays, AlertCircle, Keyboard, Sliders, Trash2 } from 'lucide-react';
+import { Edit3, X, Save, CalendarDays, AlertCircle, Repeat2, Trash2 } from 'lucide-react';
 import { WheelPicker } from './WheelPicker';
 import { useLanguage } from '../i18n/useLanguage';
 import { getReadingValidationError, hasSimilarConfirmedReadingToday, needsPulsePressureConfirmation, type ReadingValues } from '../utils/readingValidation';
@@ -174,24 +174,15 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
             <h2>{t('editModal.title')}</h2>
           </div>
 
-          <div className="input-mode-toggle edit-header-toggle">
-            <button
-              type="button"
-              className={`btn-mode-chip ${activeInputMode === 'keyboard' ? 'active' : ''}`}
-              onClick={() => handleToggleInputMode('keyboard')}
-            >
-              <Keyboard size={16} />
-              <span>{t('form.modeKeyboard')}</span>
-            </button>
-            <button
-              type="button"
-              className={`btn-mode-chip ${activeInputMode === 'wheel' ? 'active' : ''}`}
-              onClick={() => handleToggleInputMode('wheel')}
-            >
-              <Sliders size={16} />
-              <span>{t('form.modeWheel')}</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn-mode-chip active btn-switch edit-header-toggle"
+            onClick={() => handleToggleInputMode(activeInputMode === 'keyboard' ? 'wheel' : 'keyboard')}
+            aria-label={activeInputMode === 'keyboard' ? t('form.modeKeyboard') : t('form.modeWheel')}
+          >
+            <span>{activeInputMode === 'keyboard' ? t('form.modeKeyboard') : t('form.modeWheel')}</span>
+            <Repeat2 size={14} className="switch-icon" />
+          </button>
 
           <button
             type="button"
@@ -252,7 +243,9 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
               <div className="edit-field-group">
                 <label htmlFor="edit-systolic">
                   <span className="dot dot-sys"></span>
-                  {t('editModal.systolic')} <span className="unit-label">(mmHg)</span>
+                  <span className="edit-label-full">{t('editModal.systolic')}</span>
+                  <span className="edit-label-compact">{t('form.systolicShort')}</span>
+                  <span className="unit-label">(mmHg)</span>
                 </label>
                 <input
                   id="edit-systolic"
@@ -272,7 +265,9 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
               <div className="edit-field-group">
                 <label htmlFor="edit-diastolic">
                   <span className="dot dot-dia"></span>
-                  {t('editModal.diastolic')} <span className="unit-label">(mmHg)</span>
+                  <span className="edit-label-full">{t('editModal.diastolic')}</span>
+                  <span className="edit-label-compact">{t('form.diastolicShort')}</span>
+                  <span className="unit-label">(mmHg)</span>
                 </label>
                 <input
                   id="edit-diastolic"
@@ -292,7 +287,9 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
               <div className="edit-field-group">
                 <label htmlFor="edit-heartRate">
                   <span className="dot dot-bpm"></span>
-                  {t('editModal.heartRate')} <span className="unit-label">({language === 'en' ? 'BPM' : 'ppm'})</span>
+                  <span className="edit-label-full">{t('editModal.heartRate')}</span>
+                  <span className="edit-label-compact">{t('form.heartRateShort')}</span>
+                  <span className="unit-label">({language === 'en' ? 'BPM' : 'ppm'})</span>
                 </label>
                 <input
                   id="edit-heartRate"
@@ -384,11 +381,11 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                 </button>
               )}
               <div className="modal-actions-right">
-                <button type="button" className="btn-secondary-large" onClick={onClose}>
+                <button type="button" className="btn-secondary-large" onClick={onClose} aria-label={t('editModal.cancel')} title={t('editModal.cancel')}>
                   <X size={20} />
                   <span>{t('editModal.cancel')}</span>
                 </button>
-                <button type="submit" className="btn-primary-large">
+                <button type="submit" className="btn-primary-large" aria-label={t('editModal.save')} title={t('editModal.save')}>
                   <Save size={20} />
                   <span>{t('editModal.save')}</span>
                 </button>
