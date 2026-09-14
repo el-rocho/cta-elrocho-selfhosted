@@ -102,7 +102,7 @@ Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa 
 Antes de instalar una nueva versión, consulta la **[guía de actualización](UPGRADING.md)** y las notas específicas de la versión. Allí se describe cómo respaldar SQLite, actualizar la imagen y actuar si una versión incorpora migraciones.
 
 > [!IMPORTANT]
-> **Antes de actualizar a `v1.6.1-beta.3`, realiza una copia completa del directorio `data` con el contenedor detenido.** Esta beta incorpora una migración automática y transparente de las preferencias de usuario. Conserva la copia hasta verificar el inicio de sesión, el historial y la configuración. Consulta las [instrucciones específicas de `v1.6.1-beta.3`](docs/actualizaciones/v1.6.1-beta.3.md).
+> **Antes de actualizar a `v1.6.1`, realiza una copia completa del directorio `data` con el contenedor detenido.** Esta versión incorpora una migración automática y transparente de las preferencias de usuario. Conserva la copia hasta verificar el inicio de sesión, el historial y la configuración. Consulta las [instrucciones específicas de `v1.6.1`](docs/actualizaciones/v1.6.1.md).
 
 ---
 
