@@ -32,6 +32,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const packageInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
 const APP_VERSION = process.env.APP_VERSION || packageInfo.version || 'unknown';
 const apiActivityMonitor = createApiActivityMonitor();
@@ -323,7 +324,7 @@ app.post('/api/auth/login/totp', async (req, res) => {
     }
 
     const cleanCode = String(code).trim();
-    let isValidCode = verifyTotpToken(cleanCode, user.totp_secret);
+    let isValidCode = await verifyTotpToken(cleanCode, user.totp_secret);
 
     if (!isValidCode && user.recovery_codes_json) {
       try {
@@ -415,7 +416,7 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Inicia la configuración de 2FA primero.' });
     }
 
-    const isValid = verifyTotpToken(code, user.totp_pending_secret);
+    const isValid = await verifyTotpToken(code, user.totp_pending_secret);
     if (!isValid) {
       return res.status(400).json({ error: 'Código incorrecto. Verifica la hora de tu teléfono.' });
     }
@@ -1108,9 +1109,9 @@ if (fs.existsSync(DIST_DIR)) {
   });
 }
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, HOST, () => {
   console.log(`=======================================================`);
   console.log(`🩺 Servidor Centralizado Multi-Usuario (SQLite + 2FA TOTP)`);
-  console.log(`🌐 Acceso Local: http://localhost:${PORT}`);
+  console.log(`🌐 Acceso Local: http://${HOST}:${PORT}`);
   console.log(`=======================================================`);
 });

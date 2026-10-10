@@ -107,12 +107,12 @@ export async function generateTotpSetup(username) {
   return { secret, qrCodeDataUrl, otpauthUrl };
 }
 
-export function verifyTotpToken(token, secret) {
+export async function verifyTotpToken(token, secret) {
   try {
     const cleanToken = String(token).trim();
     if (!cleanToken || !secret) return false;
-    const result = verify({ token: cleanToken, secret });
-    return Boolean(result);
+    const result = await verify({ token: cleanToken, secret });
+    return result.valid === true;
   } catch (err) {
     console.error('Error al verificar TOTP:', err);
     return false;
