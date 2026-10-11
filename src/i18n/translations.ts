@@ -551,6 +551,7 @@ export const translations = {
       clearAllConfirm: '¿Seguro que deseas ELIMINAR TODOS los datos? Esta acción borrará permanentemente todo tu historial.',
       clearAllSuccess: '✓ Se han eliminado todos los datos de la aplicación.',
       updateSuccess: '✓ Toma de tensión actualizada correctamente.',
+      sessionExpired: 'Tu sesión ha finalizado porque las credenciales de la cuenta han cambiado. Vuelve a iniciar sesión.',
     },
 
     // Generador de PDF e Informes
@@ -1125,6 +1126,7 @@ export const translations = {
       clearAllConfirm: 'Are you sure you want to DELETE ALL data? This action will permanently erase all your history.',
       clearAllSuccess: '✓ All application data has been deleted.',
       updateSuccess: '✓ Pressure reading updated successfully.',
+      sessionExpired: 'Your session has ended because the account credentials changed. Please sign in again.',
     },
 
     // PDF Report Generator

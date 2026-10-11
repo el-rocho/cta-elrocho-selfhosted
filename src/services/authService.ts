@@ -1,4 +1,5 @@
 import type { AuthStatusResponse, AuthUser, PatientSex } from '../types/bloodPressure';
+import { guardUnauthorized } from './sessionGuard';
 
 let freshRequestSequence = 0;
 
@@ -29,11 +30,36 @@ export async function getAuthStatus(): Promise<AuthStatusResponse> {
       credentials: 'include',
       cache: 'no-store',
     });
+  guardUnauthorized(res);
     if (!res.ok) throw new Error('Error al consultar estado de autenticación');
     return await res.json();
   } catch (err) {
     console.error('Error al obtener estado de auth:', err);
     return { hasAdmin: false, userCount: 0, user: null };
+  }
+}
+
+export interface SessionCheck {
+  reachable: boolean;
+  user: AuthUser | null;
+}
+
+// Comprueba si la sesión sigue viva. Distingue «el servidor no responde»
+// (no se toca la sesión) de «el servidor responde y no hay usuario» (sesión
+// revocada o caducada), que es lo que debe devolver al usuario al acceso.
+export async function checkCurrentSession(): Promise<SessionCheck> {
+  try {
+    const res = await fetch(freshApiUrl('/api/auth/status'), {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!res.ok) return { reachable: false, user: null };
+    const data = (await res.json()) as AuthStatusResponse;
+    return { reachable: true, user: data.user ?? null };
+  } catch (err) {
+    console.error('Error al comprobar la sesión actual:', err);
+    return { reachable: false, user: null };
   }
 }
 
@@ -133,6 +159,7 @@ export async function setupTotp(): Promise<{ secret?: string; qrCodeDataUrl?: st
       credentials: 'include',
     });
     const data = await res.json();
+  guardUnauthorized(res);
     if (!res.ok) {
       return { error: data.error || `Error (${res.status}): ${res.statusText}` };
     }
@@ -143,7 +170,7 @@ export async function setupTotp(): Promise<{ secret?: string; qrCodeDataUrl?: st
   }
 }
 
-export async function verifyAndEnableTotp(code: string): Promise<{ success: boolean; recoveryCodes?: string[]; error?: string }> {
+export async function verifyAndEnableTotp(code: string): Promise<{ success: boolean; recoveryCodes?: string[]; sessionsRevoked?: boolean; error?: string }> {
   try {
     const res = await fetch('/api/auth/totp/verify', {
       method: 'POST',
@@ -152,8 +179,9 @@ export async function verifyAndEnableTotp(code: string): Promise<{ success: bool
       body: JSON.stringify({ code }),
     });
     const data = await res.json();
+  guardUnauthorized(res);
     if (!res.ok) return { success: false, error: data.error || 'Error al verificar 2FA' };
-    return { success: true, recoveryCodes: data.recoveryCodes };
+    return { success: true, recoveryCodes: data.recoveryCodes, sessionsRevoked: data.sessionsRevoked === true };
   } catch {
     return { success: false, error: 'Error de conexión' };
   }
@@ -166,6 +194,7 @@ export async function disableTotp(): Promise<boolean> {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
+  guardUnauthorized(res);
     return res.ok;
   } catch {
     return false;
@@ -180,6 +209,7 @@ export async function listUsers(): Promise<AuthUser[]> {
       credentials: 'include',
       cache: 'no-store',
     });
+  guardUnauthorized(res);
     if (!res.ok) return [];
     return await res.json();
   } catch {
@@ -203,6 +233,7 @@ export async function createUser(payload: {
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+  guardUnauthorized(res);
     if (!res.ok) return { success: false, error: data.error || 'Error al crear usuario' };
     return { success: true, user: data };
   } catch {
@@ -217,6 +248,7 @@ export async function deleteUser(id: string): Promise<boolean> {
       headers: getAuthHeaders(),
       credentials: 'include',
     });
+  guardUnauthorized(res);
     return res.ok;
   } catch {
     return false;
@@ -232,6 +264,7 @@ export async function resetUserPassword(id: string, newPassword: string): Promis
       body: JSON.stringify({ newPassword }),
     });
     const data = await res.json();
+  guardUnauthorized(res);
     if (!res.ok) return { success: false, error: data.error || 'Error al restablecer clave' };
     return { success: true };
   } catch {

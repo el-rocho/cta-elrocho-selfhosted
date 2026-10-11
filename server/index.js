@@ -16,6 +16,7 @@ import {
   hashPassword,
   comparePassword,
   createSession,
+  createRecoveryCodeSession,
   destroySession,
   getSessionId,
   getUserBySession,
@@ -26,6 +27,13 @@ import {
   generateRecoveryCodes,
   SESSION_COOKIE_NAME,
 } from './auth.js';
+import {
+  activateTotpAndRevokeAccess,
+  disableTotpAndRevokeAccess,
+  replacePasswordAndRevokeAccess,
+  setPendingTotpSecretForSession,
+} from './credentialSecurity.js';
+import { withUserCredentialLock } from './credentialLock.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -228,15 +236,18 @@ app.post('/api/auth/setup-admin', async (req, res) => {
     );
 
     // Iniciar sesión automáticamente
-    const { sessionId } = await createSession(userId);
-    setSessionCookie(res, req, sessionId);
+    const session = await createSession(userId, 0);
+    if (!session) {
+      return res.status(500).json({ error: 'No se pudo crear la sesión inicial.' });
+    }
+    setSessionCookie(res, req, session.sessionId);
 
     const user = await db.get(
       'SELECT id, username, name, role, sex, birth_date, totp_enabled, created_at FROM users WHERE id = ?',
       [userId]
     );
 
-    res.status(201).json({ success: true, user, token: sessionId });
+    res.status(201).json({ success: true, user, token: session.sessionId });
   } catch (error) {
     console.error('Error al crear administrador inicial:', error);
     res.status(500).json({ error: 'Error al registrar administrador inicial' });
@@ -252,49 +263,60 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const db = await getDB();
-    const user = await db.get('SELECT * FROM users WHERE username = ?', [username.trim().toLowerCase()]);
+    const account = await db.get('SELECT id FROM users WHERE username = ?', [username.trim().toLowerCase()]);
 
-    if (!user) {
+    if (!account) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
     }
 
-    const isMatch = await comparePassword(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
-    }
+    return await withUserCredentialLock(account.id, async () => {
+      const user = await db.get('SELECT * FROM users WHERE id = ?', [account.id]);
+      if (!user) {
+        return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
+      }
 
-    // Si tiene 2FA TOTP activo, solicitar código en Paso 2
-    if (user.totp_enabled && user.totp_secret) {
-      const tempToken = `totp-temp-${crypto.randomBytes(16).toString('hex')}`;
-      pendingTotpLogins.set(tempToken, {
-        userId: user.id,
-        expiresAt: Date.now() + 5 * 60 * 1000,
-      });
+      const isMatch = await comparePassword(password, user.password_hash);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
+      }
+
+      // Si tiene 2FA TOTP activo, solicitar código en Paso 2
+      if (user.totp_enabled && user.totp_secret) {
+        const tempToken = `totp-temp-${crypto.randomBytes(16).toString('hex')}`;
+        pendingTotpLogins.set(tempToken, {
+          userId: user.id,
+          credentialVersion: Number(user.credential_version),
+          expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+
+        return res.json({
+          requires2FA: true,
+          tempToken,
+          message: 'Introduce tu código de verificación de 6 dígitos de tu app de autenticación.',
+        });
+      }
+
+      // Sin 2FA: Iniciar sesión directamente
+      const session = await createSession(user.id, Number(user.credential_version));
+      if (!session) {
+        return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+      }
+      setSessionCookie(res, req, session.sessionId);
 
       return res.json({
-        requires2FA: true,
-        tempToken,
-        message: 'Introduce tu código de verificación de 6 dígitos de tu app de autenticación.',
+        success: true,
+        token: session.sessionId,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          sex: user.sex || '',
+          birth_date: user.birth_date || '',
+          totp_enabled: Boolean(user.totp_enabled),
+          created_at: user.created_at,
+        },
       });
-    }
-
-    // Sin 2FA: Iniciar sesión directamente
-    const { sessionId } = await createSession(user.id);
-    setSessionCookie(res, req, sessionId);
-
-    res.json({
-      success: true,
-      token: sessionId,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role,
-        sex: user.sex || '',
-        birth_date: user.birth_date || '',
-        totp_enabled: Boolean(user.totp_enabled),
-        created_at: user.created_at,
-      },
     });
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
@@ -310,60 +332,78 @@ app.post('/api/auth/login/totp', async (req, res) => {
       return res.status(400).json({ error: 'Falta el token de sesión o el código de verificación.' });
     }
 
-    const pending = pendingTotpLogins.get(tempToken);
-    if (!pending || pending.expiresAt < Date.now()) {
+    const initialPending = pendingTotpLogins.get(tempToken);
+    if (!initialPending || initialPending.expiresAt < Date.now()) {
       pendingTotpLogins.delete(tempToken);
       return res.status(401).json({ error: 'La sesión de verificación ha expirado. Inicia sesión de nuevo.' });
     }
 
-    const db = await getDB();
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [pending.userId]);
-
-    if (!user || !user.totp_secret) {
-      return res.status(400).json({ error: 'Usuario no válido.' });
-    }
-
-    const cleanCode = String(code).trim();
-    let isValidCode = await verifyTotpToken(cleanCode, user.totp_secret);
-
-    if (!isValidCode && user.recovery_codes_json) {
-      try {
-        const recoveryCodes = JSON.parse(user.recovery_codes_json);
-        const codeIndex = recoveryCodes.findIndex((c) => c.toUpperCase() === cleanCode.toUpperCase());
-        if (codeIndex !== -1) {
-          isValidCode = true;
-          recoveryCodes.splice(codeIndex, 1);
-          await db.run('UPDATE users SET recovery_codes_json = ? WHERE id = ?', [
-            JSON.stringify(recoveryCodes),
-            user.id,
-          ]);
-        }
-      } catch (err) {
-        console.error('Error al verificar código de recuperación:', err);
+    return await withUserCredentialLock(initialPending.userId, async () => {
+      const pending = pendingTotpLogins.get(tempToken);
+      if (!pending || pending.expiresAt < Date.now()) {
+        pendingTotpLogins.delete(tempToken);
+        return res.status(401).json({ error: 'La sesión de verificación ha expirado. Inicia sesión de nuevo.' });
       }
-    }
 
-    if (!isValidCode) {
-      return res.status(401).json({ error: 'Código de verificación o de recuperación no válido.' });
-    }
+      const db = await getDB();
+      const user = await db.get('SELECT * FROM users WHERE id = ?', [pending.userId]);
 
-    pendingTotpLogins.delete(tempToken);
-    const { sessionId } = await createSession(user.id);
-    setSessionCookie(res, req, sessionId);
+      if (
+        !user ||
+        !user.totp_secret ||
+        Number(user.credential_version) !== pending.credentialVersion
+      ) {
+        pendingTotpLogins.delete(tempToken);
+        return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+      }
 
-    res.json({
-      success: true,
-      token: sessionId,
-      user: {
-        id: user.id,
-        username: user.username,
-        name: user.name,
-        role: user.role,
-        sex: user.sex || '',
-        birth_date: user.birth_date || '',
-        totp_enabled: Boolean(user.totp_enabled),
-        created_at: user.created_at,
-      },
+      const cleanCode = String(code).trim();
+      const validTotp = await verifyTotpToken(cleanCode, user.totp_secret);
+      let session = null;
+
+      if (validTotp) {
+        session = await createSession(user.id, pending.credentialVersion);
+      } else if (user.recovery_codes_json) {
+        try {
+          const recoveryCodes = JSON.parse(user.recovery_codes_json);
+          const codeIndex = recoveryCodes.findIndex(
+            (recoveryCode) => recoveryCode.toUpperCase() === cleanCode.toUpperCase()
+          );
+          if (codeIndex !== -1) {
+            recoveryCodes.splice(codeIndex, 1);
+            session = await createRecoveryCodeSession(
+              user.id,
+              pending.credentialVersion,
+              user.recovery_codes_json,
+              JSON.stringify(recoveryCodes)
+            );
+          }
+        } catch (err) {
+          console.error('Error al verificar código de recuperación:', err);
+        }
+      }
+
+      if (!session) {
+        return res.status(401).json({ error: 'Código de verificación o de recuperación no válido.' });
+      }
+
+      pendingTotpLogins.delete(tempToken);
+      setSessionCookie(res, req, session.sessionId);
+
+      return res.json({
+        success: true,
+        token: session.sessionId,
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          role: user.role,
+          sex: user.sex || '',
+          birth_date: user.birth_date || '',
+          totp_enabled: Boolean(user.totp_enabled),
+          created_at: user.created_at,
+        },
+      });
     });
   } catch (error) {
     console.error('Error al verificar TOTP:', error);
@@ -392,12 +432,26 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 
 app.post('/api/auth/totp/setup', requireAuth, async (req, res) => {
   try {
-    const { secret, qrCodeDataUrl } = await generateTotpSetup(req.user.username);
-    const db = await getDB();
-    // Conservar el secreto activo hasta que el usuario valide el nuevo.
-    // Así, cancelar una reconfiguración no bloquea el siguiente inicio de sesión.
-    await db.run('UPDATE users SET totp_pending_secret = ? WHERE id = ?', [secret, req.user.id]);
-    res.json({ secret, qrCodeDataUrl });
+    const sessionId = getSessionId(req);
+    return await withUserCredentialLock(req.user.id, async () => {
+      const { secret, qrCodeDataUrl } = await generateTotpSetup(req.user.username);
+      const db = await getDB();
+      // Validar y escribir en una sola sentencia impide que una petición que
+      // superó requireAuth antes de una revocación restaure el secreto pendiente.
+      const changed = await setPendingTotpSecretForSession({
+        db,
+        userId: req.user.id,
+        sessionId,
+        pendingSecret: secret,
+        nowIso: new Date().toISOString(),
+      });
+
+      if (!changed) {
+        return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+      }
+
+      return res.json({ secret, qrCodeDataUrl });
+    });
   } catch (error) {
     console.error('Error al generar TOTP setup:', error);
     res.status(500).json({ error: 'Error al configurar 2FA' });
@@ -409,28 +463,53 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
     const { code } = req.body;
     if (!code) return res.status(400).json({ error: 'Introduce el código de 6 dígitos.' });
 
-    const db = await getDB();
-    const user = await db.get('SELECT totp_pending_secret FROM users WHERE id = ?', [req.user.id]);
+    const sessionId = getSessionId(req);
+    return await withUserCredentialLock(req.user.id, async () => {
+      // requireAuth se ejecuta antes de adquirir el bloqueo. Revalidar aquí evita
+      // que una sesión revocada concurrentemente pueda cambiar el segundo factor.
+      const currentUser = await getUserBySession(sessionId);
+      if (!currentUser || currentUser.id !== req.user.id) {
+        return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+      }
 
-    if (!user || !user.totp_pending_secret) {
-      return res.status(400).json({ error: 'Inicia la configuración de 2FA primero.' });
-    }
+      const db = await getDB();
+      const user = await db.get('SELECT totp_pending_secret FROM users WHERE id = ?', [req.user.id]);
 
-    const isValid = await verifyTotpToken(code, user.totp_pending_secret);
-    if (!isValid) {
-      return res.status(400).json({ error: 'Código incorrecto. Verifica la hora de tu teléfono.' });
-    }
+      if (!user || !user.totp_pending_secret) {
+        return res.status(400).json({ error: 'Inicia la configuración de 2FA primero.' });
+      }
 
-    const recoveryCodes = generateRecoveryCodes(8);
+      const isValid = await verifyTotpToken(code, user.totp_pending_secret);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Código incorrecto. Verifica la hora de tu teléfono.' });
+      }
 
-    await db.run(
-      'UPDATE users SET totp_secret = ?, totp_pending_secret = NULL, totp_enabled = 1, recovery_codes_json = ? WHERE id = ?',
-      [user.totp_pending_secret, JSON.stringify(recoveryCodes), req.user.id]
-    );
+      const recoveryCodes = generateRecoveryCodes(8);
+      const changed = await activateTotpAndRevokeAccess({
+        db,
+        userId: req.user.id,
+        verifiedSecret: user.totp_pending_secret,
+        recoveryCodesJson: JSON.stringify(recoveryCodes),
+        sessionId,
+        nowIso: new Date().toISOString(),
+        pendingTotpLogins,
+      });
 
-    res.json({
-      success: true,
-      recoveryCodes,
+      if (!changed) {
+        const stillCurrent = await getUserBySession(sessionId);
+        if (!stillCurrent) {
+          return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+        }
+        return res.status(409).json({
+          error: 'La configuración de 2FA ha cambiado. Inicia de nuevo la configuración.',
+        });
+      }
+
+      return res.json({
+        success: true,
+        recoveryCodes,
+        sessionsRevoked: true,
+      });
     });
   } catch (error) {
     console.error('Error al activar 2FA:', error);
@@ -440,12 +519,28 @@ app.post('/api/auth/totp/verify', requireAuth, async (req, res) => {
 
 app.post('/api/auth/totp/disable', requireAuth, async (req, res) => {
   try {
-    const db = await getDB();
-    await db.run(
-      'UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_pending_secret = NULL, recovery_codes_json = NULL WHERE id = ?',
-      [req.user.id]
-    );
-    res.json({ success: true });
+    const sessionId = getSessionId(req);
+    return await withUserCredentialLock(req.user.id, async () => {
+      const currentUser = await getUserBySession(sessionId);
+      if (!currentUser || currentUser.id !== req.user.id) {
+        return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+      }
+
+      const db = await getDB();
+      const changed = await disableTotpAndRevokeAccess({
+        db,
+        userId: req.user.id,
+        sessionId,
+        nowIso: new Date().toISOString(),
+        pendingTotpLogins,
+      });
+
+      if (!changed) {
+        return res.status(401).json({ error: 'Las credenciales han cambiado. Inicia sesión de nuevo.' });
+      }
+
+      return res.json({ success: true, sessionsRevoked: true });
+    });
   } catch (error) {
     console.error('Error al desactivar 2FA:', error);
     res.status(500).json({ error: 'Error al desactivar 2FA' });
@@ -535,9 +630,19 @@ app.post('/api/users/:id/reset-password', requireAdmin, async (req, res) => {
 
     const db = await getDB();
     const passwordHash = await hashPassword(newPassword);
-    await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, id]);
+    return await withUserCredentialLock(id, async () => {
+      const changed = await replacePasswordAndRevokeAccess({
+        db,
+        userId: id,
+        passwordHash,
+        pendingTotpLogins,
+      });
+      if (!changed) {
+        return res.status(404).json({ error: 'Usuario no encontrado.' });
+      }
 
-    res.json({ success: true });
+      return res.json({ success: true });
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error al restablecer la contraseña' });
   }

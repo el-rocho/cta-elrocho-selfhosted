@@ -25,6 +25,16 @@ try {
 
 let dbInstance = null;
 
+export async function openDatabaseConnection() {
+  const database = await open({
+    filename: DB_PATH,
+    driver: sqlite3.Database,
+  });
+  await database.exec('PRAGMA foreign_keys = ON;');
+  await database.exec('PRAGMA busy_timeout = 5000;');
+  return database;
+}
+
 export async function getDB() {
   if (dbInstance) return dbInstance;
 
@@ -64,6 +74,7 @@ export async function initSchema(db) {
       totp_pending_secret TEXT,
       totp_enabled INTEGER NOT NULL DEFAULT 0,
       recovery_codes_json TEXT,
+      credential_version INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     );
   `);
@@ -84,17 +95,28 @@ export async function initSchema(db) {
   } catch (e) {
     // La columna ya existe
   }
+  try {
+    await db.exec('ALTER TABLE users ADD COLUMN credential_version INTEGER NOT NULL DEFAULT 0;');
+  } catch (e) {
+    // La columna ya existe
+  }
 
   // Tabla de Sesiones de Inicio de Sesión
   await db.exec(`
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      credential_version INTEGER NOT NULL DEFAULT 0,
       expires_at TEXT NOT NULL,
       created_at TEXT NOT NULL,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  try {
+    await db.exec('ALTER TABLE sessions ADD COLUMN credential_version INTEGER NOT NULL DEFAULT 0;');
+  } catch (e) {
+    // La columna ya existe
+  }
 
   // Tabla de Lecturas de Tensión (asociadas a cada usuario)
   await db.exec(`

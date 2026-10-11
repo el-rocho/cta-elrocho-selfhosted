@@ -2,10 +2,22 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateSecret, generateURI, verify } from 'otplib';
 import QRCode from 'qrcode';
-import { getDB } from './db.js';
+import { getDB, openDatabaseConnection } from './db.js';
+import {
+  createSessionWithRecoveryCode as insertSessionWithRecoveryCode,
+  insertSessionForCredentialVersion,
+} from './credentialSecurity.js';
 
 const SESSION_COOKIE_NAME = 'cta_session';
 const SESSION_DURATION_DAYS = 30;
+
+export async function deleteSessionBestEffort(db, sessionId) {
+  try {
+    await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
+  } catch (error) {
+    console.error('No se pudo limpiar una sesión inválida:', error);
+  }
+}
 
 export async function hashPassword(password) {
   return await bcrypt.hash(password, 10);
@@ -16,18 +28,51 @@ export async function comparePassword(password, hash) {
 }
 
 // Crear token y sesión única para un usuario
-export async function createSession(userId) {
+export async function createSession(userId, credentialVersion) {
   const db = await getDB();
   const sessionId = `sess-${crypto.randomBytes(24).toString('hex')}`;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  await db.run(
-    'INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
-    [sessionId, userId, expiresAt, now.toISOString()]
-  );
+  const inserted = await insertSessionForCredentialVersion({
+    db,
+    sessionId,
+    userId,
+    credentialVersion,
+    expiresAt,
+    createdAt: now.toISOString(),
+  });
 
-  return { sessionId, expiresAt };
+  return inserted ? { sessionId, expiresAt } : null;
+}
+
+export async function createRecoveryCodeSession(
+  userId,
+  credentialVersion,
+  previousRecoveryCodesJson,
+  remainingRecoveryCodesJson
+) {
+  const db = await openDatabaseConnection();
+  const sessionId = `sess-${crypto.randomBytes(24).toString('hex')}`;
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const inserted = await insertSessionWithRecoveryCode({
+      db,
+      sessionId,
+      userId,
+      credentialVersion,
+      expiresAt,
+      createdAt: now.toISOString(),
+      previousRecoveryCodesJson,
+      remainingRecoveryCodesJson,
+    });
+
+    return inserted ? { sessionId, expiresAt } : null;
+  } finally {
+    await db.close();
+  }
 }
 
 export async function destroySession(sessionId) {
@@ -45,16 +90,22 @@ export async function getUserBySession(sessionId) {
   if (!session) return null;
 
   if (new Date(session.expires_at).getTime() < Date.now()) {
-    await db.run('DELETE FROM sessions WHERE id = ?', [sessionId]);
+    await deleteSessionBestEffort(db, sessionId);
     return null;
   }
 
   const user = await db.get(
-    'SELECT id, username, name, role, sex, birth_date, totp_enabled, created_at FROM users WHERE id = ?',
+    'SELECT id, username, name, role, sex, birth_date, totp_enabled, credential_version, created_at FROM users WHERE id = ?',
     [session.user_id]
   );
 
-  return user || null;
+  if (!user || Number(session.credential_version) !== Number(user.credential_version)) {
+    await deleteSessionBestEffort(db, sessionId);
+    return null;
+  }
+
+  const { credential_version: _credentialVersion, ...authenticatedUser } = user;
+  return authenticatedUser;
 }
 
 // Obtener el token enviado explícitamente por clientes nativos o, como
@@ -111,7 +162,13 @@ export async function verifyTotpToken(token, secret) {
   try {
     const cleanToken = String(token).trim();
     if (!cleanToken || !secret) return false;
-    const result = await verify({ token: cleanToken, secret });
+    const result = await verify({
+      token: cleanToken,
+      secret,
+      // Aceptar el intervalo inmediatamente anterior cubre el tiempo necesario
+      // para leer y enviar el código sin aceptar códigos de intervalos futuros.
+      epochTolerance: [30, 0],
+    });
     return result.valid === true;
   } catch (err) {
     console.error('Error al verificar TOTP:', err);

@@ -1,4 +1,5 @@
 import type { BloodPressureReading, AppSettings } from '../types/bloodPressure';
+import { guardUnauthorized } from './sessionGuard';
 
 let freshRequestSequence = 0;
 
@@ -36,6 +37,7 @@ export async function fetchReadingsFromServer(): Promise<BloodPressureReading[]>
       credentials: 'include',
       cache: 'no-store',
     });
+    guardUnauthorized(res);
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
@@ -52,6 +54,7 @@ export async function addReadingToServer(newReading: Omit<BloodPressureReading, 
       credentials: 'include',
       body: JSON.stringify(newReading),
     });
+    guardUnauthorized(res);
     if (!res.ok) return null;
     return await res.json();
   } catch (error) {
@@ -68,6 +71,7 @@ export async function updateReadingOnServer(updatedReading: BloodPressureReading
       credentials: 'include',
       body: JSON.stringify(updatedReading),
     });
+    guardUnauthorized(res);
     return res.ok;
   } catch (error) {
     console.error('Error al actualizar toma en el servidor:', error);
@@ -85,6 +89,7 @@ export async function updateMedicationContextForAllReadings(
       credentials: 'include',
       body: JSON.stringify({ takesAntihypertensiveMedication }),
     });
+    guardUnauthorized(res);
     return res.ok;
   } catch (error) {
     console.error('Error al actualizar el contexto de medicación del historial:', error);
@@ -98,6 +103,7 @@ export async function deleteReadingFromServer(id: string): Promise<boolean> {
       method: 'DELETE',
       credentials: 'include',
     });
+    guardUnauthorized(res);
     return res.ok;
   } catch (error) {
     console.error('Error al eliminar toma en el servidor:', error);
@@ -113,6 +119,7 @@ export async function deleteSessionFromServer(readingIds: string[]): Promise<boo
       credentials: 'include',
       body: JSON.stringify({ readingIds }),
     });
+    guardUnauthorized(res);
     return res.ok;
   } catch (error) {
     console.error('Error al eliminar sesión en el servidor:', error);
@@ -126,6 +133,7 @@ export async function clearAllReadingsOnServer(): Promise<boolean> {
       method: 'DELETE',
       credentials: 'include',
     });
+    guardUnauthorized(res);
     return res.ok;
   } catch (error) {
     console.error('Error al vaciar historial en el servidor:', error);
@@ -139,6 +147,7 @@ export async function resetDemoDataOnServer(): Promise<BloodPressureReading[]> {
       method: 'POST',
       credentials: 'include',
     });
+    guardUnauthorized(res);
     if (!res.ok) return [];
     return await res.json();
   } catch (error) {
@@ -155,6 +164,7 @@ export async function importReadingsToServer(imported: Omit<BloodPressureReading
       credentials: 'include',
       body: JSON.stringify(imported),
     });
+    guardUnauthorized(res);
     if (!res.ok) return { addedCount: 0, readings: [] };
     const data = await res.json();
     return { addedCount: data.addedCount || 0, readings: data.readings || [] };
@@ -170,6 +180,7 @@ export async function fetchSettingsFromServer(): Promise<AppSettings> {
       credentials: 'include',
       cache: 'no-store',
     });
+    guardUnauthorized(res);
     if (!res.ok) return DEFAULT_SETTINGS;
     const data = await res.json();
     return {
@@ -193,6 +204,7 @@ export async function saveSettingsToServer(settings: AppSettings): Promise<boole
       credentials: 'include',
       body: JSON.stringify(settings),
     });
+    guardUnauthorized(res);
     return res.ok;
   } catch (error) {
     console.error('Error al guardar ajustes en el servidor:', error);

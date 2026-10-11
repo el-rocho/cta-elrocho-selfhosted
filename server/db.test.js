@@ -17,6 +17,7 @@ async function createLegacyDatabase() {
   testDirectory = mkdtempSync(join(tmpdir(), 'cta-server-targets-'));
   const filename = join(testDirectory, 'legacy.sqlite');
   const database = await open({ filename, driver: sqlite3.Database });
+  await database.exec('PRAGMA synchronous = OFF;');
 
   await database.exec(`
     CREATE TABLE users (
@@ -76,6 +77,11 @@ describe('server treatment-target migration and persistence', () => {
     ) => {
       const { database, filename } = await createLegacyDatabase();
       await initSchema(database);
+
+      const userColumns = await database.all('PRAGMA table_info(users)');
+      expect(userColumns.map((column) => column.name)).toContain('credential_version');
+      const sessionColumns = await database.all('PRAGMA table_info(sessions)');
+      expect(sessionColumns.map((column) => column.name)).toContain('credential_version');
 
       const columns = await database.all('PRAGMA table_info(settings)');
       expect(columns.map((column) => column.name)).toEqual(
@@ -137,6 +143,7 @@ describe('server treatment-target migration and persistence', () => {
       await database.close();
 
       const reopened = await open({ filename, driver: sqlite3.Database });
+      await reopened.exec('PRAGMA synchronous = OFF;');
       const persisted = await reopened.get(
         `SELECT guideline_profile, treatment_target_mode,
                 custom_target_systolic_min, custom_target_systolic_max,

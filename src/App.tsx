@@ -14,7 +14,14 @@ import {
   saveSettingsToServer,
   DEFAULT_SETTINGS,
 } from './services/storageService';
-import { getAuthStatus, logout } from './services/authService';
+import { checkCurrentSession, getAuthStatus, logout } from './services/authService';
+import {
+  applyTotpStatusIfAuthenticated,
+  notifySessionInvalid,
+  onSessionInvalid,
+  shouldShowSessionNotification,
+  shouldShowLoginAfterSessionInvalid,
+} from './services/sessionGuard';
 import { processReadingsIntoSessions } from './utils/whiteCoatAlgorithm';
 import { isBackupDue } from './utils/backupScheduler';
 import { downloadBackup, type AppBackupSnapshot } from './utils/backupService';
@@ -45,6 +52,7 @@ export function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isLegalNoticeOpen, setIsLegalNoticeOpen] = useState<boolean>(false);
   const [isTotpModalOpen, setIsTotpModalOpen] = useState<boolean>(false);
+  const [isTotpRecoveryCodesVisible, setIsTotpRecoveryCodesVisible] = useState<boolean>(false);
   const [isUserMgmtModalOpen, setIsUserMgmtModalOpen] = useState<boolean>(false);
 
   const [dateRange, setDateRange] = useState<DateRange>({ preset: '1month' });
@@ -117,6 +125,46 @@ export function App() {
     }
     checkAuth();
   }, []);
+
+  // 2. Volver al acceso en cuanto el servidor rechace la sesión (por ejemplo,
+  //    tras restablecer la contraseña desde otro dispositivo).
+  useEffect(() => {
+    return onSessionInvalid((showNotification) => {
+      ++dataLoadVersionRef.current;
+      setCurrentUser(null);
+      setReadings([]);
+      setSettings(DEFAULT_SETTINGS);
+      setNotificationMsg(showNotification ? getTranslation(settings.language, 'toast.sessionExpired') : null);
+    });
+  }, [settings.language]);
+
+  // 3. Revalidar la sesión al recuperar el foco y periódicamente, porque una
+  //    pestaña abierta no recibe aviso cuando la sesión se revoca.
+  useEffect(() => {
+    if (!currentUser) return undefined;
+
+    let active = true;
+    const revalidate = async () => {
+      const { reachable, user } = await checkCurrentSession();
+      if (!active || !reachable) return;
+      if (!user) notifySessionInvalid();
+    };
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') revalidate();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    const intervalId = window.setInterval(revalidate, 5 * 60 * 1000);
+
+    return () => {
+      active = false;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser]);
 
   async function loadUserData(loadVersion: number) {
     const [fetchedReadings, fetchedSettings] = await Promise.all([
@@ -328,14 +376,14 @@ export function App() {
       onLanguageChange={(lang) => handleUpdateSettings({ ...settings, language: lang })}
     >
       <div className="app-container">
-        {!currentUser && (
+        {shouldShowLoginAfterSessionInvalid(currentUser, isTotpRecoveryCodesVisible) && (
           <LoginModal
             hasAdmin={hasAdmin}
             onLoginSuccess={handleLoginSuccess}
           />
         )}
 
-        {notificationMsg && (
+        {notificationMsg && shouldShowSessionNotification(notificationMsg, isTotpRecoveryCodesVisible) && (
           <div className={`toast-modal-overlay ${typeof notificationMsg === 'object' ? notificationMsg.variant ?? '' : ''}`} onClick={() => setNotificationMsg(null)}>
             <div className={`toast-notification ${typeof notificationMsg === 'object' ? notificationMsg.variant ?? '' : ''}`} onClick={(e) => e.stopPropagation()}>
               <div className="toast-top-row">
@@ -478,10 +526,9 @@ export function App() {
           onClose={() => setIsTotpModalOpen(false)}
           isTotpEnabled={Boolean(currentUser?.totp_enabled)}
           onTotpStatusChanged={(enabled) => {
-            if (currentUser) {
-              setCurrentUser({ ...currentUser, totp_enabled: enabled });
-            }
+            setCurrentUser((user) => applyTotpStatusIfAuthenticated(user, enabled));
           }}
+          onRecoveryCodesVisibilityChange={setIsTotpRecoveryCodesVisible}
         />
 
         {currentUser && currentUser.role === 'admin' && (

@@ -1,3 +1,5 @@
+import { guardUnauthorized } from './sessionGuard';
+
 export interface ServerSystemStatus {
   status: 'ok';
   checkedAt: string;
@@ -66,6 +68,7 @@ export async function getAdminServerStatus(
       cache: 'no-store',
       signal: controller.signal,
     });
+    guardUnauthorized(response);
     if (response.status === 404) throw new ServerStatusRequestError('unsupported-version');
     if (!response.ok) throw new ServerStatusRequestError('unavailable');
     const contentType = response.headers?.get?.('content-type') || '';

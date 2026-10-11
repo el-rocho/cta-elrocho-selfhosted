@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, X, Key, Copy, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { setupTotp, verifyAndEnableTotp, disableTotp } from '../services/authService';
+import { completeTotpChange } from '../services/sessionGuard';
 
 interface TotpSetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   isTotpEnabled: boolean;
   onTotpStatusChanged: (enabled: boolean) => void;
+  onRecoveryCodesVisibilityChange: (visible: boolean) => void;
 }
 
 export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
@@ -14,6 +16,7 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
   onClose,
   isTotpEnabled,
   onTotpStatusChanged,
+  onRecoveryCodesVisibilityChange,
 }) => {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
@@ -23,9 +26,13 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isReconfiguring, setIsReconfiguring] = useState(false);
+  const revokeAfterRecoveryCodesRef = useRef(false);
+  const mutationPendingRef = useRef(false);
+  const setupRequestIdRef = useRef(0);
+  const setupInFlightRef = useRef<Promise<Awaited<ReturnType<typeof setupTotp>>> | null>(null);
 
   useEffect(() => {
-    if (isOpen && !isTotpEnabled && !recoveryCodes) {
+    if (isOpen && !isTotpEnabled && !recoveryCodes && !mutationPendingRef.current) {
       loadSetup();
     }
   }, [isOpen, isTotpEnabled]);
@@ -33,12 +40,26 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
   if (!isOpen) return null;
 
   async function loadSetup() {
+    const requestId = ++setupRequestIdRef.current;
     setLoading(true);
     setErrorMsg(null);
     setQrCodeDataUrl(null);
     setSecret(null);
     setVerifyCode('');
-    const data = await setupTotp();
+    const preceding = setupInFlightRef.current;
+    const request = preceding
+      ? preceding.catch(() => null).then(() => setupTotp())
+      : setupTotp();
+    setupInFlightRef.current = request;
+    let data: Awaited<ReturnType<typeof setupTotp>>;
+    try {
+      data = await request;
+    } catch {
+      data = { error: 'No se pudo generar la clave 2FA. Revisa la conexión con el servidor.' };
+    } finally {
+      if (setupInFlightRef.current === request) setupInFlightRef.current = null;
+    }
+    if (requestId !== setupRequestIdRef.current) return;
     if (data && data.qrCodeDataUrl && data.secret) {
       setQrCodeDataUrl(data.qrCodeDataUrl);
       setSecret(data.secret);
@@ -56,15 +77,22 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
     setErrorMsg(null);
     setCopied(false);
     setIsReconfiguring(false);
+    onRecoveryCodesVisibilityChange(false);
   }
 
   function handleClose() {
+    if (mutationPendingRef.current) return;
+    ++setupRequestIdRef.current;
+    const sessionsRevoked = revokeAfterRecoveryCodesRef.current;
+    revokeAfterRecoveryCodesRef.current = false;
     resetModalState();
     onClose();
+    completeTotpChange(sessionsRevoked);
   }
 
   async function handleVerifySubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mutationPendingRef.current) return;
     setErrorMsg(null);
 
     if (!verifyCode || verifyCode.trim().length !== 6) {
@@ -72,27 +100,42 @@ export const TotpSetupModal: React.FC<TotpSetupModalProps> = ({
       return;
     }
 
+    mutationPendingRef.current = true;
     setLoading(true);
-    const res = await verifyAndEnableTotp(verifyCode);
-    setLoading(false);
+    let res: Awaited<ReturnType<typeof verifyAndEnableTotp>>;
+    try {
+      res = await verifyAndEnableTotp(verifyCode);
+    } finally {
+      mutationPendingRef.current = false;
+      setLoading(false);
+    }
 
     if (!res.success || !res.recoveryCodes) {
       setErrorMsg(res.error || 'Código incorrecto. Comprueba la hora del teléfono.');
       return;
     }
 
+    revokeAfterRecoveryCodesRef.current = res.sessionsRevoked === true;
     setRecoveryCodes(res.recoveryCodes);
+    onRecoveryCodesVisibilityChange(true);
     onTotpStatusChanged(true);
   }
 
   async function handleDisable2FA() {
     if (confirm('¿Seguro que deseas desactivar la autenticación de doble factor 2FA para tu cuenta?')) {
+      mutationPendingRef.current = true;
       setLoading(true);
-      const ok = await disableTotp();
-      setLoading(false);
+      let ok: boolean;
+      try {
+        ok = await disableTotp();
+      } finally {
+        mutationPendingRef.current = false;
+        setLoading(false);
+      }
       if (ok) {
         onTotpStatusChanged(false);
         handleClose();
+        completeTotpChange(true);
       } else {
         setErrorMsg('No se pudo desactivar 2FA. Inténtalo de nuevo.');
       }
