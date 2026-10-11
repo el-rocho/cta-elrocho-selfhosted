@@ -5,7 +5,8 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
-import { getDB, DATA_DIR, DB_PATH, BACKUPS_DIR } from './db.js';
+import { getDB, openDatabaseConnection, DATA_DIR, DB_PATH, BACKUPS_DIR } from './db.js';
+import { replaceBackupForUser } from './restoreBackup.js';
 import { createHealthHandler } from './health.js';
 import {
   createApiActivityMonitor,
@@ -993,7 +994,15 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/readings/import', requireAuth, async (req, res) => {
+function requireExplicitSessionToken(req, res, next) {
+  // No admitir cookies como única prueba de autorización en importaciones destructivas.
+  if (!req.get('x-session-token')) {
+    return res.status(403).json({ error: 'Token explícito requerido para importar o restaurar' });
+  }
+  next();
+}
+
+app.post('/api/readings/import', requireExplicitSessionToken, requireAuth, async (req, res) => {
   try {
     const importedItems = req.body;
     if (!Array.isArray(importedItems)) {
@@ -1057,6 +1066,23 @@ app.post('/api/readings/import', requireAuth, async (req, res) => {
     res.json({ addedCount, total: readings.length, readings });
   } catch (error) {
     res.status(500).json({ error: 'Error al importar mediciones' });
+  }
+});
+
+app.post('/api/backups/restore-replace', requireExplicitSessionToken, requireAuth, async (req, res) => {
+  let db;
+  try {
+    db = await openDatabaseConnection();
+    const result = await replaceBackupForUser(db, req.user.id, req.body);
+    res.json(result);
+  } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('Error al restaurar copia de seguridad:', error);
+    res.status(500).json({ error: 'No se pudo completar o confirmar la restauración. Comprueba los datos antes de reintentar.' });
+  } finally {
+    if (db) await db.close();
   }
 });
 

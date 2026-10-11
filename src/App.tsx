@@ -10,6 +10,7 @@ import {
   clearAllReadingsOnServer,
   resetDemoDataOnServer,
   importReadingsToServer,
+  restoreBackupOnServer,
   fetchSettingsFromServer,
   saveSettingsToServer,
   DEFAULT_SETTINGS,
@@ -25,6 +26,7 @@ import {
 import { processReadingsIntoSessions } from './utils/whiteCoatAlgorithm';
 import { isBackupDue } from './utils/backupScheduler';
 import { downloadBackup, type AppBackupSnapshot } from './utils/backupService';
+import { isRestoreSessionCurrent } from './utils/restoreSession';
 import { Header } from './components/Header';
 import { ReadingForm } from './components/ReadingForm';
 import { TrendChart } from './components/TrendChart';
@@ -131,6 +133,7 @@ export function App() {
   useEffect(() => {
     return onSessionInvalid((showNotification) => {
       ++dataLoadVersionRef.current;
+      setIsExportModalOpen(false);
       setCurrentUser(null);
       setReadings([]);
       setSettings(DEFAULT_SETTINGS);
@@ -178,6 +181,7 @@ export function App() {
 
   const handleLoginSuccess = async (user: AuthUser) => {
     const loadVersion = ++dataLoadVersionRef.current;
+    setIsExportModalOpen(false);
     setReadings([]);
     setSettings(DEFAULT_SETTINGS);
     setCurrentUser(user);
@@ -187,6 +191,7 @@ export function App() {
 
   const handleLogout = async () => {
     ++dataLoadVersionRef.current;
+    setIsExportModalOpen(false);
     setReadings([]);
     setSettings(DEFAULT_SETTINGS);
     await logout();
@@ -225,7 +230,13 @@ export function App() {
   };
 
   const handleImportReadings = async (imported: Omit<BloodPressureReading, 'id'>[]) => {
+    if (!currentUser) throw new Error('No hay una sesión activa para importar');
+    const importGeneration = dataLoadVersionRef.current;
+    const importUserId = currentUser.id;
     const result = await importReadingsToServer(imported);
+    if (!isRestoreSessionCurrent(importGeneration, dataLoadVersionRef.current, importUserId, currentUser.id)) {
+      throw new Error('La sesión cambió durante la importación');
+    }
     setReadings(result.readings);
     setNotificationMsg(getTranslation(settings.language, 'toast.importedCount', { count: result.addedCount }));
     setTimeout(() => setNotificationMsg(null), 5000);
@@ -265,20 +276,31 @@ export function App() {
   const handleRestoreBackup = async (snapshot: AppBackupSnapshot, mode: 'merge' | 'replace') => {
     const imported = snapshot.readings.map(({ id: _id, ...reading }) => reading);
     if (mode === 'replace') {
-      const cleared = await clearAllReadingsOnServer();
-      if (!cleared) return 0;
-      const result = await importReadingsToServer(imported);
-      const restoredSettings = {
-        ...snapshot.settings,
-        lastBackupTimestamp: snapshot.createdAt,
-        lastFullBackupTimestamp: snapshot.createdAt,
-      };
-      await handleUpdateSettings(restoredSettings);
+      if (!currentUser) throw new Error('No hay una sesión activa para restaurar');
+      const restoreGeneration = dataLoadVersionRef.current;
+      const restoreUserId = currentUser.id;
+      const result = await restoreBackupOnServer(snapshot);
+      if (!isRestoreSessionCurrent(restoreGeneration, dataLoadVersionRef.current, restoreUserId, currentUser.id)) {
+        throw new Error('La sesión cambió durante la restauración');
+      }
       setReadings(result.readings);
+      setSettings(result.settings);
+      setCurrentUser((user) => user?.id === restoreUserId ? {
+        ...user,
+        name: result.settings.patientName ?? '',
+        sex: result.settings.patientSex,
+        birth_date: result.settings.patientBirthDate,
+      } : user);
       return result.readings.length;
     }
 
+    if (!currentUser) throw new Error('No hay una sesión activa para importar');
+    const importGeneration = dataLoadVersionRef.current;
+    const importUserId = currentUser.id;
     const result = await importReadingsToServer(imported);
+    if (!isRestoreSessionCurrent(importGeneration, dataLoadVersionRef.current, importUserId, currentUser.id)) {
+      throw new Error('La sesión cambió durante la importación');
+    }
     setReadings(result.readings);
     return result.addedCount;
   };
@@ -492,7 +514,7 @@ export function App() {
           readings={readings}
         />
 
-        <ExportModal
+        {currentUser && isExportModalOpen && <ExportModal
           isOpen={isExportModalOpen}
           onClose={() => setIsExportModalOpen(false)}
           sessions={sessions}
@@ -504,7 +526,7 @@ export function App() {
           onUpdateSettings={handleUpdateSettings}
           onTriggerManualBackup={handleTriggerManualBackup}
           onNotify={(msg) => setNotificationMsg(msg)}
-        />
+        />}
 
         <SettingsModal
           isOpen={isSettingsModalOpen}

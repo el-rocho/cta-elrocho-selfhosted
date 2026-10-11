@@ -41,7 +41,7 @@ function isValidReading(value: unknown): value is BloodPressureReading {
       diastolic: value.diastolic,
       heartRate: value.heartRate,
     }) &&
-    (value.notes === undefined || typeof value.notes === 'string') &&
+    (value.notes === undefined || value.notes === null || typeof value.notes === 'string') &&
     (value.sessionId === undefined || typeof value.sessionId === 'string') &&
     (value.pulsePressureWarningConfirmed === undefined || typeof value.pulsePressureWarningConfirmed === 'boolean') &&
     (value.takesAntihypertensiveMedication === undefined || typeof value.takesAntihypertensiveMedication === 'boolean')
@@ -128,7 +128,10 @@ export function parseBackupContent(content: string): BackupParseResult {
       format: BACKUP_FORMAT,
       version: BACKUP_VERSION,
       createdAt: parsed.createdAt,
-      readings: parsed.readings,
+      readings: parsed.readings.map((reading) => ({
+        ...reading,
+        notes: reading.notes ?? undefined,
+      })),
       settings,
     },
   };

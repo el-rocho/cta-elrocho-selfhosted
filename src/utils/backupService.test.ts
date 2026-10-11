@@ -56,6 +56,14 @@ describe('complete application backups', () => {
     expect(result.snapshot.readings.map((reading) => reading.sessionId)).toEqual(['session-1', 'session-1']);
   });
 
+  it('accepts backups generated from server readings with notes:null', () => {
+    const fromServer = { ...readings[0], notes: null };
+    const backup = createBackupSnapshot(JSON.parse(JSON.stringify([fromServer])) as BloodPressureReading[], settings, '2026-07-31T12:00:00.000Z');
+    const result = parseBackupContent(serializeBackup(backup));
+    expect(result.status).toBe('valid');
+    if (result.status === 'valid') expect(result.snapshot.readings[0].notes).toBeUndefined();
+  });
+
   it('normalizes configurable intervals from legacy backups to five minutes', () => {
     const snapshot = createBackupSnapshot(readings, settings, '2026-07-31T12:00:00.000Z');
     const legacySnapshot = {

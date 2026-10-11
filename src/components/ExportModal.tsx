@@ -77,6 +77,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [activeTab, setActiveTab] = useState<DataTab>('backup');
   const [importStatus, setImportStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const restoreBusyRef = React.useRef(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -155,6 +157,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (restoreBusyRef.current) return;
     const file = event.target.files?.[0];
     if (!file) return;
     setImportStatus(null);
@@ -162,6 +165,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
     const reader = new FileReader();
     reader.onload = (loadEvent) => {
+      if (restoreBusyRef.current) return;
       const content = loadEvent.target?.result;
       if (typeof content !== 'string') return;
 
@@ -193,36 +197,64 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const confirmCSVImport = async () => {
-    if (!pendingImport || pendingImport.kind !== 'csv') return;
-    const addedCount = await onImportReadings(pendingImport.result.readings);
-    setImportStatus({ kind: 'success', message: t('toast.importedCount', { count: addedCount }) });
-    setPendingImport(null);
+    if (!pendingImport || pendingImport.kind !== 'csv' || restoreBusyRef.current) return;
+    restoreBusyRef.current = true;
+    setRestoreBusy(true);
+    try {
+      const addedCount = await onImportReadings(pendingImport.result.readings);
+      setImportStatus({ kind: 'success', message: t('toast.importedCount', { count: addedCount }) });
+      setPendingImport(null);
+    } catch (error) {
+      console.error('Error al importar CSV:', error);
+      setImportStatus({
+        kind: 'error',
+        message: error instanceof Error && error.message === 'SESSION_TOKEN_REQUIRED'
+          ? t('data.restoreSignInAgain') : t('data.restoreFailed'),
+      });
+    } finally {
+      restoreBusyRef.current = false;
+      setRestoreBusy(false);
+    }
   };
 
   const confirmBackupRestore = async (mode: 'merge' | 'replace') => {
-    if (!pendingImport || pendingImport.kind !== 'backup') return;
+    if (restoreBusyRef.current || !pendingImport || pendingImport.kind !== 'backup') return;
     if (mode === 'replace' && !window.confirm(t('data.replaceConfirm'))) return;
-    const restoredCount = await onRestoreBackup(pendingImport.snapshot, mode);
-    setImportStatus({
-      kind: 'success',
-      message: mode === 'replace'
-        ? t('data.restoreReplaceSuccess', { count: restoredCount })
-        : t('data.restoreMergeSuccess', { count: restoredCount }),
-    });
-    setPendingImport(null);
+    restoreBusyRef.current = true;
+    setRestoreBusy(true);
+    try {
+      const restoredCount = await onRestoreBackup(pendingImport.snapshot, mode);
+      setImportStatus({
+        kind: 'success',
+        message: mode === 'replace'
+          ? t('data.restoreReplaceSuccess', { count: restoredCount })
+          : t('data.restoreMergeSuccess', { count: restoredCount }),
+      });
+      setPendingImport(null);
+    } catch (error) {
+      console.error('Error al restaurar la copia:', error);
+      setImportStatus({
+        kind: 'error',
+        message: error instanceof Error && error.message === 'SESSION_TOKEN_REQUIRED'
+          ? t('data.restoreSignInAgain') : t('data.restoreFailed'),
+      });
+    } finally {
+      restoreBusyRef.current = false;
+      setRestoreBusy(false);
+    }
   };
 
-  const openFilePicker = () => fileInputRef.current?.click();
+  const openFilePicker = () => { if (!restoreBusyRef.current) fileInputRef.current?.click(); };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={() => { if (!restoreBusyRef.current) onClose(); }}>
       <div className="modal-content data-modal" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title-group">
             <DatabaseBackup size={26} className="modal-icon legal-icon-main" />
             <h2 className="legal-modal-title">{t('data.title')}</h2>
           </div>
-          <button className="btn-close-modal" onClick={onClose} aria-label={t('settings.close')}>
+          <button className="btn-close-modal" onClick={onClose} disabled={restoreBusy} aria-label={t('settings.close')}>
             <X size={20} />
           </button>
         </div>
@@ -233,6 +265,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               key={tab}
               type="button"
               className={`modal-tab ${activeTab === tab ? 'active' : ''}`}
+              disabled={restoreBusy}
               onClick={() => setActiveTab(tab)}
             >
               {t(`data.tab.${tab}`)}
@@ -295,6 +328,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   ref={fileInputRef}
                   accept=".csv,.json,.cta-backup.json,text/csv,application/json"
                   onChange={handleFileChange}
+                  disabled={restoreBusy}
                   style={{ display: 'none' }}
                 />
               </div>
@@ -323,14 +357,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <span>{t('data.nativeBackupNotice')}</span>
                   </div>
                   <div className="import-preview-actions restore-actions">
-                    <button type="button" className="btn-import-confirm" onClick={() => confirmBackupRestore('merge')}>
+                    <button type="button" className="btn-import-confirm" disabled={restoreBusy} onClick={() => confirmBackupRestore('merge')}>
                       <CheckCircle2 size={18} />
                       {t('data.mergeBackup')}
                     </button>
-                    <button type="button" className="btn-replace-data" onClick={() => confirmBackupRestore('replace')}>
+                    <button type="button" className="btn-replace-data" disabled={restoreBusy} onClick={() => confirmBackupRestore('replace')}>
                       {t('data.replaceData')}
                     </button>
-                    <button type="button" className="btn-import-reselect" onClick={openFilePicker}>
+                    <button type="button" className="btn-import-reselect" disabled={restoreBusy} onClick={openFilePicker}>
                       {t('data.selectAnotherFile')}
                     </button>
                   </div>
@@ -396,11 +430,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     </div>
                   )}
                   <div className="import-preview-actions">
-                    <button type="button" className="btn-import-confirm" onClick={confirmCSVImport}>
+                    <button type="button" className="btn-import-confirm" disabled={restoreBusy} onClick={confirmCSVImport}>
                       <CheckCircle2 size={18} />
                       {t('export.confirmImport')}
                     </button>
-                    <button type="button" className="btn-import-reselect" onClick={openFilePicker}>
+                    <button type="button" className="btn-import-reselect" disabled={restoreBusy} onClick={openFilePicker}>
                       {t('data.selectAnotherFile')}
                     </button>
                   </div>

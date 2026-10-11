@@ -1,4 +1,5 @@
 import type { BloodPressureReading, AppSettings } from '../types/bloodPressure';
+import type { AppBackupSnapshot } from '../utils/backupService';
 import { guardUnauthorized } from './sessionGuard';
 
 let freshRequestSequence = 0;
@@ -156,22 +157,43 @@ export async function resetDemoDataOnServer(): Promise<BloodPressureReading[]> {
   }
 }
 
+function getRestoreSessionToken(): string {
+  const token = localStorage.getItem('cta_session_token');
+  if (!token) throw new Error('SESSION_TOKEN_REQUIRED');
+  return token;
+}
+
 export async function importReadingsToServer(imported: Omit<BloodPressureReading, 'id'>[]): Promise<{ addedCount: number; readings: BloodPressureReading[] }> {
-  try {
-    const res = await fetch('/api/readings/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(imported),
-    });
-    guardUnauthorized(res);
-    if (!res.ok) return { addedCount: 0, readings: [] };
-    const data = await res.json();
-    return { addedCount: data.addedCount || 0, readings: data.readings || [] };
-  } catch (error) {
-    console.error('Error al importar mediciones en el servidor:', error);
-    return { addedCount: 0, readings: [] };
-  }
+  const token = getRestoreSessionToken();
+  const res = await fetch('/api/readings/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-session-token': token },
+    credentials: 'include',
+    body: JSON.stringify(imported),
+  });
+  guardUnauthorized(res);
+  if (!res.ok) throw new Error(`No se pudo importar la copia (${res.status})`);
+  const data = await res.json();
+  return { addedCount: data.addedCount, readings: data.readings };
+}
+
+export async function restoreBackupOnServer(snapshot: AppBackupSnapshot): Promise<{
+  readings: BloodPressureReading[];
+  settings: AppSettings;
+}> {
+  const token = getRestoreSessionToken();
+  const res = await fetch('/api/backups/restore-replace', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-session-token': token,
+    },
+    credentials: 'include',
+    body: JSON.stringify(snapshot),
+  });
+  guardUnauthorized(res);
+  if (!res.ok) throw new Error(`No se pudo restaurar la copia (${res.status})`);
+  return await res.json();
 }
 
 export async function fetchSettingsFromServer(): Promise<AppSettings> {
