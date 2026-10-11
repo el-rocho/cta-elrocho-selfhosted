@@ -80,6 +80,27 @@ it('exposes authenticated atomic restore over HTTP and preserves state on a data
   });
   expect(crossOrigin.status).toBe(403);
   expect((await restore({ ...snapshot, readings: [{ ...snapshot.readings[0], systolic: 999 }] })).status).toBe(400);
+  const merge = (route, body, token = 'test-session') => fetch(`${url}/api/backups/${route}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { 'x-session-token': token } : {}) }, body: JSON.stringify(body),
+  });
+  expect((await merge('merge-preview', snapshot, null)).status).toBe(403);
+  expect((await merge('restore-merge', { snapshot, previewToken: 'invalid' })).status).toBe(409);
+  const previewResponse = await merge('merge-preview', snapshot);
+  expect(previewResponse.status).toBe(200);
+  const preview = await previewResponse.json();
+  expect(preview).toMatchObject({ addedCount: 1, duplicateCount: 0, conflictCount: 0, previewToken: expect.any(String) });
+  expect((await merge('restore-merge', { snapshot, previewToken: preview.previewToken }, null)).status).toBe(403);
+  const merged = await merge('restore-merge', { snapshot, previewToken: preview.previewToken });
+  expect(merged.status).toBe(200);
+  expect((await merged.json()).readings).toHaveLength(2);
+  const concurrentSnapshot = { ...snapshot, readings: [{ ...snapshot.readings[0], id: 'second-backup', timestamp: '2026-09-02T00:00:00.000Z' }] };
+  const concurrentPreview = await (await merge('merge-preview', concurrentSnapshot)).json();
+  const attempts = await Promise.all([1, 2].map(() => merge('restore-merge', {
+    snapshot: concurrentSnapshot, previewToken: concurrentPreview.previewToken,
+  })));
+  expect(attempts.map((response) => response.status).sort()).toEqual([200, 409]);
+  const afterRace = await fetch(`${url}/api/readings`, { headers: { 'x-session-token': 'test-session' } });
+  expect((await afterRace.json())).toHaveLength(3);
   let result = await restore(snapshot);
   expect(result.status).toBe(200);
   expect((await result.json()).readings).toMatchObject([{ systolic: 125 }]);

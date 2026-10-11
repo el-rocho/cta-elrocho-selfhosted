@@ -5,7 +5,7 @@ import { afterEach, expect, it } from 'vitest';
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import { initSchema } from './db.js';
-import { replaceBackupForUser } from './restoreBackup.js';
+import { replaceBackupForUser, previewMergeForUser, mergeBackupForUser } from './restoreBackup.js';
 
 const directories = [];
 async function fixture() {
@@ -81,5 +81,50 @@ it('rejects invalid backup data without clearing the old history', async () => {
     await expect(replaceBackupForUser(db, 'u1', { ...snapshot, readings: [{ ...snapshot.readings[0], systolic: 999 }] }))
       .rejects.toMatchObject({ status: 400 });
     expect(await db.get("SELECT id FROM readings WHERE user_id = 'u1'")).toEqual({ id: 'old' });
+  } finally { await db.close(); }
+});
+
+
+it('previews exact duplicates and same-instant conflicts including all clinical fields, without writing', async () => {
+  const db = await fixture();
+  try {
+    const timestamp = '2026-01-01T00:00:00.000Z';
+    const readings = [
+      { id: 'same', timestamp, systolic: 120, diastolic: 80, heartRate: 70, arm: 'left', notes: null, pulsePressureWarningConfirmed: false, takesAntihypertensiveMedication: false },
+      { id: 'conflict', timestamp: '2025-12-31T19:00:00-05:00', systolic: 120, diastolic: 80, heartRate: 70, arm: 'right' },
+      { id: 'new', timestamp: '2026-01-01T00:00:00.001Z', systolic: 125, diastolic: 78, heartRate: 66, arm: 'right' },
+    ];
+    const preview = await previewMergeForUser(db, 'u1', { ...snapshot, readings }, 'test-session');
+    expect(preview).toMatchObject({ addedCount: 1, duplicateCount: 1, conflictCount: 1, previewToken: expect.any(String) });
+    expect(await db.get("SELECT count(*) AS n FROM readings WHERE user_id = 'u1'")).toEqual({ n: 1 });
+    const result = await mergeBackupForUser(db, 'u1', { ...snapshot, readings }, preview.previewToken, 'test-session');
+    expect(result).toMatchObject({ addedCount: 1, duplicateCount: 1, conflictCount: 1 });
+    expect(result.readings).toHaveLength(3);
+    expect(await db.get("SELECT count(*) AS n FROM readings WHERE user_id = 'u2'")).toEqual({ n: 1 });
+    expect(await db.get("SELECT language FROM settings WHERE user_id = 'u1'")).toEqual({ language: 'es' });
+    await expect(mergeBackupForUser(db, 'u1', { ...snapshot, readings }, preview.previewToken, 'test-session')).rejects.toMatchObject({ status: 409 });
+  } finally { await db.close(); }
+});
+
+it('rejects missing, substituted and stale preview tokens before any merge', async () => {
+  const db = await fixture();
+  try {
+    const preview = await previewMergeForUser(db, 'u1', snapshot, 'test-session');
+    for (const [payload, token, session] of [[snapshot, '', 'test-session'], [snapshot, preview.previewToken, 'another-session'], [{ ...snapshot, readings: [{ ...snapshot.readings[0], systolic: 130 }] }, preview.previewToken, 'test-session']]) {
+      await expect(mergeBackupForUser(db, 'u1', payload, token, session)).rejects.toMatchObject({ status: 409 });
+    }
+    await db.run("INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate, created_at) VALUES ('raced', 'u1', '2026-09-01T00:00:00.000Z', 140, 90, 70, '2026-01-01')");
+    await expect(mergeBackupForUser(db, 'u1', snapshot, preview.previewToken, 'test-session')).rejects.toMatchObject({ status: 409 });
+    expect(await db.get("SELECT count(*) AS n FROM readings WHERE user_id = 'u1'")).toEqual({ n: 2 });
+  } finally { await db.close(); }
+});
+
+it('rolls back merge completely on an insert failure', async () => {
+  const db = await fixture();
+  try {
+    const preview = await previewMergeForUser(db, 'u1', snapshot, 'test-session');
+    await db.exec("CREATE TRIGGER fail_merge BEFORE INSERT ON readings BEGIN SELECT RAISE(ABORT, 'failure'); END;");
+    await expect(mergeBackupForUser(db, 'u1', snapshot, preview.previewToken, 'test-session')).rejects.toThrow('failure');
+    expect(await db.get("SELECT count(*) AS n FROM readings WHERE user_id = 'u1'")).toEqual({ n: 1 });
   } finally { await db.close(); }
 });

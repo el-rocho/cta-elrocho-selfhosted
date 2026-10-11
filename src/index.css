@@ -2030,6 +2030,41 @@ body {
   color: #d97706;
 }
 
+.import-preview-note.merge-conflict-note {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.import-preview-note.merge-conflict-note svg {
+  color: #d97706;
+}
+
+.import-preview-note.merge-clean-note {
+  border-color: rgba(22, 101, 52, 0.36);
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--text-primary);
+}
+
+.import-preview-note.merge-clean-note svg {
+  color: #15803d;
+}
+
+.import-preview-note.merge-checking-note {
+  border-color: rgba(59, 130, 246, 0.28);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.import-preview-note.merge-checking-note svg {
+  color: #2563eb;
+}
+
+.import-summary-item.is-conflict strong {
+  color: #b45309;
+  font-weight: 700;
+}
+
 .import-preview-actions {
   display: flex;
   gap: 8px;

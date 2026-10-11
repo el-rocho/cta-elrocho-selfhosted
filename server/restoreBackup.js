@@ -120,3 +120,102 @@ export async function replaceBackupForUser(db, userId, snapshot) {
     throw error;
   }
 }
+
+
+// Tokens are short-lived, one-use capabilities scoped to one user/session and exact payload.
+const mergePreviews = new Map();
+const MERGE_PREVIEW_LIFETIME_MS = 5 * 60 * 1000;
+function mergeError(message, status = 409) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+const mergeRowsSQL = `SELECT id, timestamp, systolic, diastolic, heart_rate, arm, notes,
+  pulse_pressure_confirmed, takes_antihypertensive_medication
+  FROM readings WHERE user_id = ? ORDER BY id`;
+const digest = (value) => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+function readingIdentity(r) {
+  return JSON.stringify([
+    new Date(r.timestamp).getTime(), Number(r.systolic), Number(r.diastolic), Number(r.heartRate ?? r.heart_rate),
+    r.arm, r.notes ?? null, Boolean(r.pulsePressureWarningConfirmed ?? r.pulse_pressure_confirmed),
+    Boolean(r.takesAntihypertensiveMedication ?? r.takes_antihypertensive_medication),
+  ]);
+}
+function classifyMerge(rows, snapshot) {
+  const byTime = new Map();
+  for (const row of rows) {
+    const instant = new Date(row.timestamp).getTime();
+    if (!byTime.has(instant)) byTime.set(instant, new Set());
+    byTime.get(instant).add(readingIdentity(row));
+  }
+  const additions = [];
+  let duplicateCount = 0, conflictCount = 0;
+  for (const r of snapshot.readings) {
+    const instant = new Date(r.timestamp).getTime();
+    const identities = byTime.get(instant) ?? new Set();
+    const identity = readingIdentity({ ...r,
+      takesAntihypertensiveMedication: r.takesAntihypertensiveMedication ?? snapshot.settings.takesAntihypertensiveMedication,
+    });
+    if (identities.has(identity)) { duplicateCount++; continue; }
+    if (identities.size) conflictCount++;
+    additions.push(r);
+    identities.add(identity);
+    byTime.set(instant, identities);
+  }
+  return { addedCount: additions.length - conflictCount, duplicateCount, conflictCount, additions };
+}
+
+export async function previewMergeForUser(db, userId, snapshot, sessionId) {
+  validateSnapshot(snapshot);
+  const rows = await db.all(mergeRowsSQL, [userId]);
+  const { addedCount, duplicateCount, conflictCount } = classifyMerge(rows, snapshot);
+  const previewToken = crypto.randomBytes(32).toString('hex');
+  const now = Date.now();
+  for (const [token, entry] of mergePreviews) {
+    if (entry.expiresAt < now) mergePreviews.delete(token);
+  }
+  mergePreviews.set(previewToken, {
+    userId, sessionId, snapshotHash: digest(snapshot), stateHash: digest(rows),
+    expiresAt: now + MERGE_PREVIEW_LIFETIME_MS,
+  });
+  return { addedCount, duplicateCount, conflictCount, previewToken };
+}
+
+export async function mergeBackupForUser(db, userId, snapshot, previewToken, sessionId) {
+  validateSnapshot(snapshot);
+  const preview = mergePreviews.get(previewToken);
+  if (!preview || preview.userId !== userId || preview.sessionId !== sessionId ||
+      preview.expiresAt < Date.now() || preview.snapshotHash !== digest(snapshot)) {
+    throw mergeError('Previsualización no válida o caducada');
+  }
+  await db.exec('BEGIN IMMEDIATE');
+  try {
+    const rows = await db.all(mergeRowsSQL, [userId]);
+    if (digest(rows) !== preview.stateHash) throw mergeError('Las mediciones han cambiado; vuelve a previsualizar');
+    const { addedCount, duplicateCount, conflictCount, additions } = classifyMerge(rows, snapshot);
+    const now = new Date().toISOString();
+    for (const r of additions) {
+      await db.run(`INSERT INTO readings (id, user_id, timestamp, systolic, diastolic, heart_rate,
+        arm, notes, pulse_pressure_confirmed, takes_antihypertensive_medication, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [crypto.randomUUID(), userId, r.timestamp, r.systolic, r.diastolic, r.heartRate,
+        r.arm, r.notes ?? null, r.pulsePressureWarningConfirmed ? 1 : 0,
+        (r.takesAntihypertensiveMedication ?? snapshot.settings.takesAntihypertensiveMedication) ? 1 : 0, now]);
+    }
+    const updated = await db.all(`SELECT id, timestamp, systolic, diastolic, heart_rate AS heartRate,
+      arm, notes, pulse_pressure_confirmed AS pulsePressureWarningConfirmed,
+      takes_antihypertensive_medication AS takesAntihypertensiveMedication
+      FROM readings WHERE user_id = ? ORDER BY timestamp DESC`, [userId]);
+    await db.exec('COMMIT');
+    mergePreviews.delete(previewToken);
+    return { addedCount, duplicateCount, conflictCount, readings: updated.map((r) => ({
+      ...r, pulsePressureWarningConfirmed: Boolean(r.pulsePressureWarningConfirmed),
+      takesAntihypertensiveMedication: Boolean(r.takesAntihypertensiveMedication),
+    })) };
+  } catch (error) {
+    try { await db.exec('ROLLBACK'); } catch (rollbackError) {
+      console.error('Error al revertir combinación:', rollbackError);
+    }
+    throw error;
+  }
+}

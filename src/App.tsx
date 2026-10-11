@@ -10,6 +10,8 @@ import {
   clearAllReadingsOnServer,
   resetDemoDataOnServer,
   importReadingsToServer,
+  previewBackupMergeOnServer,
+  mergeBackupOnServer,
   restoreBackupOnServer,
   fetchSettingsFromServer,
   saveSettingsToServer,
@@ -273,8 +275,18 @@ export function App() {
     }
   };
 
-  const handleRestoreBackup = async (snapshot: AppBackupSnapshot, mode: 'merge' | 'replace') => {
-    const imported = snapshot.readings.map(({ id: _id, ...reading }) => reading);
+  const handlePreviewBackupMerge = async (snapshot: AppBackupSnapshot) => {
+    if (!currentUser) throw new Error('No hay una sesión activa para importar');
+    const generation = dataLoadVersionRef.current;
+    const userId = currentUser.id;
+    const preview = await previewBackupMergeOnServer(snapshot);
+    if (!isRestoreSessionCurrent(generation, dataLoadVersionRef.current, userId, currentUser.id)) {
+      throw new Error('La sesión cambió durante la previsualización');
+    }
+    return preview;
+  };
+
+  const handleRestoreBackup = async (snapshot: AppBackupSnapshot, mode: 'merge' | 'replace', previewToken?: string) => {
     if (mode === 'replace') {
       if (!currentUser) throw new Error('No hay una sesión activa para restaurar');
       const restoreGeneration = dataLoadVersionRef.current;
@@ -294,15 +306,15 @@ export function App() {
       return result.readings.length;
     }
 
-    if (!currentUser) throw new Error('No hay una sesión activa para importar');
+    if (!currentUser || !previewToken) throw new Error('Se requiere previsualización y sesión activa');
     const importGeneration = dataLoadVersionRef.current;
     const importUserId = currentUser.id;
-    const result = await importReadingsToServer(imported);
+    const result = await mergeBackupOnServer(snapshot, previewToken);
     if (!isRestoreSessionCurrent(importGeneration, dataLoadVersionRef.current, importUserId, currentUser.id)) {
       throw new Error('La sesión cambió durante la importación');
     }
     setReadings(result.readings);
-    return result.addedCount;
+    return { addedCount: result.addedCount, duplicateCount: result.duplicateCount, conflictCount: result.conflictCount };
   };
 
   const handleResetDemoData = async () => {
@@ -522,6 +534,7 @@ export function App() {
           settings={settings}
           currentUser={currentUser}
           onImportReadings={handleImportReadings}
+          onPreviewBackupMerge={handlePreviewBackupMerge}
           onRestoreBackup={handleRestoreBackup}
           onUpdateSettings={handleUpdateSettings}
           onTriggerManualBackup={handleTriggerManualBackup}

@@ -15,6 +15,7 @@ import { analyzeCSVImport, type CSVImportResult } from '../utils/importCsv';
 import { parseBackupContent, type AppBackupSnapshot } from '../utils/backupService';
 import {
   AlertCircle,
+  AlertTriangle,
   Calendar,
   CheckCircle2,
   Clock3,
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { Share } from '@capacitor/share';
+import type { BackupMergeCounts, BackupMergePreview } from '../services/storageService';
 
 export interface ToastNotification {
   message?: string;
@@ -51,7 +53,8 @@ interface ExportModalProps {
   settings: AppSettings;
   currentUser?: AuthUser | null;
   onImportReadings: (readings: Omit<BloodPressureReading, 'id'>[]) => number | Promise<number>;
-  onRestoreBackup: (snapshot: AppBackupSnapshot, mode: 'merge' | 'replace') => number | Promise<number>;
+  onPreviewBackupMerge?: (snapshot: AppBackupSnapshot) => Promise<BackupMergePreview>;
+  onRestoreBackup: (snapshot: AppBackupSnapshot, mode: 'merge' | 'replace', previewToken?: string) => number | BackupMergeCounts | Promise<number | BackupMergeCounts>;
   onUpdateSettings: (settings: AppSettings) => void;
   onTriggerManualBackup: () => void;
   onNotify?: (toast: string | ToastNotification) => void;
@@ -65,6 +68,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   settings,
   currentUser,
   onImportReadings,
+  onPreviewBackupMerge,
   onRestoreBackup,
   onUpdateSettings,
   onTriggerManualBackup,
@@ -77,8 +81,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [activeTab, setActiveTab] = useState<DataTab>('backup');
   const [importStatus, setImportStatus] = useState<{ kind: 'success' | 'error'; message: string } | null>(null);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
+  const [mergePreview, setMergePreview] = useState<BackupMergePreview | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<'idle' | 'checking' | 'ready' | 'error'>('idle');
   const [restoreBusy, setRestoreBusy] = useState(false);
   const restoreBusyRef = React.useRef(false);
+  const previewSeqRef = React.useRef(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -162,6 +169,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     if (!file) return;
     setImportStatus(null);
     setPendingImport(null);
+    setMergePreview(null);
+    setPreviewStatus('idle');
+    previewSeqRef.current += 1;
 
     const reader = new FileReader();
     reader.onload = (loadEvent) => {
@@ -172,6 +182,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       const backupResult = parseBackupContent(content);
       if (backupResult.status === 'valid') {
         setPendingImport({ kind: 'backup', snapshot: backupResult.snapshot });
+        void runPreview(backupResult.snapshot);
       } else if (backupResult.status === 'invalid') {
         setImportStatus({
           kind: 'error',
@@ -217,27 +228,76 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   };
 
+  const runPreview = async (snapshot: AppBackupSnapshot): Promise<BackupMergePreview | null> => {
+    if (!onPreviewBackupMerge) return null;
+    const seq = previewSeqRef.current;
+    setPreviewStatus('checking');
+    try {
+      const preview = await onPreviewBackupMerge(snapshot);
+      if (seq !== previewSeqRef.current) return null;
+      setMergePreview(preview);
+      setPreviewStatus('ready');
+      return preview;
+    } catch (error) {
+      if (seq !== previewSeqRef.current) return null;
+      console.error('Error al previsualizar la combinación:', error);
+      setMergePreview(null);
+      setPreviewStatus('error');
+      setImportStatus({ kind: 'error', message: restoreErrorMessage(error) });
+      return null;
+    }
+  };
+
+  const restoreErrorMessage = (error: unknown): string =>
+    error instanceof Error && error.message === 'SESSION_TOKEN_REQUIRED'
+      ? t('data.restoreSignInAgain')
+      : error instanceof Error && error.message === 'MERGE_PREVIEW_STALE'
+        ? t('data.mergePreviewStale')
+        : t('data.restoreFailed');
+
   const confirmBackupRestore = async (mode: 'merge' | 'replace') => {
     if (restoreBusyRef.current || !pendingImport || pendingImport.kind !== 'backup') return;
     if (mode === 'replace' && !window.confirm(t('data.replaceConfirm'))) return;
     restoreBusyRef.current = true;
     setRestoreBusy(true);
+    setImportStatus(null);
     try {
-      const restoredCount = await onRestoreBackup(pendingImport.snapshot, mode);
-      setImportStatus({
-        kind: 'success',
-        message: mode === 'replace'
-          ? t('data.restoreReplaceSuccess', { count: restoredCount })
-          : t('data.restoreMergeSuccess', { count: restoredCount }),
-      });
+      if (mode === 'merge') {
+        if (!onPreviewBackupMerge) throw new Error('Previsualización no disponible');
+        if (!mergePreview) {
+          await runPreview(pendingImport.snapshot);
+          return; // Let the user inspect refreshed counts before any write.
+        }
+        const restored = await onRestoreBackup(pendingImport.snapshot, mode, mergePreview.previewToken);
+        setImportStatus({
+          kind: 'success',
+          message: t('data.restoreMergeSummary', {
+            added: (restored as BackupMergeCounts).addedCount,
+            duplicates: (restored as BackupMergeCounts).duplicateCount,
+            conflicts: (restored as BackupMergeCounts).conflictCount,
+          }),
+        });
+      } else {
+        setMergePreview(null);
+        const restored = await onRestoreBackup(pendingImport.snapshot, mode);
+        setImportStatus({
+          kind: 'success',
+          message: t('data.restoreReplaceSuccess', { count: restored as number }),
+        });
+      }
       setPendingImport(null);
     } catch (error) {
       console.error('Error al restaurar la copia:', error);
-      setImportStatus({
-        kind: 'error',
-        message: error instanceof Error && error.message === 'SESSION_TOKEN_REQUIRED'
-          ? t('data.restoreSignInAgain') : t('data.restoreFailed'),
-      });
+      if (error instanceof Error && error.message === 'MERGE_PREVIEW_STALE' && mode === 'merge') {
+        setMergePreview(null);
+        setImportStatus({ kind: 'error', message: t('data.mergePreviewStale') });
+        await runPreview(pendingImport.snapshot);
+      } else {
+        setImportStatus({
+          kind: 'error',
+          message: restoreErrorMessage(error),
+        });
+      }
     } finally {
       restoreBusyRef.current = false;
       setRestoreBusy(false);
@@ -351,13 +411,57 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                       <strong>{new Date(pendingImport.snapshot.createdAt).toLocaleDateString(locale)}</strong>
                       <span>{t('data.backupCreatedAt')}</span>
                     </div>
+                    {mergePreview && (
+                      <>
+                        <div className="import-summary-item">
+                          <strong>{mergePreview.addedCount}</strong>
+                          <span>{t('data.mergeSummaryAdded')}</span>
+                        </div>
+                        <div className="import-summary-item">
+                          <strong>{mergePreview.duplicateCount}</strong>
+                          <span>{t('data.mergeSummaryDuplicates')}</span>
+                        </div>
+                        <div className={`import-summary-item${mergePreview.conflictCount > 0 ? ' is-conflict' : ''}`}>
+                          <strong>{mergePreview.conflictCount}</strong>
+                          <span>{t('data.mergeSummaryConflicts')}</span>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="import-preview-note">
-                    <CheckCircle2 size={17} />
-                    <span>{t('data.nativeBackupNotice')}</span>
-                  </div>
+                  {previewStatus === 'checking' && (
+                    <div className="import-preview-note merge-checking-note" aria-live="polite">
+                      <Clock3 size={17} />
+                      <span>{t('data.mergePreviewChecking')}</span>
+                    </div>
+                  )}
+                  {previewStatus !== 'checking' && mergePreview && mergePreview.conflictCount === 0 && (
+                    <div className="import-preview-note merge-clean-note" aria-live="polite">
+                      <CheckCircle2 size={17} />
+                      <span>{t('data.mergePreviewCleanNote', {
+                        added: mergePreview.addedCount,
+                        duplicates: mergePreview.duplicateCount,
+                      })}</span>
+                    </div>
+                  )}
+                  {previewStatus !== 'checking' && mergePreview && mergePreview.conflictCount > 0 && (
+                    <div className="import-preview-note merge-conflict-note" aria-live="polite">
+                      <AlertTriangle size={17} />
+                      <strong>{t('data.mergePreviewConflictNote', { conflicts: mergePreview.conflictCount })}</strong>
+                    </div>
+                  )}
+                  {previewStatus !== 'checking' && !mergePreview && (
+                    <div className="import-preview-note" aria-live="polite">
+                      <CheckCircle2 size={17} />
+                      <span>{t('data.nativeBackupNotice')}</span>
+                    </div>
+                  )}
                   <div className="import-preview-actions restore-actions">
-                    <button type="button" className="btn-import-confirm" disabled={restoreBusy} onClick={() => confirmBackupRestore('merge')}>
+                    <button
+                      type="button"
+                      className="btn-import-confirm"
+                      disabled={restoreBusy || previewStatus === 'checking'}
+                      onClick={() => confirmBackupRestore('merge')}
+                    >
                       <CheckCircle2 size={18} />
                       {t('data.mergeBackup')}
                     </button>

@@ -6,7 +6,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { getDB, openDatabaseConnection, DATA_DIR, DB_PATH, BACKUPS_DIR } from './db.js';
-import { replaceBackupForUser } from './restoreBackup.js';
+import { replaceBackupForUser, previewMergeForUser, mergeBackupForUser } from './restoreBackup.js';
 import { createHealthHandler } from './health.js';
 import {
   createApiActivityMonitor,
@@ -1067,6 +1067,31 @@ app.post('/api/readings/import', requireExplicitSessionToken, requireAuth, async
   } catch (error) {
     res.status(500).json({ error: 'Error al importar mediciones' });
   }
+});
+
+app.post('/api/backups/merge-preview', requireExplicitSessionToken, requireAuth, async (req, res) => {
+  let db;
+  try {
+    db = await openDatabaseConnection();
+    res.json(await previewMergeForUser(db, req.user.id, req.body, getSessionId(req)));
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
+    console.error('Error al previsualizar copia:', error);
+    res.status(500).json({ error: 'No se pudo previsualizar la copia' });
+  } finally { if (db) await db.close(); }
+});
+
+app.post('/api/backups/restore-merge', requireExplicitSessionToken, requireAuth, async (req, res) => {
+  let db;
+  try {
+    db = await openDatabaseConnection();
+    res.json(await mergeBackupForUser(db, req.user.id, req.body?.snapshot,
+      req.body?.previewToken, getSessionId(req)));
+  } catch (error) {
+    if (error.status === 400 || error.status === 409) return res.status(error.status).json({ error: error.message });
+    console.error('Error al combinar copia:', error);
+    res.status(500).json({ error: 'No se pudo confirmar la combinación. Comprueba los datos antes de reintentar.' });
+  } finally { if (db) await db.close(); }
 });
 
 app.post('/api/backups/restore-replace', requireExplicitSessionToken, requireAuth, async (req, res) => {

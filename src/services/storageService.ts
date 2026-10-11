@@ -177,6 +177,34 @@ export async function importReadingsToServer(imported: Omit<BloodPressureReading
   return { addedCount: data.addedCount, readings: data.readings };
 }
 
+export interface BackupMergeCounts {
+  addedCount: number;
+  duplicateCount: number;
+  conflictCount: number;
+}
+export interface BackupMergePreview extends BackupMergeCounts { previewToken: string }
+export interface BackupMergeResult extends BackupMergeCounts { readings: BloodPressureReading[] }
+
+async function sendBackupMerge(path: string, payload: unknown): Promise<Response> {
+  const res = await fetch(path, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json', 'x-session-token': getRestoreSessionToken() },
+    body: JSON.stringify(payload),
+  });
+  guardUnauthorized(res);
+  if (res.status === 409) throw new Error('MERGE_PREVIEW_STALE');
+  if (!res.ok) throw new Error(`No se pudo combinar la copia (${res.status})`);
+  return res;
+}
+
+export async function previewBackupMergeOnServer(snapshot: AppBackupSnapshot): Promise<BackupMergePreview> {
+  return (await sendBackupMerge('/api/backups/merge-preview', snapshot)).json();
+}
+
+export async function mergeBackupOnServer(snapshot: AppBackupSnapshot, previewToken: string): Promise<BackupMergeResult> {
+  return (await sendBackupMerge('/api/backups/restore-merge', { snapshot, previewToken })).json();
+}
+
 export async function restoreBackupOnServer(snapshot: AppBackupSnapshot): Promise<{
   readings: BloodPressureReading[];
   settings: AppSettings;
