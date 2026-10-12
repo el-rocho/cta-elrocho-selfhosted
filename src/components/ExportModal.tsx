@@ -15,7 +15,6 @@ import { analyzeCSVImport, type CSVImportResult } from '../utils/importCsv';
 import { parseBackupContent, type AppBackupSnapshot } from '../utils/backupService';
 import {
   AlertCircle,
-  AlertTriangle,
   Calendar,
   CheckCircle2,
   Clock3,
@@ -413,15 +412,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     </div>
                     {mergePreview && (
                       <>
-                        <div className="import-summary-item">
+                        <div className="import-summary-item merge-count">
                           <strong>{mergePreview.addedCount}</strong>
                           <span>{t('data.mergeSummaryAdded')}</span>
                         </div>
-                        <div className="import-summary-item">
+                        <div className="import-summary-item merge-count">
                           <strong>{mergePreview.duplicateCount}</strong>
                           <span>{t('data.mergeSummaryDuplicates')}</span>
                         </div>
-                        <div className={`import-summary-item${mergePreview.conflictCount > 0 ? ' is-conflict' : ''}`}>
+                        <div className={`import-summary-item merge-count${mergePreview.conflictCount > 0 ? ' is-conflict' : ''}`}>
                           <strong>{mergePreview.conflictCount}</strong>
                           <span>{t('data.mergeSummaryConflicts')}</span>
                         </div>
@@ -432,27 +431,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <div className="import-preview-note merge-checking-note" aria-live="polite">
                       <Clock3 size={17} />
                       <span>{t('data.mergePreviewChecking')}</span>
-                    </div>
-                  )}
-                  {previewStatus !== 'checking' && mergePreview && mergePreview.conflictCount === 0 && (
-                    <div className="import-preview-note merge-clean-note" aria-live="polite">
-                      <CheckCircle2 size={17} />
-                      <span>{t('data.mergePreviewCleanNote', {
-                        added: mergePreview.addedCount,
-                        duplicates: mergePreview.duplicateCount,
-                      })}</span>
-                    </div>
-                  )}
-                  {previewStatus !== 'checking' && mergePreview && mergePreview.conflictCount > 0 && (
-                    <div className="import-preview-note merge-conflict-note" aria-live="polite">
-                      <AlertTriangle size={17} />
-                      <strong>{t('data.mergePreviewConflictNote', { conflicts: mergePreview.conflictCount })}</strong>
-                    </div>
-                  )}
-                  {previewStatus !== 'checking' && !mergePreview && (
-                    <div className="import-preview-note" aria-live="polite">
-                      <CheckCircle2 size={17} />
-                      <span>{t('data.nativeBackupNotice')}</span>
                     </div>
                   )}
                   <div className="import-preview-actions restore-actions">

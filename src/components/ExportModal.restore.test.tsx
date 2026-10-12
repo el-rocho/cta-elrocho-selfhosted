@@ -30,6 +30,13 @@ const buttonByText = (container: HTMLElement, text: string) =>
   [...container.querySelectorAll('button')].find((b) => b.textContent?.trim() === text)!;
 const summaryItem = (container: HTMLElement, label: string) =>
   [...container.querySelectorAll('.import-summary-item')].find((el) => el.textContent?.includes(label));
+const mergeCountItems = (container: HTMLElement) =>
+  [...container.querySelectorAll('.backup-preview-grid .import-summary-item.merge-count')];
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
 
 it('keeps the active backup selected while its restoration is in progress', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -57,7 +64,7 @@ it('keeps the active backup selected while its restoration is in progress', asyn
     await act(async () => { resolveRestore(0); });
     expect(onRestoreBackup).toHaveBeenCalledTimes(1);
   } finally {
-    await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.clearAllMocks();
+    await act(async () => root.unmount()); container.remove();
   }
 });
 
@@ -90,12 +97,10 @@ it('reports restore failure without discarding the selected backup or claiming s
   } finally {
     await act(async () => root.unmount());
     container.remove();
-    vi.unstubAllGlobals();
-    vi.clearAllMocks();
   }
 });
 
-it('auto-previews on file selection, shows the counts with a clean note, and merges directly with the preview token', async () => {
+it('auto-previews on file selection, shows the five unified counters in a single grid, and merges directly with the preview token', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement('div'); document.body.appendChild(container);
   const root = createRoot(container);
@@ -113,14 +118,23 @@ it('auto-previews on file selection, shows the counts with a clean note, and mer
     await openImportTab(container);
     await selectBackupFile(container);
     expect(onPreviewBackupMerge).toHaveBeenCalledWith(snapshot);
-    expect(summaryItem(container, 'Añadidas')!.querySelector('strong')!.textContent).toBe('1');
-    expect(summaryItem(container, 'Duplicadas idénticas')!.querySelector('strong')!.textContent).toBe('2');
-    expect(summaryItem(container, 'Misma fecha/hora, datos distintos')!.querySelector('strong')!.textContent).toBe('0');
-    const note = container.querySelector('.import-preview-card .import-preview-note')!;
-    expect(note.classList.contains('merge-clean-note')).toBe(true);
-    expect(note.classList.contains('merge-conflict-note')).toBe(false);
-    expect(note.textContent).toContain('Mediciones nuevas: 1 · ya existentes omitidas: 2.');
-    expect(note.querySelectorAll('button').length).toBe(0);
+    // The five counters live in a single backup-preview-grid.
+    const items = [...container.querySelectorAll('.import-summary-grid.backup-preview-grid .import-summary-item')];
+    expect(items.length).toBe(5);
+    expect(container.textContent).toContain('mediciones preparadas');
+    expect(container.textContent).toContain('fecha de la copia');
+    expect(summaryItem(container, 'tomas nuevas')!.querySelector('strong')!.textContent).toBe('1');
+    expect(summaryItem(container, 'tomas duplicadas')!.querySelector('strong')!.textContent).toBe('2');
+    expect(summaryItem(container, 'tomas misma fecha/hora')!.querySelector('strong')!.textContent).toBe('0');
+    // The three merge counters carry the merge-count class so they fill the second row.
+    expect(mergeCountItems(container).length).toBe(3);
+    expect(mergeCountItems(container).map((el) => el.querySelector('strong')!.textContent)).toEqual(['1', '2', '0']);
+    // The redundant informational card is gone.
+    expect(container.querySelector('.merge-clean-note')).toBeNull();
+    expect(container.querySelector('.merge-conflict-note')).toBeNull();
+    expect(container.textContent).not.toContain('Mediciones nuevas: 1 · ya existentes omitidas: 2.');
+    expect(container.textContent).not.toContain('Mediciones con la misma fecha y hora pero datos distintos');
+    expect(container.textContent).not.toContain('Esta copia contiene las tomas originales');
     expect(container.textContent).not.toContain('Aceptar y combinar');
     await act(async () => buttonByText(container, 'Combinar mediciones').click());
     expect(onRestoreBackup).toHaveBeenCalledWith(snapshot, 'merge', 'clean-token');
@@ -128,10 +142,10 @@ it('auto-previews on file selection, shows the counts with a clean note, and mer
     expect(confirm).not.toHaveBeenCalled();
     expect(container.textContent).not.toContain('Aceptar y combinar');
     expect(container.querySelector('.import-status-box.success')?.textContent).toContain('añadidas: 1');
-  } finally { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.clearAllMocks(); }
+  } finally { await act(async () => root.unmount()); container.remove(); }
 });
 
-it('emphasises conflicts with an amber warning note and a highlighted conflict counter', async () => {
+it('emphasises conflicts with a highlighted conflict counter and no informational note', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement('div'); document.body.appendChild(container);
   const root = createRoot(container);
@@ -147,23 +161,22 @@ it('emphasises conflicts with an amber warning note and a highlighted conflict c
       onUpdateSettings={() => {}} onTriggerManualBackup={() => {}} /></LanguageProvider>));
     await openImportTab(container);
     await selectBackupFile(container);
-    const note = container.querySelector('.import-preview-card .import-preview-note')!;
-    expect(note.classList.contains('merge-conflict-note')).toBe(true);
-    expect(note.classList.contains('merge-clean-note')).toBe(false);
-    expect(note.classList.contains('warning')).toBe(false);
-    expect(note.textContent).toContain('Mediciones con la misma fecha y hora pero datos distintos: 3. Se conservarán ambas versiones.');
-    expect(note.querySelector('strong')).not.toBeNull();
-    expect(note.querySelector('svg')).not.toBeNull();
-    const conflictItem = summaryItem(container, 'Misma fecha/hora, datos distintos')!;
+    const conflictItem = summaryItem(container, 'tomas misma fecha/hora')!;
     expect(conflictItem.classList.contains('is-conflict')).toBe(true);
+    expect(conflictItem.classList.contains('merge-count')).toBe(true);
     expect(conflictItem.querySelector('strong')!.textContent).toBe('3');
-    expect(summaryItem(container, 'Añadidas')!.querySelector('strong')!.textContent).toBe('1');
+    expect(summaryItem(container, 'tomas nuevas')!.querySelector('strong')!.textContent).toBe('1');
+    expect(mergeCountItems(container).length).toBe(3);
+    // No amber warning note is rendered anymore.
+    expect(container.querySelector('.merge-conflict-note')).toBeNull();
+    expect(container.querySelector('.merge-clean-note')).toBeNull();
+    expect(container.textContent).not.toContain('Se conservarán ambas versiones.');
     expect(container.textContent).not.toContain('Aceptar y combinar');
     expect(onRestoreBackup).not.toHaveBeenCalled();
-  } finally { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.clearAllMocks(); }
+  } finally { await act(async () => root.unmount()); container.remove(); }
 });
 
-it('shows a checking state, disables combine, and retries the preview before writing after a failure', async () => {
+it('shows a checking state with only the two leading counters, disables combine, and retries the preview before writing after a failure', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement('div'); document.body.appendChild(container);
   const root = createRoot(container);
@@ -184,6 +197,10 @@ it('shows a checking state, disables combine, and retries the preview before wri
     await selectBackupFile(container);
     expect(buttonByText(container, 'Combinar mediciones').disabled).toBe(true);
     expect(container.textContent).toContain('Comprobando la combinación');
+    expect(container.querySelector('.merge-checking-note')).not.toBeNull();
+    // While the merge counters are unavailable only the two leading items are present.
+    expect(container.querySelectorAll('.import-summary-grid.backup-preview-grid .import-summary-item').length).toBe(2);
+    expect(mergeCountItems(container).length).toBe(0);
     await act(async () => { rejectFirst(new Error('preview failed')); });
     expect(container.querySelector('.import-status-box.error')).not.toBeNull();
     expect(buttonByText(container, 'Combinar mediciones').disabled).toBe(false);
@@ -192,11 +209,12 @@ it('shows a checking state, disables combine, and retries the preview before wri
     await act(async () => buttonByText(container, 'Combinar mediciones').click());
     expect(onPreviewBackupMerge).toHaveBeenCalledTimes(2);
     expect(onRestoreBackup).not.toHaveBeenCalled();
-    expect(container.textContent).toContain('Mediciones nuevas: 1');
+    expect(summaryItem(container, 'tomas nuevas')!.querySelector('strong')!.textContent).toBe('1');
+    expect(mergeCountItems(container).length).toBe(3);
     await act(async () => buttonByText(container, 'Combinar mediciones').click());
     expect(onRestoreBackup).toHaveBeenCalledTimes(1);
     expect(onRestoreBackup).toHaveBeenCalledWith(snapshot, 'merge', 'retry-token');
-  } finally { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.clearAllMocks(); }
+  } finally { await act(async () => root.unmount()); container.remove(); }
 });
 
 it('never writes on a stale preview and recalculates it automatically', async () => {
@@ -224,15 +242,15 @@ it('never writes on a stale preview and recalculates it automatically', async ()
     expect(onRestoreBackup).toHaveBeenCalledWith(snapshot, 'merge', 'stale-token');
     expect(container.querySelector('.import-status-box.error')?.textContent).toContain('Las mediciones cambiaron');
     expect(onPreviewBackupMerge).toHaveBeenCalledTimes(2);
-    expect(summaryItem(container, 'Añadidas')!.querySelector('strong')!.textContent).toBe('1');
+    expect(summaryItem(container, 'tomas nuevas')!.querySelector('strong')!.textContent).toBe('1');
     await act(async () => buttonByText(container, 'Combinar mediciones').click());
     expect(onRestoreBackup).toHaveBeenCalledTimes(2);
     expect(onRestoreBackup).toHaveBeenLastCalledWith(snapshot, 'merge', 'fresh-token');
     expect(container.querySelector('.import-status-box.success')).not.toBeNull();
-  } finally { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.clearAllMocks(); }
+  } finally { await act(async () => root.unmount()); container.remove(); }
 });
 
-it('shows the counts and the clean note in English', async () => {
+it('shows the five unified counters and no informational card in English', async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   const container = document.createElement('div'); document.body.appendChild(container);
   const root = createRoot(container);
@@ -248,12 +266,15 @@ it('shows the counts and the clean note in English', async () => {
       onUpdateSettings={() => {}} onTriggerManualBackup={() => {}} /></LanguageProvider>));
     await act(async () => [...container.querySelectorAll('button')].find((b) => b.textContent?.includes('Import'))!.click());
     await selectBackupFile(container);
-    expect(summaryItem(container, 'Added')!.querySelector('strong')!.textContent).toBe('1');
-    expect(summaryItem(container, 'Identical duplicates')!.querySelector('strong')!.textContent).toBe('2');
-    expect(summaryItem(container, 'Same time, different data')!.querySelector('strong')!.textContent).toBe('0');
-    const note = container.querySelector('.import-preview-card .import-preview-note')!;
-    expect(note.classList.contains('merge-clean-note')).toBe(true);
-    expect(note.textContent).toContain('New readings: 1 · already present, skipped: 2.');
+    expect(container.textContent).toContain('measurements ready');
+    expect(container.textContent).toContain('backup date');
+    expect(summaryItem(container, 'new readings')!.querySelector('strong')!.textContent).toBe('1');
+    expect(summaryItem(container, 'duplicate readings')!.querySelector('strong')!.textContent).toBe('2');
+    expect(summaryItem(container, 'readings same date/time')!.querySelector('strong')!.textContent).toBe('0');
+    expect(mergeCountItems(container).length).toBe(3);
+    expect(container.querySelector('.merge-clean-note')).toBeNull();
+    expect(container.textContent).not.toContain('New readings: 1 · already present, skipped: 2.');
+    expect(container.textContent).not.toContain('This backup includes original readings');
     expect(buttonByText(container, 'Merge readings')).toBeTruthy();
-  } finally { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); vi.clearAllMocks(); }
+  } finally { await act(async () => root.unmount()); container.remove(); }
 });
