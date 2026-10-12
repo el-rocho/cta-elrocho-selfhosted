@@ -33,6 +33,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isTotpEnabled = false,
 }) => {
   const { t } = useLanguage();
+  // Sin borrador: el modal está enlazado en vivo a los ajustes que recibe y
+  // refleja cualquier cambio confirmado (incluida una carga tardía, una
+  // restauración o un guardado hecho desde otra vista del App). Así los campos
+  // que se ven son siempre los vigentes y nunca se reenvía un estado propio.
   const [pendingMedicationValue, setPendingMedicationValue] = useState<boolean | null>(null);
   const [isUpdatingMedication, setIsUpdatingMedication] = useState(false);
   const [infoTopic, setInfoTopic] = useState<SettingsInfoTopic | null>(null);
@@ -155,9 +159,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const confirmMedicationChange = async (recalculateHistory: boolean) => {
     if (pendingMedicationValue === null || isUpdatingMedication) return;
     setIsUpdatingMedication(true);
-    const success = await onMedicationContextChange(pendingMedicationValue, recalculateHistory);
+    await onMedicationContextChange(pendingMedicationValue, recalculateHistory);
     setIsUpdatingMedication(false);
-    if (success) setPendingMedicationValue(null);
+    // El diálogo se cierra siempre: si el guardado no se confirma, el App ya
+    // emitió el aviso correspondiente y dejar el diálogo esperando una decisión
+    // que ya no aplica lo dejaría colgado.
+    setPendingMedicationValue(null);
   };
 
   const handlePatientBirthDateChange = (val: string) => {

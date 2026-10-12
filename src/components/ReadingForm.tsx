@@ -26,6 +26,10 @@ interface ReadingFormProps {
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
   readings: BloodPressureReading[];
+  // Cambia con cada transición de sesión (acceso, cierre o invalidación): al
+  // cambiar reinicia los valores tecleados y la confirmación de presión de pulso
+  // del usuario anterior, que no pueden quedar visibles para el siguiente.
+  sessionResetToken?: number;
 }
 
 export const ReadingForm: React.FC<ReadingFormProps> = ({
@@ -33,6 +37,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
   settings,
   onUpdateInputMode,
   readings,
+  sessionResetToken,
 }) => {
   const { t, language } = useLanguage();
   const [inputMode, setInputMode] = useState<InputMode>(settings.preferredInputMode || 'keyboard');
@@ -65,6 +70,23 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
       setInputMode(settings.preferredInputMode);
     }
   }, [settings.defaultArm, settings.preferredInputMode]);
+
+  // Cambio de sesión: los valores tecleados y la confirmación de presión de pulso
+  // pertenecen al usuario anterior. El formulario permanece montado entre
+  // sesiones, así que hay que reiniciarlos con el mismo criterio de sesión que el
+  // resto de la interfaz ligada a la sesión.
+  useEffect(() => {
+    setSystolic(initialSys);
+    setDiastolic(initialDia);
+    setHeartRate(initialPulse);
+    setNotes('');
+    setPendingReading(null);
+    setErrorMsg(null);
+    setJustSaved(false);
+    setIsSaving(false);
+    // initialSys/initialDia/initialPulse son constantes del componente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionResetToken]);
 
   const liveSystolic = typeof systolic === 'number' ? systolic : 120;
   const liveDiastolic = typeof diastolic === 'number' ? diastolic : 80;
@@ -115,7 +137,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
       }, 1100);
     } catch (error) {
       setIsSaving(false);
-      throw error;
+      setErrorMsg(t('form.saveError'));
     }
   };
 
@@ -148,7 +170,7 @@ export const ReadingForm: React.FC<ReadingFormProps> = ({
       }
       return;
     }
-    saveReading(candidate, false);
+    void saveReading(candidate, false);
   };
 
   return (

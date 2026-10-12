@@ -37,14 +37,18 @@ const parseLocalDateTime = (dateValue: string, timeValue: string): Date | null =
   return matchesInput ? parsed : null;
 };
 
+// Resultado del borrado: distingue el borrado aplicado del fallo real y de la
+// cancelación del usuario (que no es un error).
+export type DeleteReadingOutcome = 'deleted' | 'cancelled' | 'failed';
+
 interface EditReadingModalProps {
   isOpen: boolean;
   onClose: () => void;
   reading: BloodPressureReading | null;
   settings: AppSettings;
   onUpdateInputMode?: (mode: InputMode) => void;
-  onSaveReading: (updatedReading: BloodPressureReading) => void;
-  onDeleteReading?: (readingId: string) => void;
+  onSaveReading: (updatedReading: BloodPressureReading) => void | boolean | Promise<void | boolean>;
+  onDeleteReading?: (readingId: string) => DeleteReadingOutcome | boolean | void | Promise<DeleteReadingOutcome | boolean | void>;
   readings: BloodPressureReading[];
 }
 
@@ -70,6 +74,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingReading, setPendingReading] = useState<BloodPressureReading | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const activeInputMode = settings.preferredInputMode || inputMode;
 
@@ -112,10 +117,23 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
     }
   };
 
-  const saveReading = (updated: BloodPressureReading, pulsePressureWarningConfirmed: boolean) => {
-    onSaveReading({ ...updated, pulsePressureWarningConfirmed });
-    setPendingReading(null);
-    onClose();
+  const saveReading = async (updated: BloodPressureReading, pulsePressureWarningConfirmed: boolean) => {
+    if (isSaving) return;
+    setIsSaving(true);
+    setErrorMsg(null);
+    try {
+      const saved = await onSaveReading({ ...updated, pulsePressureWarningConfirmed });
+      if (saved === false) {
+        setErrorMsg(t('editModal.saveError'));
+        return;
+      }
+      setPendingReading(null);
+      onClose();
+    } catch {
+      setErrorMsg(t('editModal.saveError'));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -161,7 +179,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
       else setPendingReading(updated);
       return;
     }
-    saveReading(updated, false);
+    void saveReading(updated, false);
   };
 
   return (
@@ -356,10 +374,32 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                 <button
                   type="button"
                   className="btn-danger-confirm"
-                  onClick={() => {
+                  disabled={isSaving}
+                  onClick={async () => {
                     if (reading && onDeleteReading) {
-                      onDeleteReading(reading.id);
-                      onClose();
+                      setIsSaving(true);
+                      setErrorMsg(null);
+                      try {
+                        const outcome = await onDeleteReading(reading.id);
+                        // La cancelación del usuario no es un error: solo se
+                        // cierra la confirmación y se deja el modal abierto. Un
+                        // fallo real sí muestra el aviso.
+                        if (outcome === 'failed' || outcome === false) {
+                          setErrorMsg(t('editModal.deleteError'));
+                          setShowDeleteConfirm(false);
+                          return;
+                        }
+                        if (outcome === 'cancelled') {
+                          setShowDeleteConfirm(false);
+                          return;
+                        }
+                        onClose();
+                      } catch {
+                        setErrorMsg(t('editModal.deleteError'));
+                        setShowDeleteConfirm(false);
+                      } finally {
+                        setIsSaving(false);
+                      }
                     }
                   }}
                 >
@@ -385,7 +425,7 @@ export const EditReadingModal: React.FC<EditReadingModalProps> = ({
                   <X size={20} />
                   <span>{t('editModal.cancel')}</span>
                 </button>
-                <button type="submit" className="btn-primary-large" aria-label={t('editModal.save')} title={t('editModal.save')}>
+                <button type="submit" className="btn-primary-large" disabled={isSaving} aria-label={t('editModal.save')} title={t('editModal.save')}>
                   <Save size={20} />
                   <span>{t('editModal.save')}</span>
                 </button>

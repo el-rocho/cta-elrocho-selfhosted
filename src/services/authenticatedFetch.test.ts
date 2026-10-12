@@ -24,7 +24,14 @@ describe('consultas autenticadas sin caché', () => {
   it('solicita mediciones y ajustes directamente al servidor', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse([]))
-      .mockResolvedValueOnce(jsonResponse({}));
+      .mockResolvedValueOnce(jsonResponse({
+        language: 'es', enableWhiteCoatFilter: false, whiteCoatIntervalMinutes: 5,
+        defaultArm: 'left', preferredInputMode: 'keyboard', guidelineProfile: 'esc-2024',
+        showInformationalLabels: false, treatmentTargetMode: 'guideline',
+        customTargetSystolicMin: 120, customTargetSystolicMax: 129,
+        customTargetDiastolicMin: 70, customTargetDiastolicMax: 79,
+        takesAntihypertensiveMedication: false, backupFrequency: 'disabled', backupFolder: 'backups',
+      }));
     vi.stubGlobal('fetch', fetchMock);
 
     await fetchReadingsFromServer();
@@ -92,9 +99,8 @@ describe('sesión revocada por el servidor', () => {
   it('cierra la sesión local cuando el servidor responde 401 a las mediciones', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(unauthorized));
 
-    const readings = await fetchReadingsFromServer();
+    await expect(fetchReadingsFromServer()).rejects.toMatchObject({ code: 'http', status: 401 });
 
-    expect(readings).toEqual([]);
     expect(listener).toHaveBeenCalledTimes(1);
     expect(removeItem).toHaveBeenCalledWith('cta_session_token');
   });
@@ -102,7 +108,7 @@ describe('sesión revocada por el servidor', () => {
   it('no cierra la sesión ante un error del servidor', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(serverError));
 
-    await fetchSettingsFromServer();
+    await expect(fetchSettingsFromServer()).rejects.toMatchObject({ code: 'http', status: 500 });
 
     expect(listener).not.toHaveBeenCalled();
     expect(removeItem).not.toHaveBeenCalled();

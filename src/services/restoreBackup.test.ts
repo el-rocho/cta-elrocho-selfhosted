@@ -6,7 +6,7 @@ beforeEach(() => vi.stubGlobal('localStorage', { getItem: () => 'test-token' }))
 afterEach(() => vi.unstubAllGlobals());
 
 it('returns the committed readings and settings from the server', async () => {
-  const response = { readings: [], settings: { language: 'es' } };
+  const response = { readings: [], settings: DEFAULT_SETTINGS };
   const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => response });
   vi.stubGlobal('fetch', fetchMock);
   await expect(restoreBackupOnServer(snapshot)).resolves.toEqual(response);

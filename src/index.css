@@ -1045,6 +1045,34 @@ body {
   margin-bottom: 16px;
 }
 
+.app-data-load-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.app-data-load-state > span {
+  flex: 1 1 260px;
+}
+
+.app-data-load-state.is-loading {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
+.app-data-load-state .btn-secondary-large {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
 .text-green { color: #10b981; }
 .text-muted { color: var(--text-muted); }
 .text-blue { color: #3b82f6; }
