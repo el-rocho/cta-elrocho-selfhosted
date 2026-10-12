@@ -188,6 +188,10 @@ export async function mergeBackupForUser(db, userId, snapshot, previewToken, ses
       preview.expiresAt < Date.now() || preview.snapshotHash !== digest(snapshot)) {
     throw mergeError('Previsualización no válida o caducada');
   }
+  // El token es de un solo uso. Reclamarlo antes del primer await cierra la
+  // carrera entre confirmaciones: solo una llega a abrir una transacción y la
+  // otra devuelve conflicto, nunca un SQLITE_BUSY transformado en HTTP 500.
+  mergePreviews.delete(previewToken);
   await db.exec('BEGIN IMMEDIATE');
   try {
     const rows = await db.all(mergeRowsSQL, [userId]);
@@ -207,7 +211,6 @@ export async function mergeBackupForUser(db, userId, snapshot, previewToken, ses
       takes_antihypertensive_medication AS takesAntihypertensiveMedication
       FROM readings WHERE user_id = ? ORDER BY timestamp DESC`, [userId]);
     await db.exec('COMMIT');
-    mergePreviews.delete(previewToken);
     return { addedCount, duplicateCount, conflictCount, readings: updated.map((r) => ({
       ...r, pulsePressureWarningConfirmed: Boolean(r.pulsePressureWarningConfirmed),
       takesAntihypertensiveMedication: Boolean(r.takesAntihypertensiveMedication),

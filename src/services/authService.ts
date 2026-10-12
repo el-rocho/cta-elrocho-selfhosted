@@ -23,20 +23,42 @@ function saveToken(token?: string) {
   }
 }
 
-export async function getAuthStatus(): Promise<AuthStatusResponse> {
-  try {
-    const res = await fetch(freshApiUrl('/api/auth/status'), {
-      headers: getAuthHeaders(),
-      credentials: 'include',
-      cache: 'no-store',
-    });
-  guardUnauthorized(res);
-    if (!res.ok) throw new Error('Error al consultar estado de autenticación');
-    return await res.json();
-  } catch (err) {
-    console.error('Error al obtener estado de auth:', err);
-    return { hasAdmin: false, userCount: 0, user: null };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isAuthUser(value: unknown): value is AuthUser {
+  if (!isRecord(value)) return false;
+  return typeof value.id === 'string' && value.id.length > 0
+    && typeof value.username === 'string' && value.username.length > 0
+    && typeof value.name === 'string'
+    && (value.role === 'admin' || value.role === 'user')
+    && (value.sex === '' || value.sex === 'masculino' || value.sex === 'femenino')
+    && typeof value.birth_date === 'string'
+    && typeof value.totp_enabled === 'boolean'
+    && typeof value.created_at === 'string';
+}
+
+function parseAuthStatus(value: unknown): AuthStatusResponse {
+  if (!isRecord(value)
+    || typeof value.hasAdmin !== 'boolean'
+    || !Number.isInteger(value.userCount)
+    || (value.userCount as number) < 0
+    || (value.user !== null && !isAuthUser(value.user))) {
+    throw new Error('Respuesta inválida del estado de autenticación');
   }
+  return value as unknown as AuthStatusResponse;
+}
+
+export async function getAuthStatus(): Promise<AuthStatusResponse> {
+  const res = await fetch(freshApiUrl('/api/auth/status'), {
+    headers: getAuthHeaders(),
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  guardUnauthorized(res);
+  if (!res.ok) throw new Error('Error al consultar estado de autenticación');
+  return parseAuthStatus(await res.json());
 }
 
 export interface SessionCheck {

@@ -26,6 +26,8 @@ async function availablePort() {
   return port;
 }
 
+// El flujo levanta un servidor real y ejerce varias transacciones SQLite; en
+// discos con fsync lento supera de forma legítima el límite general de 15 s.
 it('exposes authenticated atomic restore over HTTP and preserves state on a database error', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'cta-restore-http-'));
   directories.push(directory);
@@ -50,6 +52,23 @@ it('exposes authenticated atomic restore over HTTP and preserves state on a data
     await new Promise((resolve) => setTimeout(resolve, 30));
   }
   expect(ready).toBe(true);
+  const authStatus = await (await fetch(`${url}/api/auth/status`, {
+    headers: { 'x-session-token': 'test-session' },
+  })).json();
+  expect(authStatus).toMatchObject({
+    hasAdmin: true,
+    userCount: 1,
+    user: {
+      id: 'u1',
+      username: 'one',
+      name: 'Original',
+      role: 'user',
+      sex: '',
+      birth_date: '',
+      totp_enabled: false,
+      created_at: '2026-01-01',
+    },
+  });
   const snapshot = {
     format: 'cta-elrocho-backup', version: 1, createdAt: '2026-10-01T00:00:00.000Z',
     readings: [{ id: 'backup-1', timestamp: '2026-09-01T00:00:00.000Z', systolic: 125, diastolic: 78, heartRate: 66, arm: 'right' }],
@@ -111,4 +130,4 @@ it('exposes authenticated atomic restore over HTTP and preserves state on a data
   expect(await check.get("SELECT systolic FROM readings WHERE user_id = 'u1'")).toEqual({ systolic: 125 });
   expect(await check.get("SELECT language FROM settings WHERE user_id = 'u1'")).toEqual({ language: 'en' });
   await check.close();
-}, 15000);
+}, 30000);

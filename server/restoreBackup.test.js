@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import { initSchema } from './db.js';
@@ -127,4 +127,31 @@ it('rolls back merge completely on an insert failure', async () => {
     await expect(mergeBackupForUser(db, 'u1', snapshot, preview.previewToken, 'test-session')).rejects.toThrow('failure');
     expect(await db.get("SELECT count(*) AS n FROM readings WHERE user_id = 'u1'")).toEqual({ n: 1 });
   } finally { await db.close(); }
+});
+
+it('claims a preview token before awaiting SQLite so a concurrent confirmation is always a conflict', async () => {
+  let releaseBegin;
+  const beginBlocked = new Promise((resolve) => { releaseBegin = resolve; });
+  let beginCalls = 0;
+  const db = {
+    all: vi.fn().mockResolvedValue([]),
+    run: vi.fn().mockResolvedValue(undefined),
+    exec: vi.fn(async (sql) => {
+      if (sql === 'BEGIN IMMEDIATE') {
+        beginCalls += 1;
+        if (beginCalls === 1) return beginBlocked;
+        throw Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' });
+      }
+    }),
+  };
+  const preview = await previewMergeForUser(db, 'u1', snapshot, 'test-session');
+
+  const accepted = mergeBackupForUser(db, 'u1', snapshot, preview.previewToken, 'test-session');
+  await Promise.resolve();
+  const concurrent = mergeBackupForUser(db, 'u1', snapshot, preview.previewToken, 'test-session');
+
+  await expect(concurrent).rejects.toMatchObject({ status: 409 });
+  expect(beginCalls).toBe(1);
+  releaseBegin();
+  await expect(accepted).resolves.toMatchObject({ readings: [] });
 });

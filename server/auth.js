@@ -105,7 +105,12 @@ export async function getUserBySession(sessionId) {
   }
 
   const { credential_version: _credentialVersion, ...authenticatedUser } = user;
-  return authenticatedUser;
+  return {
+    ...authenticatedUser,
+    sex: authenticatedUser.sex || '',
+    birth_date: authenticatedUser.birth_date || '',
+    totp_enabled: Boolean(authenticatedUser.totp_enabled),
+  };
 }
 
 // Obtener el token enviado explícitamente por clientes nativos o, como

@@ -136,6 +136,7 @@ export function App({ settingsWriteTimeoutMs = SETTINGS_WRITE_TIMEOUT_MS }: AppP
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [hasAdmin, setHasAdmin] = useState<boolean>(true);
   const [authChecking, setAuthChecking] = useState<boolean>(true);
+  const [authStartupFailed, setAuthStartupFailed] = useState<boolean>(false);
 
   const [readings, setReadings] = useState<BloodPressureReading[]>([]);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -290,9 +291,8 @@ export function App({ settingsWriteTimeoutMs = SETTINGS_WRITE_TIMEOUT_MS }: AppP
         );
         // Se absorben en lugar de resolverse como sustituidas: sus cambios ya
         // viajan dentro del payload de esta escritura, así que su desenlace es
-        // el de esta. Resolverlas aquí como "sustituidas" suprimiría la
-        // confirmación real (una copia manual absorbida sí se persiste y debe
-        // poder anunciar su éxito).
+        // el de esta. Así quien inició la intención conoce el fallo real y el
+        // libro de confirmados conserva también sus campos cuando se guarda.
         write.absorbed = [...(write.absorbed ?? []), ...replaced];
       }
     }
@@ -468,10 +468,10 @@ export function App({ settingsWriteTimeoutMs = SETTINGS_WRITE_TIMEOUT_MS }: AppP
     [readings, settings]
   );
 
-  // 1. Verificar sesión del servidor al arrancar
-  useEffect(() => {
-    async function checkAuth() {
-      setAuthChecking(true);
+  async function checkAuth() {
+    setAuthChecking(true);
+    setAuthStartupFailed(false);
+    try {
       const status = await getAuthStatus();
       setHasAdmin(status.hasAdmin);
       if (status.user) {
@@ -484,9 +484,19 @@ export function App({ settingsWriteTimeoutMs = SETTINGS_WRITE_TIMEOUT_MS }: AppP
         setReadings([]);
         resetSettingsContext();
       }
+    } catch (error) {
+      console.error('No se pudo consultar el estado de autenticación:', error);
+      setAuthStartupFailed(true);
+    } finally {
       setAuthChecking(false);
     }
-    checkAuth();
+  }
+
+  // 1. Verificar sesión del servidor al arrancar. Un fallo de transporte,
+  // HTTP o parseo no equivale a un servidor nuevo sin administrador: se muestra
+  // un estado propio y solo una respuesta válida decide entre sesión y acceso.
+  useEffect(() => {
+    void checkAuth();
   }, []);
 
   // 2. Volver al acceso en cuanto el servidor rechace la sesión (por ejemplo,
@@ -652,10 +662,7 @@ export function App({ settingsWriteTimeoutMs = SETTINGS_WRITE_TIMEOUT_MS }: AppP
             lastBackupTimestamp: now.toISOString(),
             lastFullBackupTimestamp: now.toISOString(),
           };
-          const outcome = await handleUpdateSettings(updatedSettings);
-          if (outcome !== 'saved') return;
-          setNotificationMsg(getTranslation(settings.language, 'toast.manualBackupSuccess'));
-          setTimeout(() => setNotificationMsg(null), 5000);
+          await handleUpdateSettings(updatedSettings);
         },
       });
     } catch (error) {
@@ -817,6 +824,21 @@ export function App({ settingsWriteTimeoutMs = SETTINGS_WRITE_TIMEOUT_MS }: AppP
     return (
       <div style={{ display: 'flex', minHeight: '100vh', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)' }}>
         <p>Cargando servidor...</p>
+      </div>
+    );
+  }
+
+  if (authStartupFailed) {
+    return (
+      <div
+        data-testid="auth-startup-error"
+        role="alert"
+        style={{ display: 'flex', minHeight: '100vh', flexDirection: 'column', gap: '16px', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-app)', color: 'var(--text-primary)' }}
+      >
+        <p>No se pudo conectar con el servidor.</p>
+        <button type="button" className="btn-secondary-large" onClick={() => void checkAuth()}>
+          Reintentar
+        </button>
       </div>
     );
   }

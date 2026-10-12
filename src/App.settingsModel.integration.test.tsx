@@ -1139,12 +1139,44 @@ describe('Defecto 4: la escritura abandonada por plazo se reconcilia releyendo e
   });
 });
 
-// Defecto 5: una intención coalescible absorbida por un guardado posterior se
-// resolvía como "sustituida", lo que suprimía el aviso de éxito de la copia
-// manual aunque sus timestamps sí quedaban persistidos. Ahora comparte el
-// desenlace de la escritura que la absorbe.
-describe('Defecto 5: la intención absorbida comparte el desenlace de la que la absorbe', () => {
-  it('muestra el éxito de la copia manual aunque su guardado se absorba en otro guardado completo', async () => {
+// Confirmar la copia ya queda reflejado dentro del propio modal mediante la
+// fecha de «Última copia confirmada». App solo debe persistir los timestamps y
+// cerrar la confirmación; un segundo toast positivo duplica la confirmación.
+describe('Confirmación de copia manual sin segundo toast positivo', () => {
+  it('persiste ambos timestamps y cierra la confirmación sin mostrar otro éxito', async () => {
+    await renderApp();
+
+    await openExportModal();
+    await clickButton('Crear una copia (JSON)');
+    await clickButton('Confirmar copia guardada');
+    await flush();
+
+    expect(mocks.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      lastBackupTimestamp: expect.any(String),
+      lastFullBackupTimestamp: expect.any(String),
+    }));
+    expect(container.textContent).not.toContain('Copia confirmada. Se ha actualizado la fecha del recordatorio.');
+    expect(container.querySelector('.toast-notification')).toBeNull();
+  });
+
+  it('mantiene el aviso de error si falla el guardado de los timestamps', async () => {
+    mocks.saveSettings.mockRejectedValueOnce(new Error('offline'));
+    await renderApp();
+
+    await openExportModal();
+    await clickButton('Crear una copia (JSON)');
+    await clickButton('Confirmar copia guardada');
+    await flush();
+
+    expect(mocks.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      lastBackupTimestamp: expect.any(String),
+      lastFullBackupTimestamp: expect.any(String),
+    }));
+    expect(container.textContent).toContain('No se pudieron guardar los ajustes');
+    expect(container.textContent).not.toContain('Copia confirmada. Se ha actualizado la fecha del recordatorio.');
+  });
+
+  it('no muestra otro éxito aunque el guardado de la copia se absorba en otro guardado completo', async () => {
     let resolveInflight!: () => void;
     mocks.saveSettings
       .mockReturnValueOnce(new Promise<void>((resolve) => { resolveInflight = resolve; })) // write1 en vuelo
@@ -1180,8 +1212,9 @@ describe('Defecto 5: la intención absorbida comparte el desenlace de la que la 
       lastBackupTimestamp: expect.any(String),
       lastFullBackupTimestamp: expect.any(String),
     }));
-    // ...así que el aviso de éxito no se suprime.
-    expect(container.textContent).toContain('Copia confirmada');
+    // ...pero la confirmación ya se cerró y no aparece un segundo toast positivo.
+    expect(container.textContent).not.toContain('Copia confirmada. Se ha actualizado la fecha del recordatorio.');
+    expect(container.querySelector('.toast-notification')).toBeNull();
   });
 });
 
