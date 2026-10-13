@@ -1,4 +1,4 @@
-export const SERVER_HEALTH_TIMEOUT_MS = 3000;
+const SERVER_HEALTH_TIMEOUT_MS = 3000;
 
 async function fetchWithTimeout(healthUrl: string, timeoutMs: number): Promise<Response | null> {
   const controller = new AbortController();

@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS } from '../services/storageService';
 import { getReadingValidationError } from './readingValidation';
 
 export const BACKUP_FORMAT = 'cta-elrocho-backup';
-export const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 1;
 
 export interface AppBackupSnapshot {
   format: typeof BACKUP_FORMAT;

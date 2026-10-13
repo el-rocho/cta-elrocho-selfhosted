@@ -1,7 +1,7 @@
 import type { BloodPressureSession, GuidelineProfile, HealthSeverity } from '../types/bloodPressure';
 import { getHealthCategory } from './healthClassification';
 
-export const TREND_WINDOW_DAYS = 28;
+const TREND_WINDOW_DAYS = 28;
 export const MIN_TREND_SESSIONS = 3;
 export const MIN_TREND_DAYS = 3;
 

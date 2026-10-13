@@ -93,7 +93,7 @@ function findMode<T>(values: T[], getKey: (value: T) => string): ModeResult<T> {
   };
 }
 
-export function getTargetMode(
+function getTargetMode(
   sessions: BloodPressureSession[],
   settings: AppSettings
 ): ModeResult<TreatmentTargetAssessment> {

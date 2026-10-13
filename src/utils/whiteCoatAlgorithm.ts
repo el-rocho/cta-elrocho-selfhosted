@@ -2,7 +2,7 @@ import type { BloodPressureReading, BloodPressureSession, AppSettings } from '..
 import { DEFAULT_SETTINGS } from '../services/storageService';
 import { getReadingMedicationContext } from './healthClassification';
 
-export const WHITE_COAT_INTERVAL_MINUTES = 5;
+const WHITE_COAT_INTERVAL_MINUTES = 5;
 
 export function getEffectiveSessionReadings(
   session: BloodPressureSession

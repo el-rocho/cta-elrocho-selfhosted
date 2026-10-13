@@ -500,15 +500,6 @@ export async function downloadPDFReport(
   }
 }
 
-export function printPDFReport(
-  sessions: BloodPressureSession[],
-  dateRange: DateRange,
-  options: ExportReportOptions = {},
-  lang: LanguageOption = 'es'
-): void {
-  downloadPDFReport(sessions, dateRange, options, lang);
-}
-
 // Gráfico de líneas (Evolución Tensión) a ancho completo (970px)
 function generateChartSVG(chronologicalSessions: BloodPressureSession[], locale = 'es-ES', isEn = false, showInformationalLabels = true): string {
   if (chronologicalSessions.length === 0) {

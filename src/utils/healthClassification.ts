@@ -15,12 +15,6 @@ import type {
 } from '../types/bloodPressure';
 import { getTranslation } from '../i18n/translations';
 
-export const GUIDELINE_PROFILES: GuidelineProfile[] = [
-  'esc-2024',
-  'aha-acc-2025',
-  'ish-2020',
-];
-
 const PROFILE_TRANSLATION_KEYS: Record<GuidelineProfile, string> = {
   'esc-2024': 'esc2024',
   'aha-acc-2025': 'ahaAcc2025',
@@ -260,9 +254,7 @@ export function getHealthCategoriesMap(
   );
 }
 
-export const HEALTH_CATEGORIES = getHealthCategoriesMap('es', 'esc-2024');
-
-export function calculatePulsePressure(systolic: number, diastolic: number): number {
+function calculatePulsePressure(systolic: number, diastolic: number): number {
   return systolic - diastolic;
 }
 
@@ -414,7 +406,7 @@ export function getConfirmedPulsePressureAlerts(
   return [...alerts.values()];
 }
 
-export function getSafetyAlerts(
+function getSafetyAlerts(
   systolic: number,
   diastolic: number,
   lang: LanguageOption = 'es'
@@ -430,7 +422,7 @@ export function getSafetyAlerts(
   return [];
 }
 
-export function getHealthAlerts(
+function getHealthAlerts(
   systolic: number,
   diastolic: number,
   heartRate: number,

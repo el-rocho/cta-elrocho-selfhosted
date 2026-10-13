@@ -1,9 +1,9 @@
 import type { BloodPressureSession } from '../types/bloodPressure';
 
-export const HOME_BP_SYSTOLIC_THRESHOLD = 135;
-export const HOME_BP_DIASTOLIC_THRESHOLD = 85;
-export const MIN_HOME_BP_LOAD_SESSIONS = 6;
-export const MIN_HOME_BP_LOAD_DAYS = 3;
+const HOME_BP_SYSTOLIC_THRESHOLD = 135;
+const HOME_BP_DIASTOLIC_THRESHOLD = 85;
+const MIN_HOME_BP_LOAD_SESSIONS = 6;
+const MIN_HOME_BP_LOAD_DAYS = 3;
 
 export interface CardiovascularMetrics {
   pulsePressure: { average: number };
