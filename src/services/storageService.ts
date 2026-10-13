@@ -120,14 +120,14 @@ async function requestConfirmed(path: string, init?: RequestInit): Promise<void>
 }
 
 export async function fetchReadingsFromServer(): Promise<BloodPressureReading[]> {
-  const data = await requestJson(freshApiUrl('/api/readings'), { credentials: 'include', cache: 'no-store' });
+  const data = await requestJson(freshApiUrl('/api/readings'), { headers: authHeaders(), credentials: 'include', cache: 'no-store' });
   if (!Array.isArray(data) || !data.every(isReading)) throw invalidResponse('La lista de mediciones no es válida');
   return data;
 }
 
 export async function addReadingToServer(newReading: Omit<BloodPressureReading, 'id'>): Promise<BloodPressureReading> {
   const data = await requestJson('/api/readings', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(newReading),
+    method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), credentials: 'include', body: JSON.stringify(newReading),
   });
   if (!isReading(data)) throw invalidResponse('La medición creada no es válida');
   return data;
@@ -135,47 +135,55 @@ export async function addReadingToServer(newReading: Omit<BloodPressureReading, 
 
 export async function updateReadingOnServer(updatedReading: BloodPressureReading): Promise<void> {
   const data = await requestJson(`/api/readings/${updatedReading.id}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(updatedReading),
+    method: 'PUT', headers: authHeaders({ 'Content-Type': 'application/json' }), credentials: 'include', body: JSON.stringify(updatedReading),
   });
   if (!isReading(data)) throw invalidResponse('La medición actualizada no es válida');
 }
 
 export async function updateMedicationContextForAllReadings(takesAntihypertensiveMedication: boolean): Promise<void> {
   await requestConfirmed('/api/readings/medication-context', {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ takesAntihypertensiveMedication }),
+    method: 'PUT', headers: authHeaders({ 'Content-Type': 'application/json' }), credentials: 'include', body: JSON.stringify({ takesAntihypertensiveMedication }),
   });
 }
 
 export async function deleteReadingFromServer(id: string): Promise<void> {
-  await requestConfirmed(`/api/readings/${id}`, { method: 'DELETE', credentials: 'include' });
+  await requestConfirmed(`/api/readings/${id}`, { method: 'DELETE', headers: authHeaders(), credentials: 'include' });
 }
 
 export async function deleteSessionFromServer(readingIds: string[]): Promise<void> {
   await requestConfirmed('/api/sessions/delete', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ readingIds }),
+    method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), credentials: 'include', body: JSON.stringify({ readingIds }),
   });
 }
 
 export async function clearAllReadingsOnServer(): Promise<void> {
-  await requestConfirmed('/api/readings/all/confirm', { method: 'DELETE', credentials: 'include' });
+  await requestConfirmed('/api/readings/all/confirm', { method: 'DELETE', headers: authHeaders(), credentials: 'include' });
 }
 
 export async function resetDemoDataOnServer(): Promise<BloodPressureReading[]> {
-  const data = await requestJson('/api/readings/reset-demo', { method: 'POST', credentials: 'include' });
+  const data = await requestJson('/api/readings/reset-demo', { method: 'POST', headers: authHeaders(), credentials: 'include' });
   if (!Array.isArray(data) || !data.every(isReading)) throw invalidResponse('Las mediciones de demostración no son válidas');
   return data;
 }
 
-function getRestoreSessionToken(): string {
+// Toda la API de datos exige el token explícito: la cookie viaja sola y no
+// distingue una petición del propio usuario de otra inducida por una página
+// ajena. Sin token guardado no se llega a la red y la interfaz pide volver a
+// iniciar sesión.
+function getSessionToken(): string {
   const token = localStorage.getItem('cta_session_token');
   if (!token) throw new StorageRequestError('session-token-required', 'SESSION_TOKEN_REQUIRED');
   return token;
 }
 
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  return { ...extra, 'x-session-token': getSessionToken() };
+}
+
 export async function importReadingsToServer(imported: Omit<BloodPressureReading, 'id'>[]): Promise<{ addedCount: number; readings: BloodPressureReading[] }> {
   const data = await requestJson('/api/readings/import', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-session-token': getRestoreSessionToken() },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include', body: JSON.stringify(imported),
   });
   if (!isRecord(data) || typeof data.addedCount !== 'number' || !Array.isArray(data.readings) || !data.readings.every(isReading)) {
@@ -189,12 +197,14 @@ export interface BackupMergePreview extends BackupMergeCounts { previewToken: st
 export interface BackupMergeResult extends BackupMergeCounts { readings: BloodPressureReading[] }
 
 async function sendBackupMerge(path: string, payload: unknown): Promise<unknown> {
-  const token = getRestoreSessionToken();
+  // Las cabeceras se resuelven fuera del try: la falta de token debe conservar
+  // su error tipado y no confundirse con un fallo de red.
+  const headers = authHeaders({ 'Content-Type': 'application/json' });
   let response: Response;
   try {
     response = await fetch(path, {
       method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'x-session-token': token },
+      headers,
       body: JSON.stringify(payload),
     });
   } catch (cause) {
@@ -224,7 +234,7 @@ export async function mergeBackupOnServer(snapshot: AppBackupSnapshot, previewTo
 
 export async function restoreBackupOnServer(snapshot: AppBackupSnapshot): Promise<{ readings: BloodPressureReading[]; settings: AppSettings }> {
   const data = await requestJson('/api/backups/restore-replace', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-session-token': getRestoreSessionToken() },
+    method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }),
     credentials: 'include', body: JSON.stringify(snapshot),
   });
   if (!isRecord(data) || !Array.isArray(data.readings) || !isSettingsPayload(data.settings)) throw invalidResponse('El resultado de la restauración no es válido');
@@ -232,7 +242,7 @@ export async function restoreBackupOnServer(snapshot: AppBackupSnapshot): Promis
 }
 
 export async function fetchSettingsFromServer(): Promise<AppSettings> {
-  const data = await requestJson(freshApiUrl('/api/settings'), { credentials: 'include', cache: 'no-store' });
+  const data = await requestJson(freshApiUrl('/api/settings'), { headers: authHeaders(), credentials: 'include', cache: 'no-store' });
   if (!isSettingsPayload(data)) throw invalidResponse('Los ajustes no son válidos');
   return {
     ...DEFAULT_SETTINGS,
@@ -243,7 +253,7 @@ export async function fetchSettingsFromServer(): Promise<AppSettings> {
 
 export async function saveSettingsToServer(settings: AppSettings): Promise<void> {
   const data = await requestJson('/api/settings', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(settings),
+    method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), credentials: 'include', body: JSON.stringify(settings),
   });
   if (!isRecord(data) || data.success !== true) throw invalidResponse('El servidor no confirmó los ajustes');
 }

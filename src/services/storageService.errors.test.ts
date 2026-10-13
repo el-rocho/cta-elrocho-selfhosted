@@ -105,4 +105,35 @@ describe('errores tipados de storage', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error).toMatchObject({ code: 'http', status: 500 });
   });
+
+  // El servidor exige el token explícito en toda la API de datos: la cookie viaja
+  // sola y no distingue una petición propia de otra inducida por una página ajena.
+  it('no llega a la red sin token, ni en lecturas ni en escrituras', async () => {
+    vi.stubGlobal('localStorage', { getItem: vi.fn().mockReturnValue(null) });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const calls = [
+      fetchReadingsFromServer(),
+      fetchSettingsFromServer(),
+      addReadingToServer({ ...reading, id: undefined } as never),
+      saveSettingsToServer(DEFAULT_SETTINGS),
+      clearAllReadingsOnServer(),
+      mergeBackupOnServer(snapshot, 'preview'),
+    ];
+    for (const call of calls) {
+      await expect(call).rejects.toMatchObject({ code: 'session-token-required' });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('envía el token también en las lecturas', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response(200, []));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(fetchReadingsFromServer()).resolves.toEqual([]);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toMatchObject({ 'x-session-token': 'session-token' });
+  });
 });

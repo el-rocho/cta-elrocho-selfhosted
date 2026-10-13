@@ -64,7 +64,43 @@ const LEGACY_DEMO_NOTES = {
     'Ejemplo: presión de pulso de 65 mmHg',
 };
 
-app.use(cors({ origin: true, credentials: true }));
+// Orígenes autorizados para peticiones de navegador de otro origen. La interfaz
+// propia se sirve desde el mismo servidor (o a través del proxy de desarrollo),
+// así que esta lista sólo afecta a clientes alojados en otro origen; sus
+// peticiones van con credenciales, por lo que no se puede reflejar cualquier
+// origen. `CORS_ORIGINS` acepta una lista separada por comas y `*` como escape
+// explícito para permitir cualquiera (no recomendado). Ver Documentación/07.
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:5175',
+  // Orígenes de la app Android/PWA empaquetada con Capacitor: el WebView se
+  // sirve a sí mismo desde localhost (esquema `https` por defecto en Capacitor 7),
+  // así que sus peticiones al servidor llegan con ese origen.
+  'https://localhost',
+  'http://localhost',
+  'capacitor://localhost',
+  // PWA del cliente publicada en GitHub Pages (workflow deploy.yml del repositorio
+  // cta-elrocho-client-app). Una copia publicada en otro sitio debe declarar el suyo.
+  'https://el-rocho.github.io',
+];
+const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? DEFAULT_CORS_ORIGINS.join(','))
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    // Sin cabecera Origin no hay navegador cruzado que proteger (curl, app nativa).
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/+$/, '');
+    return callback(null, CORS_ORIGINS.includes('*') || CORS_ORIGINS.includes(normalized));
+  },
+  credentials: true,
+}));
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 
@@ -80,6 +116,32 @@ app.use('/api', (_req, res, next) => {
   next();
 });
 app.use('/api', apiActivityMonitor.middleware);
+
+// Rutas que se autentican únicamente con la cookie: las que no requieren
+// identificarse y las que crean, comprueban o cierran la propia sesión. Son
+// necesariamente anteriores a tener el token en el cliente.
+const COOKIE_SESSION_PATHS = new Set([
+  '/api/health',
+  '/api/auth/status',
+  '/api/auth/setup-admin',
+  '/api/auth/login',
+  '/api/auth/login/totp',
+  '/api/auth/logout',
+]);
+
+// El resto de la API exige el token en la cabecera además de la sesión. La
+// cookie viaja sola en cualquier petición dirigida a este servidor, así que no
+// distingue una petición del propio usuario de otra inducida por una página
+// ajena; la cabecera X-Session-Token sólo la puede poner el código del propio
+// origen. Esta comprobación va antes de requireAuth, de modo que una petición
+// sin token nunca llega a los datos.
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api/') || COOKIE_SESSION_PATHS.has(req.path)) return next();
+  if (!req.get('x-session-token')) {
+    return res.status(403).json({ error: 'Token explícito requerido' });
+  }
+  next();
+});
 
 // Comprobación pública y mínima de disponibilidad del servidor y SQLite.
 app.get('/api/health', createHealthHandler(getDB));
@@ -995,15 +1057,7 @@ app.post('/api/readings/reset-demo', requireAuth, async (req, res) => {
   }
 });
 
-function requireExplicitSessionToken(req, res, next) {
-  // No admitir cookies como única prueba de autorización en importaciones destructivas.
-  if (!req.get('x-session-token')) {
-    return res.status(403).json({ error: 'Token explícito requerido para importar o restaurar' });
-  }
-  next();
-}
-
-app.post('/api/readings/import', requireExplicitSessionToken, requireAuth, async (req, res) => {
+app.post('/api/readings/import', requireAuth, async (req, res) => {
   try {
     const importedItems = req.body;
     if (!Array.isArray(importedItems)) {
@@ -1070,7 +1124,7 @@ app.post('/api/readings/import', requireExplicitSessionToken, requireAuth, async
   }
 });
 
-app.post('/api/backups/merge-preview', requireExplicitSessionToken, requireAuth, async (req, res) => {
+app.post('/api/backups/merge-preview', requireAuth, async (req, res) => {
   let db;
   try {
     db = await openDatabaseConnection();
@@ -1082,7 +1136,7 @@ app.post('/api/backups/merge-preview', requireExplicitSessionToken, requireAuth,
   } finally { if (db) await db.close(); }
 });
 
-app.post('/api/backups/restore-merge', requireExplicitSessionToken, requireAuth, async (req, res) => {
+app.post('/api/backups/restore-merge', requireAuth, async (req, res) => {
   let db;
   try {
     db = await openDatabaseConnection();
@@ -1095,7 +1149,7 @@ app.post('/api/backups/restore-merge', requireExplicitSessionToken, requireAuth,
   } finally { if (db) await db.close(); }
 });
 
-app.post('/api/backups/restore-replace', requireExplicitSessionToken, requireAuth, async (req, res) => {
+app.post('/api/backups/restore-replace', requireAuth, async (req, res) => {
   let db;
   try {
     db = await openDatabaseConnection();
