@@ -95,6 +95,34 @@ sudo docker compose up -d
 ### 3. Acceso e Inicialización
 Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa el registro del **Primer Usuario Administrador**.
 
+### 4. Clientes alojados en otro origen (opcional)
+
+Un **origen** es la combinación de esquema, host y puerto: `http://192.168.1.50:3000` y `http://192.168.1.50:5174` son orígenes distintos. El servidor sólo entrega sus respuestas a los orígenes que reconoce, y admite de fábrica:
+
+- los seis orígenes de desarrollo (`localhost` y `127.0.0.1` en los puertos 5173-5175);
+- los orígenes de la **app Android / PWA empaquetada** con Capacitor (`https://localhost`, `http://localhost` y `capacitor://localhost`), porque el WebView se sirve a sí mismo desde `localhost`;
+- la **PWA del cliente publicada en GitHub Pages** (`https://el-rocho.github.io`), que es su canal oficial de publicación.
+
+| Desde dónde se ejecuta la aplicación | Origen | ¿Funciona sin configurar nada? |
+| :--- | :--- | :--- |
+| Interfaz web servida por este servidor, también con un dominio propio tras un proxy inverso (`https://cta.elrocho.es` o `http://IP:3000`) | el del servidor | Sí, es el mismo origen y CORS no interviene |
+| Aplicación Android (APK) | `https://localhost` | Sí |
+| PWA oficial (GitHub Pages) | `https://el-rocho.github.io` | Sí |
+| Interfaz de desarrollo por el túnel SSH (5173-5175) | `127.0.0.1:517x` | Sí |
+
+Publicar esta interfaz en un dominio propio con HTTPS y un proxy inverso no exige tocar `CORS_ORIGINS`: la interfaz pide sus datos con rutas relativas (`/api/...`) del mismo dominio que la sirve, así que todas las peticiones son del mismo origen y el navegador no aplica CORS.
+
+Sólo hay que declarar un origen cuando la página que ejecuta la aplicación se sirve desde un sitio **distinto** de los anteriores: una copia del cliente o de la PWA publicada en otro dominio, o la aplicación abierta desde un puerto distinto al del servidor. Se declara en la variable `CORS_ORIGINS`, con varios valores separados por comas y sin barra final:
+
+```yaml
+environment:
+  - CORS_ORIGINS=https://mi-pwa.midominio.com,http://192.168.1.50:5174
+```
+
+Si el origen no está declarado, el servidor responde igual (el servicio está operativo y lo confirma `/api/health`), pero **el navegador no entrega la respuesta** y la aplicación muestra un fallo de conexión: es el síntoma típico, no una caída del servidor. El valor `*` acepta cualquier origen (comportamiento de las versiones anteriores) y no se recomienda, porque las peticiones viajan con credenciales.
+
+Las herramientas que no son un navegador (`curl`, scripts, clientes nativos) no se ven afectadas: no envían cabecera `Origin` y no pasan por CORS. Toda la API de datos exige además la cabecera `X-Session-Token`; las aplicaciones del proyecto ya la envían.
+
 ---
 
 ### Actualizaciones
@@ -102,7 +130,7 @@ Abre en tu navegador la dirección `http://<IP_DE_TU_SERVIDOR>:3000` y completa 
 Antes de instalar una nueva versión, consulta la **[guía de actualización](UPGRADING.md)** y las notas específicas de la versión. Allí se describe cómo respaldar SQLite, actualizar la imagen y actuar si una versión incorpora migraciones.
 
 > [!IMPORTANT]
-> **Antes de actualizar a `v1.6.1`, realiza una copia completa del directorio `data` con el contenedor detenido.** Esta versión incorpora una migración automática y transparente de las preferencias de usuario. Conserva la copia hasta verificar el inicio de sesión, el historial y la configuración. Consulta las [instrucciones específicas de `v1.6.1`](docs/actualizaciones/v1.6.1.md).
+> **Antes de actualizar a `v1.7.0`, realiza una copia completa del directorio `data` con el contenedor detenido y actualiza también los clientes a `1.7.0`.** Esta versión exige el token de sesión en toda su API y sólo atiende los orígenes declarados: un cliente `1.6.1` o anterior no podrá leer ni guardar datos contra ella. Si vienes de `1.6.0` o anterior, la migración automática de preferencias se ejecuta igualmente al arrancar. Consulta las [instrucciones específicas de `v1.7.0`](docs/actualizaciones/v1.7.0.md) y, si procede, las de [`v1.6.1`](docs/actualizaciones/v1.6.1.md).
 
 ---
 
@@ -131,6 +159,8 @@ Para entornos de producción o acceso remoto fuera de tu red local, **se recomie
 2. **Cookies de Máxima Seguridad**: Habilita la directiva `Secure` en las cookies de sesión de los navegadores.
 3. **PWA Instalable en Móviles**: Permite que navegadores en iOS/Android ofrezcan la opción *"Añadir a la pantalla de inicio"* como PWA nativa.
 4. **Acceso a la API Nativa del Portapapeles**: Garantiza acceso completo a las funciones avanzadas del navegador (`navigator.clipboard`).
+
+> **Nota sobre las cookies detrás del proxy:** el servidor marca la cookie de sesión como `Secure` cuando detecta HTTPS, ya sea por la conexión directa o por la cabecera `X-Forwarded-Proto: https` que envían Nginx Proxy Manager, Traefik y Caddy. Si tu proxy no la reenvía, añade `COOKIE_SECURE=true` al entorno del contenedor para forzarla. La interfaz y la API comparten dominio, así que este despliegue no necesita configurar `CORS_ORIGINS`.
 
 ---
 
