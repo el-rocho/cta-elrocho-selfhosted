@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { getDB, openDatabaseConnection, DATA_DIR, DB_PATH, BACKUPS_DIR } from './db.js';
 import { replaceBackupForUser, previewMergeForUser, mergeBackupForUser } from './restoreBackup.js';
+import { buildBackupFileName, resolveBackupFilePath } from './backupFileName.js';
 import { createHealthHandler } from './health.js';
 import {
   createApiActivityMonitor,
@@ -1224,15 +1225,25 @@ app.post('/api/settings', requireAuth, async (req, res) => {
 
 app.post('/api/backups/generate', requireAuth, async (req, res) => {
   try {
-    const { csvContent, filenamePrefix } = req.body;
-    const now = new Date();
-    const dateTimeStr = now.toISOString().replace(/[:.]/g, '-');
-    const filename = `${filenamePrefix || 'tension_arterial'}_${req.user.username}_${dateTimeStr}.csv`;
-    const filePath = path.join(BACKUPS_DIR, filename);
-
-    if (csvContent) {
-      fs.writeFileSync(filePath, csvContent, 'utf-8');
+    const { csvContent, filenamePrefix } = req.body ?? {};
+    // Sin contenido no hay copia: informar de éxito sin escribir nada deja al
+    // usuario creyendo que su respaldo existe y adelanta su fecha.
+    if (typeof csvContent !== 'string') {
+      return res.status(400).json({ error: 'El contenido de la copia no es válido.' });
     }
+    if (csvContent.trim() === '') {
+      return res.status(400).json({ error: 'El contenido de la copia está vacío.' });
+    }
+
+    const now = new Date();
+    const filename = buildBackupFileName({
+      prefix: filenamePrefix,
+      username: req.user.username,
+      date: now,
+    });
+    const filePath = resolveBackupFilePath(BACKUPS_DIR, filename);
+
+    fs.writeFileSync(filePath, csvContent, 'utf-8');
 
     const db = await getDB();
     await db.run('UPDATE settings SET last_backup_timestamp = ? WHERE user_id = ?', [
@@ -1247,6 +1258,10 @@ app.post('/api/backups/generate', requireAuth, async (req, res) => {
       timestamp: now.toISOString(),
     });
   } catch (error) {
+    if (error.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
+    console.error('Error al guardar copia de seguridad:', error);
     res.status(500).json({ error: 'Error al guardar copia de seguridad' });
   }
 });
