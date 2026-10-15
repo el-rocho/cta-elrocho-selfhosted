@@ -69,11 +69,11 @@ function deferredSave() {
 }
 
 describe('ReadingForm defensivo', () => {
-  it('rotula la acción principal como Registrar medición', async () => {
+  it('rotula la acción principal como Guardar medición', async () => {
     await renderForm();
 
     expect(container.querySelector<HTMLButtonElement>('.btn-submit-reading')?.textContent).toContain(
-      'Registrar medición'
+      'Guardar medición'
     );
   });
 
