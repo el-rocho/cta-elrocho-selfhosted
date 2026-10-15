@@ -72,10 +72,12 @@ export const translations = {
       armLeft: 'Izquierdo',
       armRight: 'Derecho',
       notesPlaceholder: 'Notas opcionales (ej. tras caminar 15 min)...',
-      submit: 'Guardar Medición',
+      submit: 'Registrar medición',
       saveError: 'No se pudo guardar la medición. Revisa la conexión e inténtalo de nuevo.',
       whiteCoatFilterActive: 'Filtro 5 min activo',
-      validationAlert: 'Por favor, introduce valores válidos para Sistólica, Diastólica y Pulsaciones.',
+      validationAlert: 'Introduce valores Sistólica, Diastólica y Pulso',
+      validationTitle: 'Faltan datos',
+      validationAccept: 'Entendido',
       diastolicMustBeLower: 'La presión diastólica debe ser menor que la sistólica. Revisa los valores: esta medición no se puede guardar.',
       pulsePressureTitle: 'Revisa el manguito y repite la medición',
       pulsePressureWarning: 'La diferencia entre sistólica y diastólica parece desajustada. Si ya has repetido la toma y confirmas que es correcta, puedes guardar los datos.',
@@ -154,6 +156,8 @@ export const translations = {
       noPredominant: 'Sin predominio',
       showDetails: 'Más datos',
       hideDetails: 'Menos datos',
+      expandSection: 'Mostrar evolución',
+      collapseSection: 'Ocultar evolución',
       sysShort: 'Sistólica',
       diaShort: 'Diastólica',
       bpmShort: 'Pulsaciones',
@@ -207,7 +211,7 @@ export const translations = {
         },
       },
       ahaAcc2025: {
-        name: 'Estadounidense AHA/ACC 2025',
+        name: 'USA AHA/ACC 2025',
         description: 'Categorías AHA/ACC 2025 aplicadas al registro domiciliario.',
         categories: {
           normal: { name: 'Normal', desc: 'Sistólica < 120 y diastólica < 80 mmHg.' },
@@ -217,7 +221,7 @@ export const translations = {
         },
       },
       ish2020: {
-        name: 'Internacional ISH 2020',
+        name: 'Int. ISH 2020',
         description: 'Comparación simplificada con el umbral domiciliario ISH 2020.',
         categories: {
           belowThreshold: { name: 'Presión normal', desc: 'Sistólica < 135 y diastólica < 85 mmHg.' },
@@ -246,11 +250,12 @@ export const translations = {
     },
 
     healthAlerts: {
-      title: 'Avisos informativos',
       disclaimer: 'Información orientativa basada en {guideline}. La aplicación no realiza diagnósticos ni permite ajustar la medicación. Una medición aislada debe interpretarse con cautela.',
       extremeHighPressure: {
-        name: 'Aviso por lectura muy alta ({systolic}/{diastolic})',
-        desc: 'Repite la medición tras permanecer sentado y en reposo. Si presenta dolor torácico, dificultad respiratoria, debilidad o adormecimiento súbito, dificultad para hablar, alteración visual, confusión o desmayo, puede tratarse de una urgencia médica; valore llamar al 112.',
+        name: 'Hipertensión grave ({systolic}/{diastolic})',
+        // El aviso de urgencia no se puede leer a tiempo en el formulario (el borrador
+        // caduca a los 5 s o desaparece al guardar), así que se deja solo la etiqueta.
+        desc: '',
       },
       lowBloodPressure: {
         name: 'Valor bajo ({systolic}/{diastolic})',
@@ -300,6 +305,8 @@ export const translations = {
       collapseReadings: 'Plegar tomas',
       deleteSession: 'Eliminar sesión',
       readingsCount: '{count} toma(s)',
+      measurementsCountOne: '{count} medición',
+      measurementsCountOther: '{count} mediciones',
       whiteCoatDiscarded: 'Descartadas por Bata Blanca: {count}',
       arm: 'Brazo',
       armLeft: 'Izquierdo',
@@ -347,8 +354,8 @@ export const translations = {
       guidelineTitle: 'Etiquetas y avisos informativos:',
       guidelineNone: 'Sin etiquetas ni avisos',
       guidelineEsc: 'Europea ESC 2024',
-      guidelineAha: 'Estadounidense AHA/ACC 2025',
-      guidelineIsh: 'Internacional ISH 2020',
+      guidelineAha: 'USA AHA/ACC 2025',
+      guidelineIsh: 'Int. ISH 2020',
       info: 'Info',
       guidelineSource: 'Consultar fuente oficial',
       guidelineInfoDisclaimer: 'Resumen informativo y simplificado. No constituye un diagnóstico ni sustituye el objetivo indicado por el médico.',
@@ -663,10 +670,12 @@ export const translations = {
       armLeft: 'Left',
       armRight: 'Right',
       notesPlaceholder: 'Optional notes (e.g. after 15 min walk)...',
-      submit: 'Save Reading',
+      submit: 'Record measurement',
       saveError: 'The reading could not be saved. Check the connection and try again.',
       whiteCoatFilterActive: '5 min filter active',
-      validationAlert: 'Please enter valid values for Systolic, Diastolic, and Pulse.',
+      validationAlert: 'Enter Systolic, Diastolic, and Pulse',
+      validationTitle: 'Missing values',
+      validationAccept: 'Got it',
       diastolicMustBeLower: 'Diastolic pressure must be lower than systolic pressure. Check the values: this reading cannot be saved.',
       pulsePressureTitle: 'Check the cuff and repeat the reading',
       pulsePressureWarning: 'The difference between systolic and diastolic pressure looks unusual. If you have already repeated the measurement and confirm it is correct, you can save the data.',
@@ -745,6 +754,8 @@ export const translations = {
       noPredominant: 'No predominant value',
       showDetails: 'More data',
       hideDetails: 'Less data',
+      expandSection: 'Show evolution',
+      collapseSection: 'Hide evolution',
       sysShort: 'Systolic',
       diaShort: 'Diastolic',
       bpmShort: 'Pulse',
@@ -808,7 +819,7 @@ export const translations = {
         },
       },
       ish2020: {
-        name: 'International ISH 2020',
+        name: 'Int. ISH 2020',
         description: 'Simplified comparison with the ISH 2020 home threshold.',
         categories: {
           belowThreshold: { name: 'Normal blood pressure', desc: 'Systolic < 135 and diastolic < 85 mmHg.' },
@@ -837,11 +848,10 @@ export const translations = {
     },
 
     healthAlerts: {
-      title: 'Informational alerts',
       disclaimer: 'Informational guidance based on {guideline}. The application does not diagnose or support medication adjustments. A single reading should be interpreted with caution.',
       extremeHighPressure: {
-        name: 'Very high reading notice ({systolic}/{diastolic})',
-        desc: 'Repeat the measurement after remaining seated and at rest. If you have chest pain, shortness of breath, sudden weakness or numbness, difficulty speaking, vision changes, confusion or fainting, this may be a medical emergency; consider calling 112 or your local emergency number.',
+        name: 'Severe hypertension ({systolic}/{diastolic})',
+        desc: '',
       },
       lowBloodPressure: {
         name: 'Low value ({systolic}/{diastolic})',
@@ -891,6 +901,8 @@ export const translations = {
       collapseReadings: 'Collapse readings',
       deleteSession: 'Delete session',
       readingsCount: '{count} reading(s)',
+      measurementsCountOne: '{count} measurement',
+      measurementsCountOther: '{count} measurements',
       whiteCoatDiscarded: 'Discarded by White Coat: {count}',
       arm: 'Arm',
       armLeft: 'Left',
@@ -939,7 +951,7 @@ export const translations = {
       guidelineNone: 'No labels or notices',
       guidelineEsc: 'European ESC 2024',
       guidelineAha: 'US AHA/ACC 2025',
-      guidelineIsh: 'International ISH 2020',
+      guidelineIsh: 'Int. ISH 2020',
       info: 'Info',
       guidelineSource: 'View official source',
       guidelineInfoDisclaimer: 'Simplified informational summary. It is not a diagnosis and does not replace the target set by your doctor.',

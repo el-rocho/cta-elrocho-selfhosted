@@ -3,13 +3,26 @@ import { requiresPulsePressureConfirmation } from './healthClassification';
 
 export type ReadingValidationError = 'invalidValues' | 'diastolicNotLower';
 export interface ReadingValues { systolic: number; diastolic: number; heartRate: number }
+export type ReadingMetric = keyof ReadingValues;
+
+export const READING_LIMITS = {
+  systolic: { min: 50, max: 260 },
+  diastolic: { min: 30, max: 160 },
+  heartRate: { min: 30, max: 220 },
+} as const satisfies Record<ReadingMetric, { min: number; max: number }>;
+
+export function isReadingMetricPlausible(metric: ReadingMetric, value: number | ''): value is number {
+  if (typeof value !== 'number' || !Number.isInteger(value)) return false;
+  const { min, max } = READING_LIMITS[metric];
+  return value >= min && value <= max;
+}
 
 export function getReadingValidationError(values: ReadingValues): ReadingValidationError | null {
   const { systolic, diastolic, heartRate } = values;
   if (
-    !Number.isInteger(systolic) || !Number.isInteger(diastolic) || !Number.isInteger(heartRate) ||
-    systolic < 50 || systolic > 260 || diastolic < 30 || diastolic > 160 ||
-    heartRate < 30 || heartRate > 220
+    !isReadingMetricPlausible('systolic', systolic) ||
+    !isReadingMetricPlausible('diastolic', diastolic) ||
+    !isReadingMetricPlausible('heartRate', heartRate)
   ) return 'invalidValues';
   if (diastolic >= systolic) return 'diastolicNotLower';
   return null;

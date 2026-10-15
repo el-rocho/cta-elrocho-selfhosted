@@ -185,13 +185,17 @@ class StubReader {
 }
 
 function findButton(label: string): HTMLButtonElement {
-  const button = [...container.querySelectorAll('button')].find((item) => (item.textContent ?? '').trim() === label);
+  const button = [...container.querySelectorAll('button')].find((item) => (
+    (item.textContent ?? '').trim() === label || item.getAttribute('aria-label') === label
+  ));
   if (!button) throw new Error(`Botón no encontrado: ${label}`);
   return button as HTMLButtonElement;
 }
 
 function hasButton(label: string): boolean {
-  return [...container.querySelectorAll('button')].some((item) => (item.textContent ?? '').trim() === label);
+  return [...container.querySelectorAll('button')].some((item) => (
+    (item.textContent ?? '').trim() === label || item.getAttribute('aria-label') === label
+  ));
 }
 
 function isActive(label: string): boolean {
@@ -1254,13 +1258,14 @@ describe('Defecto 7: los valores de formulario ligados a la sesión se reinician
     await act(async () => {
       setNativeValue(readingInput('#systolic-input'), '160');
       setNativeValue(readingInput('#diastolic-input'), '90');
+      setNativeValue(readingInput('#pulse-input'), '60');
       setNativeValue(readingInput('.input-notes'), 'Nota del paciente A');
       await Promise.resolve();
     });
     // La presión de pulso (160-90=70) pide confirmación y queda en pantalla.
     await submitReadingForm();
     await flush();
-    expect(container.querySelector('.pulse-pressure-confirmation')).not.toBeNull();
+    expect(document.body.querySelector('.pulse-pressure-dialog')).not.toBeNull();
 
     // Cambia la sesión (invalidación y acceso del usuario siguiente).
     await act(async () => {
@@ -1270,12 +1275,12 @@ describe('Defecto 7: los valores de formulario ligados a la sesión se reinician
     await clickButton('login-user-b');
     await flush();
 
-    // El formulario del usuario nuevo arranca limpio: valores por defecto y sin
+    // El formulario del usuario nuevo arranca vacío y sin
     // la confirmación pendiente del anterior.
-    expect(readingInput('#systolic-input').value).toBe('120');
-    expect(readingInput('#diastolic-input').value).toBe('80');
-    expect(readingInput('#pulse-input').value).toBe('60');
+    expect(readingInput('#systolic-input').value).toBe('');
+    expect(readingInput('#diastolic-input').value).toBe('');
+    expect(readingInput('#pulse-input').value).toBe('');
     expect(readingInput('.input-notes').value).toBe('');
-    expect(container.querySelector('.pulse-pressure-confirmation')).toBeNull();
+    expect(document.body.querySelector('.pulse-pressure-dialog')).toBeNull();
   });
 });

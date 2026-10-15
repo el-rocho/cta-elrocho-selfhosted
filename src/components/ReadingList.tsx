@@ -336,7 +336,7 @@ const SessionCardItem: React.FC<{
                     <span key={alert.key} className="session-info-line" title={alert.description}>{alert.name}</span>
                   ))}
                   {safetyAlerts.map((alert) => (
-                    <span key={alert.key} className="session-info-line session-safety-text" role="alert"><strong>{alert.name}</strong><span>{alert.description}</span></span>
+                    <span key={alert.key} className="session-info-line session-safety-text" role="alert"><strong>{alert.name}</strong>{alert.description.trim() !== '' && <span>{alert.description}</span>}</span>
                   ))}
                 </div>
               )}
@@ -439,16 +439,21 @@ export const ReadingList: React.FC<ReadingListProps> = ({
           <div className="list-title">
             <History size={20} className="icon-history" />
             <h2>{t('list.title')}</h2>
-            <span className="count-badge">{filteredSessions.length}</span>
             <button
               type="button"
-              className="history-toggle-button"
+              className="section-count-toggle history-toggle-button"
               aria-expanded={isHistoryExpanded}
               aria-controls="history-measurement-details"
-              aria-label={t(isHistoryExpanded ? 'list.collapseHistory' : 'list.expandHistory')}
+              aria-label={`${t(
+                filteredSessions.length === 1
+                  ? 'list.measurementsCountOne'
+                  : 'list.measurementsCountOther',
+                { count: filteredSessions.length },
+              )}. ${t(isHistoryExpanded ? 'list.collapseHistory' : 'list.expandHistory')}`}
               title={t(isHistoryExpanded ? 'list.collapseHistory' : 'list.expandHistory')}
               onClick={toggleHistory}
             >
+              <span className="readings-count-text">{filteredSessions.length}</span>
               {isHistoryExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
           </div>

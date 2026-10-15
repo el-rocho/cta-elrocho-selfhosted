@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings, BloodPressureSession } from '../types/bloodPressure';
-import { Activity, ChevronDown, Gauge, Info, Percent, TrendingUp, X } from 'lucide-react';
+import { Activity, ChevronDown, ChevronUp, Gauge, Info, Percent, TrendingUp, X } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 import { getGuidelineName, getHealthCategoriesMap } from '../utils/healthClassification';
 import { calculatePeriodSummary } from '../utils/summaryStatistics';
@@ -31,6 +31,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [range, setRange] = useState<LongTermTrendRange>('1month');
+  const [isTrendExpanded, setIsTrendExpanded] = useState(false);
   const [activeTooltip, setActiveTooltip] = useState<DailyAverage | null>(null);
   const [expandedMetric, setExpandedMetric] = useState<MetricKey | null>(null);
   const [showCardiovascularInfo, setShowCardiovascularInfo] = useState(false);
@@ -53,7 +54,10 @@ export const TrendChart: React.FC<TrendChartProps> = ({
     const chartContainer = chartScrollRef.current;
     if (!chartContainer) return;
     chartContainer.scrollLeft = chartContainer.scrollWidth - chartContainer.clientWidth;
-  }, [range, latestDailyTimestamp]);
+    // `isTrendExpanded` es imprescindible: mientras la sección está plegada la gráfica
+    // no está montada, así que al desplegarla hay que volver a situarla en las
+    // mediciones más recientes.
+  }, [range, latestDailyTimestamp, isTrendExpanded]);
 
   const selectRange = (nextRange: LongTermTrendRange) => {
     setRange(nextRange);
@@ -151,44 +155,63 @@ export const TrendChart: React.FC<TrendChartProps> = ({
 
   return (
     <div className="card chart-card">
-      <div className="chart-header">
+      <div className={`chart-header${isTrendExpanded ? '' : ' collapsed'}`}>
         <div className="chart-title">
           <TrendingUp size={24} className="icon-chart" />
           <h2>{t('trend.title')}</h2>
           {settings.showInformationalLabels && <span className="trend-guideline-badge">
             {getGuidelineName(settings.guidelineProfile, language)}
           </span>}
-          <span className="readings-count-badge">
-            <span className="readings-count-full">
-              {t(
-                periodSessions.length === 1
-                  ? 'trend.readingsCountOne'
-                  : 'trend.readingsCountOther',
-                { count: periodSessions.length },
-              )}
+          <button
+            type="button"
+            className="section-count-toggle trend-section-toggle"
+            aria-expanded={isTrendExpanded}
+            aria-controls="trend-chart-details"
+            aria-label={`${t(
+              periodSessions.length === 1
+                ? 'trend.readingsCountOne'
+                : 'trend.readingsCountOther',
+              { count: periodSessions.length },
+            )}. ${t(isTrendExpanded ? 'trend.collapseSection' : 'trend.expandSection')}`}
+            title={t(isTrendExpanded ? 'trend.collapseSection' : 'trend.expandSection')}
+            onClick={() => setIsTrendExpanded((expanded) => !expanded)}
+          >
+            <span className="readings-count-text">
+              <span className="readings-count-full">
+                {t(
+                  periodSessions.length === 1
+                    ? 'trend.readingsCountOne'
+                    : 'trend.readingsCountOther',
+                  { count: periodSessions.length },
+                )}
+              </span>
+              <span className="readings-count-compact" aria-hidden="true">
+                {periodSessions.length}
+              </span>
             </span>
-            <span className="readings-count-compact" aria-hidden="true">
-              {periodSessions.length}
-            </span>
-          </span>
+            {isTrendExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
         </div>
 
-        <div className="filter-chips">
-          {(Object.keys(RANGE_TRANSLATION_KEYS) as LongTermTrendRange[]).map(
-            (option) => (
-              <button
-                key={option}
-                type="button"
-                className={`chip ${range === option ? 'active' : ''}`}
-                onClick={() => selectRange(option)}
-              >
-                {t(RANGE_TRANSLATION_KEYS[option])}
-              </button>
-            )
-          )}
+        <div className="trend-header-controls">
+          <div className="filter-chips">
+            {(Object.keys(RANGE_TRANSLATION_KEYS) as LongTermTrendRange[]).map(
+              (option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`chip ${range === option ? 'active' : ''}`}
+                  onClick={() => selectRange(option)}
+                >
+                  {t(RANGE_TRANSLATION_KEYS[option])}
+                </button>
+              )
+            )}
+          </div>
         </div>
       </div>
 
+      {isTrendExpanded && <div id="trend-chart-details">
       <div className="trend-summary-row">
         {([
           { key: 'systolic' as const, className: 'systolic', title: t('form.systolic'), unit: 'mmHg', values: periodSummary.systolic },
@@ -537,6 +560,7 @@ export const TrendChart: React.FC<TrendChartProps> = ({
           </div>
         </div>
       )}
+      </div>}
     </div>
   );
 };
