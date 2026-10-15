@@ -151,8 +151,8 @@ it('sólo refleja como origen permitido los declarados en CORS_ORIGINS', async (
   expect(allowed.headers.get('access-control-allow-origin')).toBe('http://127.0.0.1:5175');
   expect(allowed.headers.get('access-control-allow-credentials')).toBe('true');
   // La app Android/PWA empaquetada se sirve a sí misma desde localhost, y la PWA
-  // del cliente se publica en GitHub Pages.
-  for (const appOrigin of ['https://localhost', 'capacitor://localhost', 'https://el-rocho.github.io']) {
+  // del cliente se publica en su dominio definitivo.
+  for (const appOrigin of ['https://localhost', 'capacitor://localhost', 'https://cliente.cta.elrocho.es']) {
     const fromApp = await preflight(appOrigin);
     expect(fromApp.headers.get('access-control-allow-origin'), appOrigin).toBe(appOrigin);
   }

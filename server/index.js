@@ -83,9 +83,11 @@ const DEFAULT_CORS_ORIGINS = [
   'https://localhost',
   'http://localhost',
   'capacitor://localhost',
-  // PWA del cliente publicada en GitHub Pages (workflow deploy.yml del repositorio
-  // cta-elrocho-client-app). Una copia publicada en otro sitio debe declarar el suyo.
-  'https://el-rocho.github.io',
+  // Dominio definitivo de la PWA del cliente (workflow deploy.yml del repositorio
+  // cta-elrocho-client-app). Su dirección antigua en GitHub Pages redirige a este
+  // dominio, así que el navegador envía siempre este origen. Una copia publicada en
+  // otro sitio debe declarar el suyo.
+  'https://cliente.cta.elrocho.es',
 ];
 const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? DEFAULT_CORS_ORIGINS.join(','))
   .split(',')
