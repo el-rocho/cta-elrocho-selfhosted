@@ -37,7 +37,7 @@ Se despliega con Docker Compose, utiliza SQLite y mantiene los datos bajo tu con
 - Códigos de recuperación de un solo uso.
 - Base de datos SQLite persistente en el directorio `data`.
 - Registro de presión sistólica, presión diastólica, pulso, brazo y notas.
-- Referencias configurables: `ESC 2024`, `AHA/ACC 2025` e `ISH 2020`.
+- Referencias configurables: `Europea ESC 2024`, `USA AHA/ACC 2025` e `Int. ISH 2020`.
 - Objetivos terapéuticos orientativos y editables según la indicación profesional.
 - Historial, estadísticas y gráficas de evolución de hasta un año.
 - Filtro opcional de acomodación para agrupar tomas consecutivas y obtener un resultado efectivo por sesión.
@@ -122,7 +122,7 @@ environment:
   - CORS_ORIGINS=https://mi-pwa.midominio.com
 ```
 
-Indica varios orígenes separados por comas, sin barra final. No se recomienda utilizar `*` porque las peticiones incluyen credenciales.
+La PWA oficial del cliente se sirve en `https://cliente.cta.elrocho.es` y el servidor ya la admite desde la versión `1.7.1`; al declarar `CORS_ORIGINS` sustituyes por completo esa lista por omisión, así que incluye también ese origen. Indica varios separados por comas, sin barra final. No se recomienda utilizar `*` porque las peticiones incluyen credenciales.
 
 ---
 
